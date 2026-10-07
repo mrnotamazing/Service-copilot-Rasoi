@@ -23,6 +23,7 @@ export default function SetupView() {
   const { snap, connected } = useSnapshot('manager')
   const [sop, setSop] = useState<Sop | null>(null)
   const [saved, setSaved] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
 
   useEffect(() => {
     if (snap && !sop) setSop(snap.config.sop)
@@ -51,14 +52,16 @@ export default function SetupView() {
                 <span className="inline-flex items-center gap-1.5"><Play className="size-4" /> {sim.startedAt ? 'Resume' : 'Start service'}</span>
               </Btn>
             )}
-            <Btn
-              kind="ghost"
-              onClick={() => {
-                if (confirm('Clear all tables and events for a fresh service?')) void post('/api/sim/reset')
-              }}
-            >
-              <span className="inline-flex items-center gap-1.5"><RotateCcw className="size-4" /> Reset</span>
-            </Btn>
+            {confirmReset ? (
+              <>
+                <Btn kind="soft" onClick={() => { setConfirmReset(false); void post('/api/sim/reset') }}>Clear all tables</Btn>
+                <Btn kind="ghost" onClick={() => setConfirmReset(false)}>Keep service</Btn>
+              </>
+            ) : (
+              <Btn kind="ghost" onClick={() => setConfirmReset(true)}>
+                <span className="inline-flex items-center gap-1.5"><RotateCcw className="size-4" /> Reset</span>
+              </Btn>
+            )}
           </div>
           <div className="mt-4 space-y-3 text-sm">
             <label className="block">

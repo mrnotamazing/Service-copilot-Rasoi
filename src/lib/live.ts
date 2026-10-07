@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Role, Snapshot } from '../../shared/snapshot.ts'
 
+/** Built as a self-contained demo (no server): everything runs in the page. */
+export const STANDALONE = import.meta.env.VITE_STANDALONE === '1'
+const local = STANDALONE ? await import('./standalone.ts') : null
+
 /** Subscribes to the live snapshot for a role; reconnects automatically. */
 export function useSnapshot(role: Role, staffId?: string): { snap: Snapshot | null; connected: boolean } {
   const [snap, setSnap] = useState<Snapshot | null>(null)
@@ -8,6 +12,25 @@ export function useSnapshot(role: Role, staffId?: string): { snap: Snapshot | nu
   const retry = useRef(0)
 
   useEffect(() => {
+    if (local) {
+      const push = () => setSnap(structuredClone(local.localApi.snapshot(role, staffId)))
+      push()
+      setConnected(true)
+      let queued = false
+      const off = local.onLocalChange(() => {
+        if (queued) return
+        queued = true
+        setTimeout(() => {
+          queued = false
+          push()
+        }, 100)
+      })
+      const timer = setInterval(push, 1000)
+      return () => {
+        off()
+        clearInterval(timer)
+      }
+    }
     let ws: WebSocket | null = null
     let timer: ReturnType<typeof setTimeout> | undefined
     let closed = false
@@ -38,6 +61,7 @@ export function useSnapshot(role: Role, staffId?: string): { snap: Snapshot | nu
 }
 
 export async function post<T = unknown>(path: string, body: unknown = {}): Promise<T> {
+  if (local) return local.localPost(path, body as Record<string, unknown>) as T
   const res = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error ?? res.statusText)

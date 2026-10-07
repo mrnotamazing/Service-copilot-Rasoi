@@ -55,6 +55,14 @@ export default function ServerView() {
 
       <main className="mx-auto grid max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[1fr_380px]">
         <div className="space-y-3">
+            {snap.sim.startedAt !== null && (
+              <label className="flex items-center justify-between rounded-2xl border border-line bg-surface p-4 text-sm">
+                <span className="inline-flex items-center gap-2">
+                  <Bot className="size-4 text-muted" /> {autopilot ? `Autopilot is serving ${me.name}’s tables. Untick to play yourself` : `You’re playing ${me.name}`}
+                </span>
+                <input type="checkbox" className="size-5 accent-[var(--color-saffron)]" checked={autopilot} onChange={(e) => void post('/api/sim/settings', { staffId, autopilot: e.target.checked })} />
+              </label>
+            )}
           <div className="flex items-baseline justify-between">
             <h1 className="font-display text-2xl">Next up</h1>
             {queued > 0 && <span className="text-xs text-muted">+{queued} more lined up</span>}
@@ -141,14 +149,6 @@ export default function ServerView() {
             </div>
           </Panel>
 
-          {snap.sim.startedAt !== null && (
-            <label className="flex items-center justify-between rounded-2xl border border-line bg-surface p-4 text-sm">
-              <span className="inline-flex items-center gap-2">
-                <Bot className="size-4 text-muted" /> Demo autopilot for {me.name}
-              </span>
-              <input type="checkbox" className="size-5 accent-[var(--color-saffron)]" checked={autopilot} onChange={(e) => void post('/api/sim/settings', { staffId, autopilot: e.target.checked })} />
-            </label>
-          )}
         </div>
       </main>
     </div>

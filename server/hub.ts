@@ -1,13 +1,28 @@
 // Holds the restaurant config and the append-only event log, keeps the engine
 // state in sync, and notifies listeners whenever something changes.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
 import { DEMO_CONFIG } from '../shared/config.ts'
 import { applyEvent, deriveTasks, initialState, type EngineState } from '../shared/engine.ts'
 import { EVENT_TYPES, newId, type CopilotEvent, type IncomingEvent } from '../shared/events.ts'
 import type { RestaurantConfig, Task } from '../shared/types.ts'
 import { Clock } from './clock.ts'
+
+/** Where events and config are kept: a file on the server, memory in the browser demo. */
+export interface HubStore {
+  loadEvents(): CopilotEvent[]
+  append(ev: CopilotEvent): void
+  clear(): void
+  loadConfig(): Partial<RestaurantConfig> | null
+  saveConfig(config: RestaurantConfig): void
+}
+
+export const memoryStore = (): HubStore => ({
+  loadEvents: () => [],
+  append: () => {},
+  clear: () => {},
+  loadConfig: () => null,
+  saveConfig: () => {},
+})
 
 export class Hub {
   config: RestaurantConfig
@@ -17,25 +32,13 @@ export class Hub {
   private listeners = new Set<() => void>()
   private sourceStats = new Map<string, { count: number; last: number }>()
 
-  constructor(
-    private eventsPath: string,
-    private configPath: string,
-  ) {
-    mkdirSync(dirname(eventsPath), { recursive: true })
-    this.config = existsSync(configPath) ? { ...DEMO_CONFIG, ...JSON.parse(readFileSync(configPath, 'utf8')) } : structuredClone(DEMO_CONFIG)
+  constructor(private store: HubStore) {
+    const saved = store.loadConfig()
+    this.config = saved ? { ...DEMO_CONFIG, ...saved } : structuredClone(DEMO_CONFIG)
     this.state = initialState(this.config)
-    if (existsSync(eventsPath)) {
-      for (const line of readFileSync(eventsPath, 'utf8').split('\n')) {
-        if (!line.trim()) continue
-        try {
-          this.ingestStored(JSON.parse(line) as CopilotEvent)
-        } catch {
-          // skip a torn last line
-        }
-      }
-      const last = this.events.at(-1)
-      if (last) this.clock.set(Math.max(last.at, Date.now()))
-    }
+    for (const ev of store.loadEvents()) this.ingestStored(ev)
+    const last = this.events.at(-1)
+    if (last) this.clock.set(Math.max(last.at, Date.now()))
   }
 
   private ingestStored(ev: CopilotEvent) {
@@ -70,7 +73,7 @@ export class Hub {
     this.events.push(ev)
     applyEvent(this.state, ev, this.config)
     this.track(ev)
-    appendFileSync(this.eventsPath, JSON.stringify(ev) + '\n')
+    this.store.append(ev)
     this.emit()
     return ev
   }
@@ -84,13 +87,13 @@ export class Hub {
     this.events = []
     this.sourceStats.clear()
     this.state = initialState(this.config)
-    writeFileSync(this.eventsPath, '')
+    this.store.clear()
     this.emit()
   }
 
   updateConfig(patch: Partial<RestaurantConfig>) {
     this.config = { ...this.config, ...patch, sop: { ...this.config.sop, ...(patch.sop ?? {}) } }
-    writeFileSync(this.configPath, JSON.stringify(this.config, null, 2))
+    this.store.saveConfig(this.config)
     // Rebuild from the log so SOP changes re-score history consistently.
     this.state = initialState(this.config)
     for (const ev of this.events) applyEvent(this.state, ev, this.config)

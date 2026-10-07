@@ -2,3 +2,4 @@ node_modules
 dist
 data/*.ndjson
 data/config.json
+dist-demo

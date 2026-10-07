@@ -3,12 +3,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer, type WebSocket } from 'ws'
-import { analytics, staffStats, tasksFor } from '../shared/engine.ts'
 import type { IncomingEvent } from '../shared/events.ts'
-import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
-import type { RestaurantConfig } from '../shared/types.ts'
-import { ADAPTERS, CATALOG } from './adapters/index.ts'
+import type { Role } from '../shared/snapshot.ts'
+import { ADAPTERS } from './adapters/index.ts'
 import { AdapterError } from './adapters/types.ts'
+import { createApi } from './api.ts'
+import { fileStore } from './fileStore.ts'
 import { Hub } from './hub.ts'
 import { Simulator } from './simulator.ts'
 
@@ -16,49 +16,10 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 const PORT = Number(process.env.COPILOT_PORT ?? 4000)
 const INGEST_KEY = process.env.COPILOT_INGEST_KEY // required for POS webhooks when set
 
-const hub = new Hub(join(root, 'data/events.ndjson'), join(root, 'data/config.json'))
+const hub = new Hub(fileStore(join(root, 'data/events.ndjson'), join(root, 'data/config.json')))
 const sim = new Simulator(hub)
-
-// ---------------------------------------------------------------------------
-// Snapshots, cut per role.
-
-function integrations(): IntegrationStatus[] {
-  return CATALOG.map((c) => {
-    const s = hub.sourceStat(c.id === 'generic' ? 'api' : c.id)
-    return { ...c, lastEventAt: s?.last ?? null, eventCount: s?.count ?? 0 }
-  })
-}
-
-function snapshot(role: Role, staffId?: string): Snapshot {
-  const now = hub.clock.now()
-  const tasks = hub.tasks(now)
-  const openTasks: Record<string, number> = {}
-  for (const t of tasks) openTasks[t.staffId] = (openTasks[t.staffId] ?? 0) + 1
-  const base: Snapshot = {
-    role,
-    now,
-    config: hub.config,
-    tables: Object.values(hub.state.tables),
-    unavailable: Object.keys(hub.state.unavailable),
-    notes: hub.state.notes.slice(-40),
-    sim: sim.status(),
-  }
-  if (role === 'server' && staffId) {
-    const { top, queued } = tasksFor(tasks, staffId)
-    return {
-      ...base,
-      me: {
-        staffId,
-        top,
-        queued,
-        stats: staffStats(hub.state, hub.config).find((s) => s.staffId === staffId) ?? null,
-        myVisits: hub.state.visits.filter((v) => v.serverId === staffId).slice(-10).reverse(),
-      },
-    }
-  }
-  if (role === 'manager') return { ...base, analytics: analytics(hub.state, hub.config), integrations: integrations(), openTasks }
-  return { ...base, openTasks }
-}
+const api = createApi(hub, sim)
+const snapshot = api.snapshot
 
 // ---------------------------------------------------------------------------
 // Live updates over WebSocket (throttled, plus a 1s heartbeat so timers move).
@@ -124,43 +85,11 @@ const routes: Record<string, Handler> = {
   'GET /api/snapshot': (_r, _b, url) => snapshot((url.searchParams.get('role') as Role) ?? 'manager', url.searchParams.get('staffId') ?? undefined),
   'GET /api/events/export': () => hub.events,
 
-  // Taps from the copilot apps (server phones, kitchen screen, manager).
-  'POST /api/actions': (_r, body) => {
-    const ev = body as unknown as IncomingEvent
-    const source = body.source === 'kitchen' || body.source === 'manager' ? body.source : 'app'
-    return ingestAll([{ ...ev, source } as IncomingEvent])
-  },
-
   // Generic POS/middleware ingest in the canonical format.
   'POST /api/events': (req, body) => {
     requireKey(req)
     const list = (Array.isArray(body.events) ? body.events : [body]) as IncomingEvent[]
     return ingestAll(list.map((e) => ({ ...e, source: e.source?.startsWith('pos:') ? e.source : 'pos:api' }) as IncomingEvent))
-  },
-
-  'POST /api/sim/start': () => (sim.start(), sim.status()),
-  'POST /api/sim/pause': () => (sim.pause(), sim.status()),
-  'POST /api/sim/reset': () => (sim.reset(), sim.status()),
-  'POST /api/sim/settings': (_r, body) => {
-    if (typeof body.speed === 'number') sim.setSpeed(body.speed)
-    if (typeof body.intensity === 'number') sim.intensity = Math.max(0.3, Math.min(3, body.intensity))
-    if (typeof body.autoKitchen === 'boolean') sim.autoKitchen = body.autoKitchen
-    if (typeof body.staffId === 'string' && typeof body.autopilot === 'boolean') sim.setAutopilot(body.staffId, body.autopilot)
-    hub.emit()
-    return sim.status()
-  },
-
-  'POST /api/config': (_r, body) => {
-    const patch: Partial<RestaurantConfig> = {}
-    if (body.sop && typeof body.sop === 'object') {
-      const sop: Record<string, number> = {}
-      for (const [k, v] of Object.entries(body.sop)) if (k in hub.config.sop && typeof v === 'number' && v >= 0 && v < 240) sop[k] = v
-      patch.sop = { ...hub.config.sop, ...sop }
-    }
-    if (typeof body.name === 'string') patch.name = body.name.slice(0, 80)
-    if (body.sections && typeof body.sections === 'object') patch.sections = { ...hub.config.sections, ...(body.sections as Record<string, string>) }
-    hub.updateConfig(patch)
-    return hub.config
   },
 }
 
@@ -178,10 +107,14 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         ingestAll(events)
         return send(res, 200, reply)
       }
-      const handler = routes[`${req.method} ${url.pathname}`]
-      if (!handler) return send(res, 404, { error: 'Not found' })
       const body = req.method === 'POST' ? await readJson(req) : {}
       if (req.method === 'POST' && (typeof body !== 'object' || body === null || Array.isArray(body))) throw new AdapterError('Expected a JSON object')
+      if (req.method === 'POST') {
+        const handled = api.post(url.pathname, body as Record<string, unknown>)
+        if (handled) return send(res, 200, handled.result)
+      }
+      const handler = routes[`${req.method} ${url.pathname}`]
+      if (!handler) return send(res, 404, { error: 'Not found' })
       return send(res, 200, handler(req, body as Record<string, unknown>, url) ?? { ok: true })
     }
     serveStatic(url.pathname, res)

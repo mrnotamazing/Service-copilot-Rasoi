@@ -19,6 +19,7 @@
   --font-display: "Fraunces", ui-serif, Georgia, serif;
 }
 
+:root { color-scheme: dark; }
 html, body, #root { min-height: 100%; }
 body {
   background: var(--color-bg);

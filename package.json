@@ -9,6 +9,7 @@
     "dev:web": "vite",
     "build": "tsc --noEmit && vite build",
     "start": "NODE_ENV=production tsx server/index.ts",
+    "build:demo": "tsc --noEmit && VITE_STANDALONE=1 vite build --base ./ --outDir dist-demo && node scripts/inline-demo.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

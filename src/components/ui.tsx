@@ -20,7 +20,7 @@ export function Panel({ title, right, children, className = '' }: { title?: Reac
 
 export function TopBar({ title, sub, right }: { title: ReactNode; sub?: ReactNode; right?: ReactNode }) {
   return (
-    <header className="sticky top-0 z-10 border-b border-line bg-bg/90 backdrop-blur">
+    <header className="sticky top-[env(safe-area-inset-top,0px)] z-10 border-b border-line bg-bg/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <div className="min-w-0">
           <Link to="/" className="text-[11px] font-semibold uppercase tracking-[0.2em] text-saffron">
