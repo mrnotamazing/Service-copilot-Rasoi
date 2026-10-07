@@ -1,14 +1,28 @@
-// AI assistance. When a Dify app is configured (DIFY_API_URL + DIFY_API_KEY), requests go to
-// Dify's chat-messages API; otherwise a built-in writer produces a useful, plain answer so the
-// copilot always works. The copilot builds the facts; Dify only phrases them.
+// AI assistance. In order of preference: Claude (ANTHROPIC_API_KEY, see server/claude.ts), a
+// Dify app (DIFY_API_URL + DIFY_API_KEY), or a built-in writer and trainer so the copilot always
+// works. The copilot builds the facts; the model only phrases them and holds the conversation.
 
 import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
 import { SCENARIOS, scoreReply } from '../shared/practice.ts'
 import { predictReady } from '../shared/predict.ts'
+import { istClock } from '../shared/time.ts'
+import { findLessons, LESSONS, STARTERS } from '../shared/training.ts'
 import type { Hub } from './hub.ts'
 
-export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice'
+export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat'
+
+/** One message in the assistant chat. In practice mode the guest's lines are the assistant's. */
+export interface ChatTurn {
+  role: 'user' | 'assistant'
+  text: string
+}
+
+/** A conversational language model (Claude). `stable` is cacheable; `live` changes every message. */
+export interface ChatModel {
+  name: 'claude'
+  reply(system: { stable: string; live: string }, turns: ChatTurn[]): Promise<string>
+}
 
 export interface PracticeTurn {
   role: 'guest' | 'server'
@@ -25,6 +39,10 @@ export interface AiRequest {
   /** Practice: which tough moment, and the conversation so far. */
   scenario?: string
   history?: PracticeTurn[]
+  /** Chat: the conversation so far, ask or practice mode, and whether to wrap up a practice. */
+  messages?: ChatTurn[]
+  mode?: 'ask' | 'practice'
+  finish?: boolean
 }
 
 /** Language names for the prompt; unknown codes fall back to English. */
@@ -41,16 +59,22 @@ export const INCLUSIVE_STYLE =
 
 export interface AiAnswer {
   text: string
-  source: 'dify' | 'built-in'
+  source: 'claude' | 'dify' | 'built-in'
   /** Set when Dify was configured but the call failed and the built-in answer was used instead. */
   notice?: string
   /** Practice only: coaching on the server's last reply, 1–3 stars, and whether the role-play is over. */
   feedback?: string
   stars?: number
   done?: boolean
+  /** Chat: good next questions to offer. */
+  suggestions?: string[]
 }
 
 export interface DifyOptions {
+  /** A conversational model (Claude), preferred over Dify when present. */
+  chat?: ChatModel
+  /** Turns a model error into a short reason for the notice. */
+  chatErrorReason?: (e: unknown) => string
   url?: string
   key?: string
   fetchImpl?: typeof fetch
@@ -61,6 +85,7 @@ const MIN = 60_000
 
 export function createAi(hub: Hub, opts: DifyOptions = {}) {
   const dify = opts.url && opts.key ? { url: opts.url.replace(/\/+$/, ''), key: opts.key } : null
+  const model = opts.chat ?? null
   const doFetch = opts.fetchImpl ?? fetch
 
   const name = (id?: string) => hub.config.staff.find((s) => s.id === id)?.name ?? 'the team'
@@ -124,6 +149,8 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       }
       case 'practice':
         return practiceTurn(req)
+      case 'chat':
+        return chatTurn(req, now)
       case 'ask_sop': {
         const q = (req.question ?? '').trim()
         if (!q) throw new AiError('Type a question first.')
@@ -167,6 +194,90 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     }
   }
 
+  /** The assistant chat: expert answers in ask mode, a guest plus a coach in practice mode. */
+  function chatTurn(req: AiRequest, now: number): Built {
+    const cfg = hub.config
+    const turns = (req.messages ?? []).filter((t) => t.text.trim()).slice(-16)
+    const practice = req.mode === 'practice'
+    const sc = practice ? SCENARIOS.find((x) => x.id === req.scenario) : undefined
+    if (practice && !sc) throw new AiError('Pick a situation to practise.')
+    if (!practice && turns.at(-1)?.role !== 'user') throw new AiError('Type a message first.')
+    const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
+    const mine = Object.values(hub.state.tables).filter((t) => t.serverId === req.staffId)
+    const live = [
+      'Live context (changes every message):',
+      `- Asking: ${name(req.staffId)}${pronouns(req.staffId) ? ` (${pronouns(req.staffId)})` : ''}, a server`,
+      `- Their app language: ${language}. Reply in the language they write in; if unclear, use ${language}. Keep dish names as on the menu.`,
+      `- Time: ${istClock(now)} IST`,
+      ...(practice
+        ? [
+            `- Mode: PRACTICE. You play a guest in this situation: "${sc!.guest[0]}" Stay in character; be realistic, not cartoonish; calm down when the server handles it well.`,
+            req.finish
+              ? '- The server asked to finish. Step out of character and give a short debrief: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).'
+              : `- After each server reply, first coach it in 1-2 short lines starting with ✓ (what worked) and → (one improvement), using the practice rubric. Then reply as the guest. Format exactly:\nCOACH: <coaching, or - before the server has spoken>\nGUEST: <the guest's next line>\nIf the situation is resolved, end the guest line with [END].`,
+          ]
+        : ['- Mode: ASK. Answer as their expert trainer and colleague.']),
+      '- Their section right now:',
+      ...briefingFacts(mine, cfg, hub.state.unavailable, now),
+    ].join('\n')
+    // The API needs the conversation to start with the server; a practice opens with the guest.
+    const apiTurns: ChatTurn[] = turns[0]?.role === 'user' ? [...turns] : [{ role: 'user', text: practice ? '(Start the role-play with the guest’s opening line.)' : '(Start.)' }, ...turns]
+    if (practice && req.finish) apiTurns.push({ role: 'user', text: '(Finish the practice and give me my debrief.)' })
+    else if (practice && apiTurns.at(-1)?.role === 'assistant') apiTurns.push({ role: 'user', text: '(Continue.)' })
+    const builtIn = practice ? practiceBuiltIn(sc!.id, turns, !!req.finish) : askBuiltIn(turns.at(-1)!.text, req, now)
+    return {
+      prompt: `${stableSystem(cfg)}\n\n${live}\n\nConversation so far:\n${apiTurns.map((t) => `${t.role === 'user' ? 'SERVER' : practice ? 'GUEST' : 'TABLEMATE'}: ${t.text}`).join('\n')}`,
+      fallback: builtIn.text,
+      extra: { feedback: builtIn.feedback, stars: builtIn.stars, done: builtIn.done, suggestions: builtIn.suggestions },
+      system: { stable: stableSystem(cfg), live },
+      turns: apiTurns,
+      parse: practice
+        ? (answer: string) => {
+            if (req.finish) {
+              const stars = Number(answer.match(/STARS:\s*([1-3])/i)?.[1]) || builtIn.stars
+              return { text: answer.replace(/STARS:\s*[1-3]\s*$/i, '').trim(), stars, done: true, feedback: undefined }
+            }
+            const coach = answer.match(/COACH:\s*([\s\S]*?)(?:\n\s*GUEST:|$)/i)?.[1]?.trim()
+            let guest = answer.match(/GUEST:\s*([\s\S]*)$/i)?.[1]?.trim() ?? answer.trim()
+            const done = /\[END\]/i.test(guest)
+            guest = guest.replace(/\[END\]/gi, '').trim()
+            const last = [...turns].reverse().find((t) => t.role === 'user')?.text
+            return { text: guest, feedback: coach && coach !== '-' ? coach : undefined, stars: last ? scoreReply(sc!.id, last).stars : undefined, done }
+          }
+        : (answer: string) => ({ text: answer, suggestions: builtIn.suggestions }),
+    }
+  }
+
+  /** Built-in expert: today's section, the menu, the standards and the training notes. */
+  function askBuiltIn(question: string, req: AiRequest, now: number): { text: string; suggestions: string[]; feedback?: string; stars?: number; done?: boolean } {
+    const cfg = hub.config
+    const q = question.toLowerCase()
+    if (/brief|my section|my tables|section|tables right now/.test(q)) {
+      const facts = briefingFacts(Object.values(hub.state.tables).filter((t) => t.serverId === req.staffId), cfg, hub.state.unavailable, now)
+      return { text: facts.map((f) => `• ${f.replace(/^- /, '')}`).join('\n'), suggestions: ['How do I warn guests about a delay?', 'Explain Jain food'] }
+    }
+    const dish = cfg.menu.find((m) => m.name.toLowerCase().split(/\W+/).some((w) => w.length > 3 && q.includes(w)))
+    if (dish) return { text: dishFacts(dish), suggestions: ['How do I describe a dish well?', 'How do I handle allergies?'] }
+    if (/vegan dishes|which dishes|onion or garlic|contain/.test(q)) {
+      const tag = /onion|garlic|jain/.test(q) ? 'root' : /vegan/.test(q) ? null : null
+      const list = cfg.menu.filter((m) => (tag ? m.contains?.includes(tag) : !m.contains?.some((c) => ['meat', 'fish', 'shellfish', 'dairy', 'egg', 'honey'].includes(c))))
+      return {
+        text: list.length
+          ? `${tag ? 'Contain onion, garlic or root vegetables' : 'No animal products listed'}: ${list.map((m) => m.name).join(', ')}. Always confirm with the kitchen.`
+          : 'None on tonight’s menu by the ingredient list. Ask the kitchen what they can adapt.',
+        suggestions: ['Explain Jain food', 'How do I handle allergies?'],
+      }
+    }
+    const lessons = findLessons(question)
+    if (lessons.length) return { text: lessons.map((l, i) => (i === 0 ? l.answer : `Also: ${l.answer}`)).join('\n\n'), suggestions: lessons[0].next }
+    const sop = sopFallback(question, cfg)
+    if (!sop.startsWith('I can only')) return { text: sop, suggestions: STARTERS.slice(1, 3) }
+    return {
+      text: 'I can help with service standards, tonight’s menu and what’s in each dish, allergies and diets, handling complaints, access needs, and your section right now. Try one of these.',
+      suggestions: STARTERS,
+    }
+  }
+
   async function callDify(prompt: string, req: AiRequest): Promise<string> {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 20_000)
@@ -187,12 +298,23 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
   }
 
   return {
-    provider: (dify ? 'dify' : 'built-in') as 'dify' | 'built-in',
+    provider: (model ? 'claude' : dify ? 'dify' : 'built-in') as 'claude' | 'dify' | 'built-in',
     async ask(req: AiRequest): Promise<AiAnswer> {
       const built = build(req)
       const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
       const prompt = `${built.prompt}\n\nStyle: ${INCLUSIVE_STYLE}\nReply in ${language}.`
       const fallback = built.fallback
+      let notice: string | undefined
+      if (model) {
+        try {
+          const system = built.system ?? { stable: stableSystem(hub.config), live: `Reply in ${language}.` }
+          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }])
+          return { ...built.extra, ...(built.parse ? built.parse(answer) : { text: answer }), source: 'claude' }
+        } catch (e) {
+          notice = `${opts.chatErrorReason?.(e) ?? (e instanceof Error ? e.message : String(e))}. Showing the built-in answer.`
+          if (!dify) return { text: fallback, source: 'built-in', notice, ...built.extra }
+        }
+      }
       if (!dify) return { text: fallback, source: 'built-in', ...built.extra }
       try {
         const answer = await callDify(prompt, req)
@@ -212,8 +334,53 @@ interface Built {
   fallback: string
   /** Fields returned alongside the text (practice feedback, stars, done). */
   extra?: Partial<AiAnswer>
-  /** Splits a structured Dify answer into fields. */
+  /** Splits a structured model answer into fields. */
   parse?: (answer: string) => Partial<AiAnswer> & { text: string }
+  /** Chat kinds: the system prompt (cacheable part + live part) and the turns for a chat model. */
+  system?: { stable: string; live: string }
+  turns?: ChatTurn[]
+}
+
+/**
+ * The assistant's standing brief: who it is, how it answers, the restaurant's standards, the
+ * menu with what each dish contains, and the training notes. Identical on every request for a
+ * given config, so it caches.
+ */
+function stableSystem(cfg: RestaurantConfig): string {
+  return [
+    `You are TableMate, the assistant inside the floor team's app at ${cfg.name}, a fine-dining restaurant in India. You are an expert service trainer and a friendly colleague: hospitality standards, guest recovery, allergens and dietary practice (vegan, Jain, halal), accessibility etiquette, recommending with care, teamwork and staying calm in a rush.`,
+    '',
+    'How to answer:',
+    '- You are talking to a busy server between tables. Lead with the answer. Short, practical and warm: 1-4 short sentences, or a few bullets.',
+    '- Use the restaurant’s standards and menu below. If something isn’t covered, say so and suggest asking the manager or the chef.',
+    '- Safety first: never say a dish is safe for an allergy or diet from memory. Use the ingredient tags below and always tell the server to confirm with the kitchen.',
+    '- Never blame the kitchen or colleagues. Kitchen delays are the kitchen’s, not the server’s. Personal stats are private; never compare people.',
+    `- ${INCLUSIVE_STYLE}`,
+    '- Multilingual: reply in the language the server writes in (English, Hindi, Nepali, Bengali, Tamil, Spanish and others), in a natural, spoken register. Keep dish names as written on the menu.',
+    '',
+    'Service standards:',
+    ...sopFacts(cfg),
+    '',
+    'Menu (course, station, what it contains):',
+    ...cfg.menu.map((m) => `- ${m.name}: ${m.course}, ${m.station}, about ${m.prepMin} min; contains ${m.contains?.join(', ') || 'not listed'}`),
+    'Diet rules: vegan avoids meat, fish, shellfish, dairy, egg, honey. Jain avoids meat, fish, shellfish, egg and root vegetables (onion, garlic, potato). Halal avoids pork, alcohol and non-halal meat.',
+    '',
+    'Practice rubric (for role-plays): a great reply apologises sincerely, shows understanding, gives a clear next step and a time, never blames the kitchen, and never guesses about allergens (checks with the chef).',
+    '',
+    'Training notes (the house way of doing things):',
+    ...LESSONS.map((l) => `- ${l.title}: ${l.answer}`),
+  ].join('\n')
+}
+
+function dishFacts(m: RestaurantConfig['menu'][number]): string {
+  const c = m.contains ?? []
+  const clashes = [
+    c.some((x) => ['meat', 'fish', 'shellfish', 'dairy', 'egg', 'honey'].includes(x)) ? 'vegan' : '',
+    c.some((x) => ['meat', 'fish', 'shellfish', 'egg', 'root'].includes(x)) ? 'Jain' : '',
+    c.some((x) => ['pork', 'alcohol', 'nonhalal'].includes(x)) ? 'halal' : '',
+  ].filter(Boolean)
+  const word: Record<string, string> = { root: 'onion, garlic or root veg', nonhalal: 'non-halal meat' }
+  return `${m.name}: ${m.course === 'main' ? 'a main' : `a ${m.course}`} from the ${m.station} station, about ${m.prepMin} minutes. Contains: ${c.map((x) => word[x] ?? x).join(', ') || 'not listed'}.${clashes.length ? ` Not suitable as-is for ${clashes.join(', ')} guests.` : ''} Always confirm allergies with the kitchen.`
 }
 
 /** Minutes until the table's late dishes are most likely ready, using tonight's station load. */
@@ -406,4 +573,23 @@ function sopFallback(q: string, cfg: RestaurantConfig): string {
     .sort((a, b) => b.hits - a.hits)
   if (!ranked.length) return 'I can only answer from the service standards set up here. Connect Dify with your SOP manual for full answers.'
   return ranked.slice(0, 2).map((x) => x.f.replace(/^- /, '')).join('. ') + '.'
+}
+
+/** Built-in role-play: scripted guest lines and rubric coaching, with a debrief on finish. */
+function practiceBuiltIn(scenarioId: string, turns: ChatTurn[], finish: boolean): { text: string; feedback?: string; stars?: number; done?: boolean; suggestions?: string[] } {
+  const sc = SCENARIOS.find((x) => x.id === scenarioId)!
+  const replies = turns.filter((t) => t.role === 'user').map((t) => t.text)
+  if (finish) {
+    if (!replies.length) return { text: 'Reply to the guest at least once, then I can give you feedback.', done: false }
+    const scores = replies.map((r) => scoreReply(sc.id, r))
+    const stars = Math.round(scores.reduce((a, s) => a + s.stars, 0) / scores.length)
+    const good = [...new Set(scores.flatMap((s) => s.good))].slice(0, 2)
+    const tip = scores.flatMap((s) => s.tips)[0]
+    return { text: [good.length ? `What worked: ${good.join(' ')}` : '', tip ? `To practise: ${tip}` : 'To practise: keep doing exactly this.'].filter(Boolean).join('\n'), stars, done: true }
+  }
+  const last = replies.at(-1)
+  const score = last ? scoreReply(sc.id, last) : null
+  const feedback = score ? [...score.good.map((g) => `✓ ${g}`), ...score.tips.slice(0, 2).map((t) => `→ ${t}`)].join('\n') : undefined
+  const line = replies.length < sc.guest.length ? sc.guest[replies.length] : 'Alright. Thank you for sorting that out.'
+  return { text: line, feedback, stars: score?.stars, done: replies.length >= sc.guest.length }
 }

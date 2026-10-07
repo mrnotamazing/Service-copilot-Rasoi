@@ -9,7 +9,7 @@
 
 /* TableMate brand. Tomato acts, chocolate speaks, cream carries the page.
    Light: cream paper and chocolate ink. Dark: the chocolate panel from the app-icon sheet.
-   Sage and amber are reserved for state; blue/ochre only mark floor vs kitchen in charts. */
+   Sage and amber are reserved for state; tomato/ochre mark floor vs kitchen in charts. */
 :root {
   --radius: 1rem;
   --tomato: #d34f2f;
@@ -36,9 +36,9 @@
   --good: #23744e;
   --warn: #94600f;
   --kitchen: #a8690c;
-  --floor-mark: #2f74c8;
+  --floor-mark: #d34f2f;
   --kitchen-mark: #a8690c;
-  --chart-1: #2f74c8;
+  --chart-1: #d34f2f;
   --chart-2: #a8690c;
   --chart-3: #2f8a5f;
   --chart-4: #8a5cc2;
@@ -81,9 +81,9 @@
   --good: #5fbf8f;
   --warn: #e7a94a;
   --kitchen: #d8a24c;
-  --floor-mark: #3f86d9;
+  --floor-mark: #e5603e;
   --kitchen-mark: #b87a14;
-  --chart-1: #3f86d9;
+  --chart-1: #e5603e;
   --chart-2: #b87a14;
   --sidebar: #080706;
   --sidebar-foreground: #f3eee8;
@@ -100,8 +100,6 @@
   --font-heading: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
   --color-tomato: var(--tomato);
-  --color-role-kitchen: var(--role-kitchen);
-  --color-role-manager: var(--role-manager);
   --color-chocolate: var(--chocolate);
   --color-cream: var(--cream);
   --color-hero: var(--hero);
@@ -191,95 +189,6 @@
 
 /* Brand tagline: the one place letter-spaced capitals are used, as on the brand sheet. */
 .tagline { text-transform: uppercase; letter-spacing: 0.28em; font-size: 0.72rem; font-weight: 500; }
-
-/* ---- Roles: each signed-in role gets its own look (set by the "signed in as" switcher) ----
-   Servers keep the brand tomato. The kitchen display is saffron with larger type, readable from
-   across the pass. The manager console is a cool blue-grey, calm and data-first. */
-:root {
-  --role-kitchen: #a35208;
-  --role-manager: #2d63a8;
-}
-html[data-role="kitchen"]:not(.dark) {
-  --background: #fbf7ee;
-  --card: #fffdf7;
-  --popover: #fffdf7;
-  --primary: #a35208;
-  --ring: #a35208;
-  --primary-2: #d98a1f;
-  --accent: #fbe9d2;
-  --accent-foreground: #7a3d06;
-  --sidebar: #f5ecdd;
-  --sidebar-accent: #f8e3c6;
-  --sidebar-accent-foreground: #7a3d06;
-  --hero: #2b1d0c;
-}
-html.dark[data-role="kitchen"] {
-  --background: #0b0a08;
-  --card: #15120d;
-  --popover: #1b1711;
-  --primary: #f0a24a;
-  --primary-foreground: #0b0a08;
-  --ring: #f0a24a;
-  --primary-2: #f6bd6e;
-  --accent: #2b1d0b;
-  --accent-foreground: #ffd9a8;
-  --sidebar: #080705;
-  --sidebar-accent: #24180a;
-  --sidebar-accent-foreground: #ffd9a8;
-  --hero: #19140c;
-}
-html[data-role="kitchen"][data-text="standard"] { font-size: 17px; }
-html[data-role="manager"]:not(.dark) {
-  --background: #f5f7fa;
-  --foreground: #18202b;
-  --card: #ffffff;
-  --card-foreground: #18202b;
-  --popover: #ffffff;
-  --popover-foreground: #18202b;
-  --primary: #2d63a8;
-  --primary-foreground: #ffffff;
-  --ring: #2d63a8;
-  --primary-2: #4f8fd6;
-  --secondary: #eef1f5;
-  --secondary-foreground: #18202b;
-  --muted: #eef1f5;
-  --muted-foreground: #566170;
-  --accent: #e2ecf8;
-  --accent-foreground: #1d4477;
-  --border: #e1e6ed;
-  --input: #d5dce5;
-  --sidebar: #eef2f7;
-  --sidebar-foreground: #18202b;
-  --sidebar-accent: #e2ecf8;
-  --sidebar-accent-foreground: #1d4477;
-  --sidebar-border: #e1e6ed;
-  --hero: #18202b;
-  --hero-foreground: #f5f7fa;
-}
-html.dark[data-role="manager"] {
-  --background: #090b0e;
-  --foreground: #eef2f7;
-  --card: #11151a;
-  --card-foreground: #eef2f7;
-  --popover: #161b21;
-  --popover-foreground: #eef2f7;
-  --primary: #6aa6f0;
-  --primary-foreground: #090b0e;
-  --ring: #6aa6f0;
-  --primary-2: #8fbcf4;
-  --secondary: #171c23;
-  --secondary-foreground: #eef2f7;
-  --muted: #151a20;
-  --muted-foreground: #98a3b1;
-  --accent: #13233a;
-  --accent-foreground: #cfe2fb;
-  --sidebar: #07090b;
-  --sidebar-foreground: #eef2f7;
-  --sidebar-accent: #122033;
-  --sidebar-accent-foreground: #cfe2fb;
-  --hero: #121820;
-  --hero-foreground: #eef2f7;
-}
 
 /* ---- Comfort & access (set from the settings panel via data attributes on <html>) ---- */
 

@@ -299,12 +299,12 @@ export default function AboutView() {
           </div>
         </Section>
 
-        <Section title="AI where words matter" lead="The copilot works out what needs doing. Dify, an open-source AI platform, helps with how to say it.">
+        <Section title="AI where words matter" lead="The copilot works out what needs doing. A language model (Claude, or Dify) helps with how to say it, and trains staff in their own language.">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[
               [<Sparkles key="a" />, 'What do I say?', 'A gracious line for a delay, a dish that has run out, a greeting or a goodbye.'],
               [<Smartphone key="b" />, 'Brief me', 'Your section at a glance: allergies, regulars, occasions and anything the kitchen is behind on.'],
-              [<HeartPulse key="c" />, 'Ask', 'Answers about service standards, from the restaurant’s own SOP manual.'],
+              [<HeartPulse key="c" />, 'Ask and practise', 'A chat trainer that knows the standards, the menu and the guests tonight, and plays a tough guest so staff can rehearse.'],
               [<ShieldCheck key="d" />, 'Shift summary', 'Tonight’s bottlenecks in plain English for the manager, never ranking individuals.'],
             ].map(([icon, t, d]) => (
               <div key={t as string} className="rounded-2xl border bg-card p-5">
@@ -314,7 +314,7 @@ export default function AboutView() {
               </div>
             ))}
           </div>
-          <p className="mt-4 max-w-[65ch] text-sm text-muted-foreground">The copilot gathers the facts and sends them to Dify. If Dify isn’t connected or doesn’t answer, a built-in writer responds instead, so the buttons always work.</p>
+          <p className="mt-4 max-w-[65ch] text-sm text-muted-foreground">The copilot gathers the facts and sends them to Claude (or Dify). If neither is connected or answers, a built-in writer and trainer respond instead, so the buttons always work.</p>
         </Section>
 
         <Section title="How we’ll test it" lead="The prototype tests one claim: an autonomy-supportive design reduces perceived surveillance while improving service consistency.">

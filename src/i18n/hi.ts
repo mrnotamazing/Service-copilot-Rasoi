@@ -503,4 +503,22 @@ export const hi: Record<Key, string> = {
   'floor.legendGuest': "मेहमान बैठे",
   'floor.legendProgress': "खाना कहाँ तक पहुँचा",
   'floor.legendTodo': "करने के काम",
+
+  // Assistant chat
+  'chat.ask': "पूछें",
+  'chat.practice': "अभ्यास",
+  'chat.byClaude': "Claude द्वारा AI",
+  'chat.sub': "सर्विस, आज के मेन्यू और आपकी टेबलों के लिए आपका जानकार साथी। मुश्किल पलों का अभ्यास भी करें।",
+  'chat.hello': "नमस्ते! सर्विस, आज के मेन्यू, एलर्जी और डाइट, या अपनी टेबलों के बारे में कुछ भी पूछें। मैं आपकी भाषा में जवाब दूँगा।",
+  'chat.placeholder': "कुछ भी पूछें…",
+  'chat.thinking': "सोच रहा हूँ…",
+  'chat.guestArriving': "मेहमान आ रहे हैं…",
+  'chat.finish': "खत्म करें और सुझाव पाएँ",
+  'chat.debrief': "आपके लिए सुझाव",
+  'chat.new': "नई बातचीत",
+  'chat.s1': "मेरे सेक्शन की जानकारी दें",
+  'chat.s2': "शिकायत कैसे संभालूँ?",
+  'chat.s3': "गलौटी कबाब में क्या है?",
+  'chat.s4': "जैन भोजन समझाएँ",
+  'chat.s5': "डिश कैसे सुझाऊँ?",
 }

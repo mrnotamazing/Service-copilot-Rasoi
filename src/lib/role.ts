@@ -48,10 +48,7 @@ export function homeFor(r: Role): string {
   return r.kind === 'server' ? `/server/${r.staffId}` : r.kind === 'kitchen' ? '/kitchen' : '/manager'
 }
 
-/**
- * A page belongs to one role: opening it signs this device in as that role and switches the
- * colour theme (servers tomato, kitchen saffron, manager blue) via <html data-role>.
- */
+/** A page belongs to one role: opening it signs this device in as that role (navigation follows). */
 export function useRolePage(r: Role | null) {
   const key = r ? JSON.stringify(r) : ''
   useEffect(() => {

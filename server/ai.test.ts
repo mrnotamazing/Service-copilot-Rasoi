@@ -138,3 +138,61 @@ describe('saved configs from older versions', () => {
     expect(withDefaults(old).menu.find((m) => m.id === 'm_burrata')?.contains).toEqual(['dairy'])
   })
 })
+
+describe('assistant chat', () => {
+  it('answers from the menu, the section and the training notes without any AI service', async () => {
+    const hub = new Hub(memoryStore())
+    hub.ingest({ type: 'table.seated', payload: { tableId: 'T1', partySize: 2, needs: ['jain'] } })
+    const ai = createAi(hub)
+    const dish = await ai.ask({ kind: 'chat', mode: 'ask', staffId: 's_aisha', messages: [{ role: 'user', text: 'What is in the galouti kebab?' }] })
+    expect(dish.text).toMatch(/Galouti kebab.*Contains: meat, onion, garlic or root veg, nuts.*Not suitable as-is for vegan, Jain/)
+    const brief = await ai.ask({ kind: 'chat', mode: 'ask', staffId: 's_aisha', messages: [{ role: 'user', text: 'Brief me on my section' }] })
+    expect(brief.text).toMatch(/T1/)
+    const lesson = await ai.ask({ kind: 'chat', mode: 'ask', messages: [{ role: 'user', text: 'A guest is angry their food was cold' }] })
+    expect(lesson.text).toMatch(/LAST|Listen/)
+    expect(lesson.suggestions?.length).toBeGreaterThan(0)
+  })
+
+  it('runs a practice role-play with coaching and a debrief', async () => {
+    const ai = createAi(new Hub(memoryStore()))
+    const open = await ai.ask({ kind: 'chat', mode: 'practice', scenario: 'rude', messages: [] })
+    expect(open.text).toMatch(/Do you even work here/)
+    const turns = [
+      { role: 'assistant' as const, text: open.text },
+      { role: 'user' as const, text: 'I’m so sorry for the wait, I understand. Let me get that for you right away.' },
+    ]
+    const next = await ai.ask({ kind: 'chat', mode: 'practice', scenario: 'rude', messages: turns })
+    expect(next.feedback).toMatch(/✓ You apologised/)
+    const debrief = await ai.ask({ kind: 'chat', mode: 'practice', scenario: 'rude', messages: [...turns, { role: 'assistant', text: next.text }], finish: true })
+    expect(debrief.done).toBe(true)
+    expect(debrief.stars).toBeGreaterThan(0)
+  })
+
+  it('uses a chat model with a cacheable system prompt and parses the guest and coach', async () => {
+    const calls: { system: { stable: string; live: string }; turns: { role: string; text: string }[] }[] = []
+    const chat = {
+      name: 'claude' as const,
+      reply: async (system: { stable: string; live: string }, turns: { role: 'user' | 'assistant'; text: string }[]) => {
+        calls.push({ system, turns })
+        return 'COACH: ✓ Calm and kind.\n→ Give a time.\nGUEST: Fine, but be quick. [END]'
+      },
+    }
+    const hub = new Hub(memoryStore())
+    const ai = createAi(hub, { chat })
+    const a = await ai.ask({ kind: 'chat', mode: 'practice', scenario: 'long_wait', lang: 'hi', messages: [{ role: 'assistant', text: 'It’s been half an hour.' }, { role: 'user', text: 'Sorry, 5 minutes.' }] })
+    expect(a).toMatchObject({ source: 'claude', text: 'Fine, but be quick.', feedback: '✓ Calm and kind.\n→ Give a time.', done: true })
+    expect(calls[0].turns[0].role).toBe('user') // conversation must open with the server
+    expect(calls[0].system.live).toMatch(/Hindi/)
+    await ai.ask({ kind: 'chat', mode: 'ask', lang: 'ta', messages: [{ role: 'user', text: 'hello' }] })
+    expect(calls[1].system.stable).toBe(calls[0].system.stable) // identical prefix, so it caches
+    expect(calls[0].system.stable).toMatch(/Galouti kebab: starter, grill/)
+  })
+
+  it('falls back to the built-in answer with a notice when the model fails', async () => {
+    const chat = { name: 'claude' as const, reply: async () => Promise.reject(new Error('boom')) }
+    const a = await createAi(new Hub(memoryStore()), { chat, chatErrorReason: () => 'The AI service is busy right now' }).ask({ kind: 'chat', mode: 'ask', messages: [{ role: 'user', text: 'Explain Jain food' }] })
+    expect(a.source).toBe('built-in')
+    expect(a.notice).toMatch(/busy/)
+    expect(a.text).toMatch(/Jain diners avoid/)
+  })
+})

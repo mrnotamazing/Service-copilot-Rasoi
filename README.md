@@ -3,7 +3,7 @@
 **The right service. At the right time.**
 
 > **New here?** Start with [docs/getting-started.md](docs/getting-started.md): install, run and use it, step by step.
-> To turn on AI through Dify, see [docs/dify-setup.md](docs/dify-setup.md).
+> To turn on the Claude chat assistant, put `ANTHROPIC_API_KEY=...` in `.env` (see `.env.example`) and restart `npm run dev`. Dify is still supported: [docs/dify-setup.md](docs/dify-setup.md).
 
 An AI service copilot for fine-dining floor staff. It reads what the restaurant's
 POS already knows (tables seated, KOTs fired, food ready, bills printed and
@@ -24,8 +24,8 @@ not blamed for a slow grill.
 | Route | Who | What |
 |---|---|---|
 | `/server/:staffId` | Each server (phone or iPad) | Phone: bottom tabs. iPad/laptop (≥768px): side rail with next-up cards, section map, guests and kitchen thread side by side. `?device=phone` previews the phone layout on a big screen. |
-| `/kitchen` | Pass / expo screen | Open tickets with timers, Ready button, 86 board, notes to/from floor |
-| `/manager` | Floor manager | Load per section, bottlenecks by stage and station, delay receipts, suggestions. **No individual rankings.** |
+| `/kitchen` | Pass / expo screen | Counts strip and station filter; tickets on the line (timer, progress, allergy and diet clashes, Ready) and food waiting at the pass (Nudge the server); all-day counts, notes from the floor, quick notes to the floor, 86 board |
+| `/manager` | Floor manager | **Needs you now** (visit requests, safety clashes, late kitchen, bills waiting, unhappy tables), a five-number pulse, every section as a live floor plan with its load, bottlenecks by stage and station, mood, team goal, delay receipts. **No individual rankings.** |
 | `/setup` | Manager | SOP standards, POS integrations, service simulator |
 
 ## How a card is born
@@ -113,7 +113,8 @@ Built on the research about motivating without controlling (see `shared/game.ts`
 - **Coming up**: food about to be ready, a course about to finish (from tonight's eating times), a bill about to be asked for.
 - **Guest mood and recovery**: check-ins are one tap (happy / okay / not happy). Not happy opens a recovery card with a suggested line or a manager call; the manager sees requests and tonight's mood by table, never by server.
 - **Private coach**: one tip from the server's own shift, visible only to them (`coach` AI kind; built-in fallback from their own visits).
-- **Practice tough moments**: role-play six situations (cold food, long wait, sold out, allergy question, rude guest, wrong bill). Type or speak replies; each gets stars and coaching (`shared/practice.ts`, `practice` AI kind).
+- **Practice tough moments**: a role-play chat. The assistant plays the guest in six situations (cold food, long wait, sold out, allergy question, rude guest, wrong bill); each reply gets stars and a coaching note, and "Finish and get feedback" gives a debrief (`shared/practice.ts`, `chat` AI kind in practice mode).
+- **Ask TableMate**: a chat trainer that knows the restaurant's standards, the menu (what each dish contains), diet rules and a senior trainer's lessons (`shared/training.ts`), plus the server's live tables. It answers in the server's language and offers follow-up questions.
 - **Voice**: a pronunciation guide for dishes (`src/lib/pronounce.ts`), speech-friendly text ("T3" → "Table 3", "2×" → "2"), the most natural voice on the device (choose one in Language & accessibility), read sentence by sentence.
 - **IST everywhere**: service starts at 7:00 pm IST and every clock shows IST, whatever timezone the server or device is in (`shared/time.ts`).
 
@@ -127,7 +128,7 @@ Read-aloud code-switches like a person: dish words are spoken by a voice from th
 
 ## Roles, profiles and themes
 
-- **Signed in as** (bottom of the sidebar, or the Profile tab on a phone): switch the device between a server's app, the kitchen display and the manager console. Each role has its own home, navigation and colours: servers tomato, kitchen saffron with larger type, manager a cool blue-grey (`src/lib/role.ts`, `html[data-role]` in `src/index.css`).
+- **Signed in as** (bottom of the sidebar, or the Profile tab on a phone): switch the device between a server's app, the kitchen display and the manager console. Each role has its own home and navigation; every role uses the same TableMate theme (`src/lib/role.ts`).
 - **Profiles**: each server can upload a photo (cropped and shrunk on the device), pick an illustrated avatar and colour, change their display name, set pronouns and list the languages they speak (`src/components/ProfileEditor.tsx`, validated by `shared/profile.ts`).
 - **True dark theme**: near-black surfaces with hairline edges; reactions and icons are vector, so they look the same on every phone.
 - **Wrap up my shift**: a private debrief — where your time went step by step against the standard, your strongest step, the one to work on, safety catches, tables won back, and one tip from the coach.
@@ -145,16 +146,17 @@ Each server sets these up for themselves from the **Comfort & access** button (t
 - **Respectful wording**: every AI prompt asks for gender-neutral, respectful language (no "sir/madam", they/them when unknown) and replies in the server's language. Staff can add optional pronouns on their Profile tab (`POST /api/staff/profile`).
 - **Guest needs**: wheelchair, hearing, vision, high chair, Jain, halal and vegan needs from the booking (`needs` on `table.seated`) appear on the greeting card, the guest list and the briefing as what to do.
 
-## AI assistance (Dify)
+## AI assistance (Claude, Dify or built-in)
 
 | Where | Button | AI writes |
 |---|---|---|
 | Guest-facing cards (greet, delay, dish unavailable, goodbye) | What do I say? | A gracious line to say at the table |
 | Server → Briefing | Brief me | Section rundown: allergies, regulars, occasions, kitchen delays |
-| Server → Ask | Ask | Answers from your SOP manual |
+| Server → sparkle button | Ask TableMate | A multi-turn chat: SOP, menu, diets, tough guests, in the server's language |
+| Server → Profile | Practice tough moments | A role-play guest, coaching per reply and a debrief |
 | Manager | Summarise | The night's bottlenecks in plain English |
 
-The copilot builds the facts; Dify phrases them (`server/ai.ts`). Without Dify configured, or if it fails, a built-in writer answers instead, so the buttons always work.
+The copilot builds the facts; a language model phrases them (`server/ai.ts`). Order of preference: **Claude** (`server/claude.ts`, official Anthropic SDK, set `ANTHROPIC_API_KEY`; the long standards-and-menu prompt is cached), then **Dify**, then a **built-in** writer and trainer (English), so every button always works. If the model declines a request, the API retries on a fallback model automatically.
 
 ## Front end
 

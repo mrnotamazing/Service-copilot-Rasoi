@@ -165,29 +165,30 @@ export default function SetupView() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <Heading>AI assistance</Heading>
-            <CardDescription>Suggested lines for guests, section briefings, SOP answers and the manager’s shift summary.</CardDescription>
+            <CardDescription>The assistant chat and practice room, suggested lines for guests, section briefings, the private coach and the manager’s shift summary.</CardDescription>
             <CardAction>
-              <Badge variant={dify ? 'default' : 'secondary'} className="gap-1">
-                <Sparkles className="size-3" /> {dify ? 'Dify connected' : 'Built-in writer'}
+              <Badge variant={snap.ai.provider === 'built-in' ? 'secondary' : 'default'} className="gap-1">
+                <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? 'Claude connected' : dify ? 'Dify connected' : 'Built-in trainer'}
               </Badge>
             </CardAction>
           </CardHeader>
           <CardContent className="text-sm">
-            {dify ? (
-              <p className="text-muted-foreground">Requests go to your Dify app. If Dify is unreachable, the copilot falls back to the built-in writer and says so on the answer.</p>
+            {snap.ai.provider === 'claude' ? (
+              <p className="text-muted-foreground">The assistant runs on Claude: it answers in each server’s language, knows your standards and menu, and plays guests in practice. If Claude can’t be reached, the built-in trainer answers and says so.</p>
+            ) : dify ? (
+              <p className="text-muted-foreground">Requests go to your Dify app. If Dify is unreachable, the copilot falls back to the built-in trainer and says so on the answer.</p>
             ) : STANDALONE ? (
-              <p className="text-muted-foreground">This shareable demo runs entirely in the browser, so it uses the built-in writer. Run the app on a computer with a Dify key to get AI-written answers.</p>
+              <p className="text-muted-foreground">This shareable demo runs entirely in the browser, so it uses the built-in trainer (English answers). Run the app on a computer with an Anthropic API key for full, multilingual AI answers.</p>
             ) : (
               <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
-                <li>In Dify, create a <span className="text-foreground">Chatbot</span> app, paste the system prompt from <code className="rounded bg-muted px-1">docs/dify-setup.md</code>, and publish it.</li>
                 <li>
-                  Copy its API key (App → <span className="text-foreground">API Access</span>).
+                  Get an API key from <span className="text-foreground">console.anthropic.com</span>.
                 </li>
                 <li>
-                  In the project folder, copy <code className="rounded bg-muted px-1">.env.example</code> to <code className="rounded bg-muted px-1">.env</code> and set <code className="rounded bg-muted px-1">DIFY_API_URL</code> and{' '}
-                  <code className="rounded bg-muted px-1">DIFY_API_KEY</code>.
+                  In the project folder, copy <code className="rounded bg-muted px-1">.env.example</code> to <code className="rounded bg-muted px-1">.env</code> and set <code className="rounded bg-muted px-1">ANTHROPIC_API_KEY</code>.
                 </li>
-                <li>Restart <code className="rounded bg-muted px-1">npm run dev</code>. This badge turns to “Dify connected”.</li>
+                <li>Restart <code className="rounded bg-muted px-1">npm run dev</code>. This badge turns to “Claude connected”.</li>
+                <li>Prefer Dify? Set <code className="rounded bg-muted px-1">DIFY_API_URL</code> and <code className="rounded bg-muted px-1">DIFY_API_KEY</code> instead (see <code className="rounded bg-muted px-1">docs/dify-setup.md</code>).</li>
               </ol>
             )}
           </CardContent>

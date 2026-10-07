@@ -1,8 +1,11 @@
-import { AlertTriangle, ChefHat, HandHelping, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { ChefHat, CircleCheck, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
-import { AppShell, LiveClock, ShellSkeleton, PanelTitle, Stat, TableTile } from '../components/kit.tsx'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AppShell, LiveClock, ShellSkeleton, PanelTitle } from '../components/kit.tsx'
+import { Avatar } from '../components/Avatar.tsx'
+import { FloorPlan } from '../components/FloorPlan.tsx'
+import { safetyIssues } from '../../shared/safety.ts'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -12,6 +15,8 @@ import { useAi } from '../lib/ai.ts'
 import { clock, minutesAgo } from '../lib/format.ts'
 import { act, useSnapshot } from '../lib/live.ts'
 import { useRolePage } from '../lib/role.ts'
+
+const MIN = 60_000
 
 const OWNER_COLOR: Record<Owner, string> = {
   floor: 'var(--floor-mark)',
@@ -34,155 +39,16 @@ export default function ManagerView() {
   if (!snap || !snap.analytics) return <ShellSkeleton />
   const a = snap.analytics
   const name = (id: string) => snap.config.staff.find((s) => s.id === id)?.name ?? id
-  const color = (id: string) => snap.config.staff.find((s) => s.id === id)?.color
-  const lapses = a.lapsesByOwner.floor + a.lapsesByOwner.kitchen
   const maxMin = Math.max(1, ...a.stages.map((s) => Math.max(s.avgMin, s.avgTargetMin)))
 
   return (
     <AppShell title="Service overview" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />}>
       <div className="space-y-5">
-        <Alert>
-          <ShieldCheck className="text-good" />
-          <AlertDescription>
-            This view shows how the process is running: stages, stations and load. Personal scores stay on each server’s own phone, and every delay is attributed to whoever controlled that step.
-          </AlertDescription>
-        </Alert>
+        <NeedsYou snap={snap} />
+        <Pulse snap={snap} />
+        <LiveFloor snap={snap} />
 
-        {a.managerRequests.length > 0 && (
-          <Alert className="border-primary/50">
-            <HandHelping className="text-primary" />
-            <AlertDescription className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-foreground">A server asked you to visit:</span>
-              {a.managerRequests.map((r) => (
-                <Button key={r.tableId} size="sm" variant="outline" className="h-8 rounded-full" onClick={() => void act('manager.visited', { tableId: r.tableId }, 'manager')}>
-                  {r.tableName} · {minutesAgo(r.at, snap.now) < 1 ? 'just now' : `${minutesAgo(r.at, snap.now)} min ago`} · mark visited
-                </Button>
-              ))}
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <Stat label="Tables served" value={a.visits} sub={`${snap.tables.filter((t) => t.visitId).length} seated now`} />
-          <Stat label="Served to standard" value={a.smoothRate == null ? '—' : `${Math.round(a.smoothRate * 100)}%`} sub="no floor-controlled lapse" />
-          <Stat label="Floor lapses" value={a.lapsesByOwner.floor} sub={lapses ? `${Math.round((a.lapsesByOwner.floor / lapses) * 100)}% of all lapses` : 'none yet'} />
-          <Stat label="Kitchen lapses" value={a.lapsesByOwner.kitchen} sub={lapses ? `${Math.round((a.lapsesByOwner.kitchen / lapses) * 100)}% of all lapses` : 'none yet'} />
-        </div>
-
-        <GuestMood moods={a.moods} safety={a.safetyCatches} />
-
-        <Card>
-          <CardHeader>
-            <Heading>Team goal and recognition</Heading>
-            <CardDescription>Shared by the whole floor. Individual XP and badges stay on each server’s phone.</CardDescription>
-            <CardAction>
-              <Users className="size-4 text-muted-foreground" />
-            </CardAction>
-          </CardHeader>
-          <CardContent className="grid gap-5 md:grid-cols-[1fr_1.4fr]">
-            <div>
-              <div className="flex items-baseline justify-between text-sm">
-                <span>Tables served fully to standard</span>
-                <span className="font-display text-2xl tabular">
-                  {Math.min(snap.team.smooth, snap.team.goal)}
-                  <span className="text-base text-muted-foreground">/{snap.team.goal}</span>
-                </span>
-              </div>
-              <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-2 h-2" aria-label="Team goal progress" />
-            </div>
-            <ul className="space-y-1.5">
-              {snap.team.kudos.length === 0 && <li className="text-sm text-muted-foreground">Kudos staff send each other appear here.</li>}
-              {snap.team.kudos.slice(0, 4).map((k) => (
-                <li key={k.id} className="flex items-center gap-2 text-sm">
-                  <HeartHandshake className="size-4 shrink-0 text-primary" />
-                  <span className="min-w-0 truncate">
-                    <b className="font-medium">{name(k.from)}</b> thanked <b className="font-medium">{name(k.to)}</b>: {k.reason}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <Heading>Shift summary</Heading>
-            <CardDescription>A plain-English read of tonight’s bottlenecks, written by AI from the numbers on this page.</CardDescription>
-            <CardAction>
-              <Button variant="secondary" disabled={summary.loading} onClick={() => summary.ask('shift_summary')}>
-                {summary.loading ? <Loader2 className="animate-spin" /> : <Sparkles />} {summary.answer ? 'Refresh' : 'Summarise'}
-              </Button>
-            </CardAction>
-          </CardHeader>
-          {(summary.answer || summary.error) && (
-            <CardContent>
-              <AiAnswerBox answer={summary.answer} error={summary.error} />
-            </CardContent>
-          )}
-        </Card>
-
-        <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
-          <Card>
-            <CardHeader>
-              <Heading>Floor</Heading>
-            </CardHeader>
-            <CardContent className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-              {snap.tables.map((t) => (
-                <TableTile key={t.id} t={t} now={snap.now} color={color(t.serverId)} />
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <Heading>Load right now</Heading>
-              <CardAction>
-                <Users className="size-4 text-muted-foreground" />
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {a.load.map((l) => {
-                const open = snap.openTasks?.[l.staffId] ?? 0
-                return (
-                  <div key={l.staffId} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="size-2.5 rounded-full" style={{ background: color(l.staffId) }} />
-                        {name(l.staffId)}
-                      </span>
-                      <span className={cn('inline-flex items-center gap-1 text-xs tabular', l.overloaded ? 'text-warn' : 'text-muted-foreground')}>
-                        {l.overloaded && <AlertTriangle className="size-3.5" />}
-                        {l.activeTables} {l.activeTables === 1 ? 'table' : 'tables'}, {open} open {open === 1 ? 'card' : 'cards'}
-                      </span>
-                    </div>
-                    <Progress value={Math.min(100, (l.activeTables / (snap.config.sop.maxActiveTablesPerServer + 2)) * 100)} className={cn(l.overloaded && '[&>div]:bg-warn')} />
-                  </div>
-                )
-              })}
-              <p className="text-xs text-muted-foreground">Section limit: {snap.config.sop.maxActiveTablesPerServer} active tables per server</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {a.suggestions.length > 0 && (
-          <Card>
-            <CardHeader>
-              <Heading>Suggestions</Heading>
-              <CardAction>
-                <Lightbulb className="size-4 text-primary" />
-              </CardAction>
-            </CardHeader>
-            <CardContent className="grid gap-2">
-              {a.suggestions.map((s) => (
-                <p key={s} className="rounded-lg bg-muted p-3 text-sm">
-                  {s}
-                </p>
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
           <Card>
             <CardHeader>
               <Heading>Where time goes: average vs standard</Heading>
@@ -212,45 +78,115 @@ export default function ManagerView() {
               <Legend />
             </CardContent>
           </Card>
+          <div className="space-y-5">
+            <Card>
+              <CardHeader>
+                <Heading>Kitchen stations</Heading>
+                <CardAction>
+                  <ChefHat className="size-4 text-muted-foreground" />
+                </CardAction>
+              </CardHeader>
+              <CardContent>
+                {a.stations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Station figures appear once tickets are completed.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm tabular">
+                      <thead className="text-left text-xs text-muted-foreground">
+                        <tr>
+                          <th className="pb-2 font-medium">Station</th>
+                          <th className="pb-2 text-right font-medium">Tickets</th>
+                          <th className="pb-2 text-right font-medium">Past standard</th>
+                          <th className="pb-2 text-right font-medium">Avg over</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {a.stations.map((s) => (
+                          <tr key={s.station}>
+                            <td className="py-2 capitalize">{s.station}</td>
+                            <td className="py-2 text-right">{s.tickets}</td>
+                            <td className={cn('py-2 text-right', s.lapses > 0 && 'font-medium text-kitchen')}>{s.lapses}</td>
+                            <td className="py-2 text-right text-muted-foreground">{s.avgOverMin} min</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+              {a.suggestions.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <Heading>Suggestions</Heading>
+                  <CardAction>
+                    <Lightbulb className="size-4 text-primary" />
+                  </CardAction>
+                </CardHeader>
+                <CardContent className="grid gap-2">
+                  {a.suggestions.map((s) => (
+                    <p key={s} className="rounded-lg bg-muted p-3 text-sm">
+                      {s}
+                    </p>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
 
+        <div className="grid gap-5 lg:grid-cols-2">
+          <GuestMood moods={a.moods} safety={a.safetyCatches} />
           <Card>
             <CardHeader>
-              <Heading>Kitchen stations</Heading>
+              <Heading>Team goal and recognition</Heading>
+              <CardDescription>Shared by the whole floor. Individual XP and badges stay on each server’s phone.</CardDescription>
               <CardAction>
-                <ChefHat className="size-4 text-muted-foreground" />
+                <Users className="size-4 text-muted-foreground" />
               </CardAction>
             </CardHeader>
-            <CardContent>
-              {a.stations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Station figures appear once tickets are completed.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm tabular">
-                    <thead className="text-left text-xs text-muted-foreground">
-                      <tr>
-                        <th className="pb-2 font-medium">Station</th>
-                        <th className="pb-2 text-right font-medium">Tickets</th>
-                        <th className="pb-2 text-right font-medium">Past standard</th>
-                        <th className="pb-2 text-right font-medium">Avg over</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {a.stations.map((s) => (
-                        <tr key={s.station}>
-                          <td className="py-2 capitalize">{s.station}</td>
-                          <td className="py-2 text-right">{s.tickets}</td>
-                          <td className={cn('py-2 text-right', s.lapses > 0 && 'font-medium text-kitchen')}>{s.lapses}</td>
-                          <td className="py-2 text-right text-muted-foreground">{s.avgOverMin} min</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            <CardContent className="grid gap-5 md:grid-cols-[1fr_1.4fr]">
+              <div>
+                <div className="flex items-baseline justify-between text-sm">
+                  <span>Tables served fully to standard</span>
+                  <span className="font-display text-2xl tabular">
+                    {Math.min(snap.team.smooth, snap.team.goal)}
+                    <span className="text-base text-muted-foreground">/{snap.team.goal}</span>
+                  </span>
                 </div>
-              )}
+                <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-2 h-2" aria-label="Team goal progress" />
+              </div>
+              <ul className="space-y-1.5">
+                {snap.team.kudos.length === 0 && <li className="text-sm text-muted-foreground">Kudos staff send each other appear here.</li>}
+                {snap.team.kudos.slice(0, 4).map((k) => (
+                  <li key={k.id} className="flex items-center gap-2 text-sm">
+                    <HeartHandshake className="size-4 shrink-0 text-primary" />
+                    <span className="min-w-0 truncate">
+                      <b className="font-medium">{name(k.from)}</b> thanked <b className="font-medium">{name(k.to)}</b>: {k.reason}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
         </div>
 
+        <Card>
+          <CardHeader>
+            <Heading>Shift summary</Heading>
+            <CardDescription>A plain-English read of tonight’s bottlenecks, written by AI from the numbers on this page.</CardDescription>
+            <CardAction>
+              <Button variant="secondary" disabled={summary.loading} onClick={() => summary.ask('shift_summary')}>
+                {summary.loading ? <Loader2 className="animate-spin" /> : <Sparkles />} {summary.answer ? 'Refresh' : 'Summarise'}
+              </Button>
+            </CardAction>
+          </CardHeader>
+          {(summary.answer || summary.error) && (
+            <CardContent>
+              <AiAnswerBox answer={summary.answer} error={summary.error} />
+            </CardContent>
+          )}
+        </Card>
         <Card>
           <CardHeader>
             <Heading>Delay receipts: recent tables</Heading>
@@ -261,6 +197,10 @@ export default function ManagerView() {
             <Legend />
           </CardContent>
         </Card>
+
+        <p className="flex items-center justify-center gap-1.5 pb-2 text-center text-xs text-muted-foreground">
+          <ShieldCheck className="size-3.5 text-good" /> Process view only: stages, stations and load. Personal scores stay on each server’s phone, and every delay is attributed to whoever controlled that step.
+        </p>
       </div>
     </AppShell>
   )
@@ -370,5 +310,170 @@ function GuestMood({ moods, safety }: { moods: { happy: number; ok: number; unha
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+type Snap = NonNullable<ReturnType<typeof useSnapshot>['snap']>
+
+const ago = (at: number, now: number) => (minutesAgo(at, now) < 1 ? 'just now' : `${minutesAgo(at, now)} min`)
+
+/**
+ * What needs the manager right now, most urgent first: visit requests from servers, tickets the
+ * kitchen is behind on, bills waiting, unhappy tables and unresolved allergy or diet clashes.
+ */
+function NeedsYou({ snap }: { snap: Snap }) {
+  const now = snap.now
+  const sop = snap.config.sop
+  const a = snap.analytics!
+  const server = (id: string) => snap.config.staff.find((s) => s.id === id)
+  const items: { key: string; icon: React.ReactNode; title: string; detail: string; at: number; action?: React.ReactNode }[] = []
+  for (const r of a.managerRequests) {
+    const t = snap.tables.find((x) => x.id === r.tableId)
+    items.push({
+      key: `visit-${r.tableId}`,
+      icon: <HandHelping className="size-4 text-primary" />,
+      title: `Visit ${r.tableName}`,
+      detail: `${server(t?.serverId ?? '')?.name ?? 'A server'} asked you to see the guests`,
+      at: r.at,
+      action: (
+        <Button size="sm" className="h-8 rounded-full" onClick={() => void act('manager.visited', { tableId: r.tableId }, 'manager')}>
+          Visited
+        </Button>
+      ),
+    })
+  }
+  for (const t of snap.tables) {
+    if (!t.visitId) continue
+    const clash = t.lines.filter((l) => !l.safetyResolvedAt && l.status !== 'served' && l.status !== 'unavailable' && safetyIssues(snap.config.menu.find((m) => m.id === l.menuItemId), t.party).length)
+    if (clash.length)
+      items.push({ key: `safety-${t.id}`, icon: <ShieldAlert className="size-4 text-warn" />, title: `${t.name}: allergy or diet clash`, detail: clash.map((l) => l.name).join(', '), at: Math.min(...clash.map((l) => l.firedAt)) })
+    const late = t.lines.filter((l) => l.status === 'fired' && now > l.expectedReadyAt + sop.kitchenDelayToleranceMin * MIN)
+    if (late.length)
+      items.push({ key: `late-${t.id}`, icon: <ChefHat className="size-4 text-kitchen" />, title: `${t.name}: kitchen running late`, detail: late.map((l) => l.name).join(', '), at: Math.min(...late.map((l) => l.expectedReadyAt)) })
+    if (t.billRequestedAt && !t.billPresentedAt && now > t.billRequestedAt + sop.billPresentWithinMin * MIN)
+      items.push({ key: `bill-${t.id}`, icon: <ReceiptIcon className="size-4 text-warn" />, title: `${t.name}: waiting for the bill`, detail: `${server(t.serverId)?.name ?? ''}’s table`, at: t.billRequestedAt })
+    if (t.mood?.value === 'unhappy' && !t.recoveredAt)
+      items.push({ key: `mood-${t.id}`, icon: <Frown className="size-4 text-warn" />, title: `${t.name}: guests not happy`, detail: `${server(t.serverId)?.name ?? 'The server'} is putting it right`, at: t.mood.at })
+  }
+  return (
+    <section className="rounded-2xl border bg-card p-4">
+      <h2 className="mb-2 flex items-center gap-2 font-display text-xl">
+        Needs you now {items.length > 0 && <span className="grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular">{items.length}</span>}
+      </h2>
+      {items.length === 0 ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CircleCheck className="size-4 text-good" /> All calm. Nothing needs you right now.
+        </p>
+      ) : (
+        <ul className="divide-y">
+          {items.map((i) => (
+            <li key={i.key} className="flex items-center gap-3 py-2.5">
+              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary">{i.icon}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium">{i.title}</span>
+                <span className="block truncate text-xs text-muted-foreground">{i.detail}</span>
+              </span>
+              <span className="shrink-0 text-xs text-muted-foreground tabular">{ago(i.at, now)}</span>
+              {i.action}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** Tonight in five numbers, in one strip. */
+function Pulse({ snap }: { snap: Snap }) {
+  const a = snap.analytics!
+  const seated = snap.tables.filter((t) => t.visitId)
+  const covers = seated.reduce((n, t) => n + (t.party?.size ?? 0), 0)
+  const moods = a.moods.happy + a.moods.ok + a.moods.unhappy
+  const items = [
+    { label: 'Seated now', value: `${seated.length}/${snap.tables.length}`, sub: `${covers} guests` },
+    { label: 'Tables served', value: a.visits, sub: snap.sim.waiting ? `${snap.sim.waiting} waiting for a table` : 'no one waiting' },
+    { label: 'Served to standard', value: a.smoothRate == null ? '—' : `${Math.round(a.smoothRate * 100)}%`, sub: 'no floor-controlled lapse' },
+    { label: 'Late steps', value: `${a.lapsesByOwner.floor} · ${a.lapsesByOwner.kitchen}`, sub: 'floor · kitchen' },
+    { label: 'Happy check-ins', value: moods ? `${Math.round((a.moods.happy / moods) * 100)}%` : '—', sub: moods ? `${moods} check-ins` : 'none yet' },
+  ]
+  return (
+    <section className="grid grid-cols-2 divide-border overflow-hidden rounded-2xl border bg-card sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
+      {items.map((i) => (
+        <div key={i.label} className="p-4">
+          <div className="text-xs text-muted-foreground">{i.label}</div>
+          <div className="mt-1 font-display text-2xl tabular">{i.value}</div>
+          <div className="text-[11px] text-muted-foreground">{i.sub}</div>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+/** Every section as a floor plan, with its server and how loaded they are (load, never performance). */
+function LiveFloor({ snap }: { snap: Snap }) {
+  const [picked, setPicked] = useState<string | undefined>()
+  const a = snap.analytics!
+  const sections = Object.entries(snap.config.sections)
+  const table = snap.tables.find((t) => t.id === picked)
+  return (
+    <section>
+      <h2 className="mb-2 font-display text-xl">Live floor</h2>
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {sections.map(([section, staffId]) => {
+          const s = snap.config.staff.find((x) => x.id === staffId)
+          const load = a.load.find((l) => l.staffId === staffId)
+          const open = snap.openTasks?.[staffId] ?? 0
+          const tables = snap.tables.filter((t) => t.section === section)
+          return (
+            <div key={section} className="rounded-2xl border bg-card p-3">
+              <div className="mb-2 flex items-center gap-2">
+                {s && <Avatar staff={s} className="size-7 text-xs" />}
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium leading-tight">{s?.name ?? 'Unassigned'}</span>
+                  <span className="block text-[11px] text-muted-foreground">Section {section}</span>
+                </span>
+                <span className={cn('rounded-full px-2 py-0.5 text-[11px] tabular', load?.overloaded ? 'bg-warn/15 text-warn' : 'bg-secondary text-muted-foreground')}>
+                  {load?.activeTables ?? 0} {load?.activeTables === 1 ? 'table' : 'tables'} · {open} to do
+                </span>
+              </div>
+              <FloorPlan snap={snap} tables={tables} tasks={[]} picked={picked} onPick={(id) => setPicked(id === picked ? undefined : id)} compact mini />
+            </div>
+          )
+        })}
+      </div>
+      {table && <TableSummary snap={snap} table={table} />}
+    </section>
+  )
+}
+
+function TableSummary({ snap, table: t }: { snap: Snap; table: Snap['tables'][number] }) {
+  const server = snap.config.staff.find((s) => s.id === t.serverId)
+  return (
+    <div className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-2xl border bg-card p-4 text-sm">
+      <div>
+        <div className="font-display text-xl">{t.name}</div>
+        <div className="text-xs text-muted-foreground capitalize">{t.status.replace('_', ' ')}</div>
+      </div>
+      <div>
+        <div className="text-xs text-muted-foreground">Guests</div>
+        {t.visitId ? `${t.party?.guestName ?? 'Party'} of ${t.party?.size ?? '?'}, seated ${t.seatedAt ? ago(t.seatedAt, snap.now) : ''}` : 'Free'}
+      </div>
+      <div>
+        <div className="text-xs text-muted-foreground">Server</div>
+        {server?.name}
+      </div>
+      {t.party?.allergies.length || t.party?.needs?.length ? (
+        <div>
+          <div className="text-xs text-muted-foreground">Needs</div>
+          {[...(t.party?.allergies.map((x) => `${x} allergy`) ?? []), ...(t.party?.needs ?? [])].join(', ')}
+        </div>
+      ) : null}
+      {t.lines.length > 0 && (
+        <div className="min-w-0 flex-1">
+          <div className="text-xs text-muted-foreground">Order</div>
+          {t.lines.map((l) => `${l.qty}× ${l.name} (${l.status === 'fired' ? 'cooking' : l.status === 'ready' ? 'at the pass' : l.status})`).join(', ')}
+        </div>
+      )}
+    </div>
   )
 }

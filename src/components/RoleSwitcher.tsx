@@ -64,13 +64,13 @@ export function RoleSwitcher({ compact, className }: { compact?: boolean; classN
         </SelectGroup>
         <SelectSeparator />
         <SelectItem value="kitchen">
-          <span className="grid size-6 place-items-center rounded-full bg-role-kitchen text-white">
+          <span className="grid size-6 place-items-center rounded-full bg-secondary text-primary">
             <ChefHat className="size-3.5" />
           </span>
           {t('role.kitchen')}
         </SelectItem>
         <SelectItem value="manager">
-          <span className="grid size-6 place-items-center rounded-full bg-role-manager text-white">
+          <span className="grid size-6 place-items-center rounded-full bg-secondary text-primary">
             <LayoutDashboard className="size-3.5" />
           </span>
           {t('role.manager')}

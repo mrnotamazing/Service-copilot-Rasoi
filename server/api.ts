@@ -115,7 +115,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     },
   }
 
-  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice']
+  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice', 'chat']
 
   return {
     snapshot,
@@ -130,7 +130,14 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
             .filter((h): h is { role: 'guest' | 'server'; text: string } => !!h && typeof h === 'object' && (h.role === 'guest' || h.role === 'server') && typeof h.text === 'string')
             .map((h) => ({ role: h.role, text: h.text.slice(0, 400) }))
         : undefined
-      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history })
+      const messages = Array.isArray(body.messages)
+        ? body.messages
+            .slice(-16)
+            .filter((m): m is { role: 'user' | 'assistant'; text: string } => !!m && typeof m === 'object' && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string')
+            .map((m) => ({ role: m.role, text: m.text.slice(0, 1500) }))
+        : undefined
+      const mode = body.mode === 'practice' ? 'practice' : body.mode === 'ask' ? 'ask' : undefined
+      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true })
     },
     /** Returns undefined when the path isn't one of the app routes. */
     post(path: string, body: ApiBody): { result: unknown } | undefined {

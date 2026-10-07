@@ -503,4 +503,22 @@ export const es: Record<Key, string> = {
   'floor.legendGuest': "Cliente sentado",
   'floor.legendProgress': "Avance de la comida",
   'floor.legendTodo': "Pendientes",
+
+  // Assistant chat
+  'chat.ask': "Preguntar",
+  'chat.practice': "Practicar",
+  'chat.byClaude': "IA con Claude",
+  'chat.sub': "Tu colega experto en servicio, el menú de hoy y tus mesas. También para practicar momentos difíciles.",
+  'chat.hello': "¡Hola! Pregúntame lo que quieras sobre el servicio, el menú de hoy, alergias y dietas, o tus mesas. Te respondo en tu idioma.",
+  'chat.placeholder': "Pregunta lo que quieras…",
+  'chat.thinking': "Pensando…",
+  'chat.guestArriving': "Tu cliente está llegando…",
+  'chat.finish': "Terminar y ver mi feedback",
+  'chat.debrief': "Tu feedback",
+  'chat.new': "Nuevo chat",
+  'chat.s1': "Resúmeme mi sección",
+  'chat.s2': "¿Cómo gestiono una queja?",
+  'chat.s3': "¿Qué lleva el galouti kebab?",
+  'chat.s4': "Explícame la comida jainista",
+  'chat.s5': "¿Cómo recomiendo platos?",
 }

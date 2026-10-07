@@ -52,7 +52,7 @@ function fillFor(t: TableState) {
  * between them, and each table drawn as furniture. Chairs fill in for every seated guest, the
  * table's edge traces how far the meal has come, and badges show what the table needs.
  */
-export function FloorPlan({ snap, tables, tasks, picked, onPick, compact }: { snap: Snapshot; tables: TableState[]; tasks: Task[]; picked?: string; onPick: (id: string) => void; compact?: boolean }) {
+export function FloorPlan({ snap, tables, tasks, picked, onPick, compact, mini }: { snap: Snapshot; tables: TableState[]; tasks: Task[]; picked?: string; onPick: (id: string) => void; compact?: boolean; mini?: boolean }) {
   const t = useT()
   const H = compact ? 320 : 280
   const defs = snap.config.tables
@@ -136,9 +136,12 @@ export function FloorPlan({ snap, tables, tasks, picked, onPick, compact }: { sn
         <span className="pointer-events-none absolute inline-flex -translate-x-1/2 items-center gap-1 text-[11px] font-medium text-muted-foreground" style={{ left: '50%', top: pct(8, H) }}>
           <ChefHat className="size-3.5 text-kitchen" /> {t('floor.pass')}
         </span>
-        <span className="pointer-events-none absolute -translate-y-full text-[11px] text-muted-foreground" style={{ left: pct(W / 2 + 32, W), top: pct(H - 9, H) }}>
-          {t('floor.entrance')}
-        </span>
+        {/* In the small manager tiles the door gap speaks for itself; the word would collide with table labels. */}
+        {!mini && (
+          <span className="pointer-events-none absolute -translate-y-full text-[11px] text-muted-foreground" style={{ left: pct(W / 2 + 32, W), top: pct(H - 9, H) }}>
+            {t('floor.entrance')}
+          </span>
+        )}
 
         {/* Tables: the tap target, the name and the badges */}
         {items.map(({ table, cx, cy, w, h }) => {

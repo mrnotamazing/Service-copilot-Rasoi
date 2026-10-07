@@ -524,6 +524,24 @@ export const en = {
   'floor.legendGuest': "Guest seated",
   'floor.legendProgress': "How far the meal is",
   'floor.legendTodo': "Things to do",
+
+  // Assistant chat
+  'chat.ask': "Ask",
+  'chat.practice': "Practice",
+  'chat.byClaude': "AI via Claude",
+  'chat.sub': "Your expert colleague for service, tonight’s menu and your tables. Practise tough moments too.",
+  'chat.hello': "Hi! Ask me anything about service, tonight’s menu, allergies and diets, or your tables. I answer in your language.",
+  'chat.placeholder': "Ask anything…",
+  'chat.thinking': "Thinking…",
+  'chat.guestArriving': "Your guest is on the way…",
+  'chat.finish': "Finish and get feedback",
+  'chat.debrief': "Your feedback",
+  'chat.new': "New chat",
+  'chat.s1': "Brief me on my section",
+  'chat.s2': "How do I handle a complaint?",
+  'chat.s3': "What’s in the galouti kebab?",
+  'chat.s4': "Explain Jain food",
+  'chat.s5': "How do I recommend dishes?",
 } as const
 
 export type Key = keyof typeof en

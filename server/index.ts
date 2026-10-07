@@ -18,7 +18,15 @@ const INGEST_KEY = process.env.COPILOT_INGEST_KEY // required for POS webhooks w
 
 const hub = new Hub(fileStore(join(root, 'data/events.ndjson'), join(root, 'data/config.json')))
 const sim = new Simulator(hub)
-const api = createApi(hub, sim, { url: process.env.DIFY_API_URL, key: process.env.DIFY_API_KEY })
+// Claude is used for the assistant when an Anthropic key is configured; otherwise Dify, then built-in.
+const useClaude = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
+const claude = useClaude ? await import('./claude.ts') : null
+const api = createApi(hub, sim, {
+  url: process.env.DIFY_API_URL,
+  key: process.env.DIFY_API_KEY,
+  chat: claude?.createClaude(),
+  chatErrorReason: claude?.claudeErrorReason,
+})
 const snapshot = api.snapshot
 
 // ---------------------------------------------------------------------------
@@ -156,5 +164,5 @@ wss.on('connection', (ws, req) => {
 })
 
 server.listen(PORT, () =>
-  console.log(`Service Copilot API on http://localhost:${PORT} · AI: ${process.env.DIFY_API_URL && process.env.DIFY_API_KEY ? `Dify at ${process.env.DIFY_API_URL}` : 'built-in (set DIFY_API_URL and DIFY_API_KEY to use Dify)'}`),
+  console.log(`Service Copilot API on http://localhost:${PORT} · AI: ${useClaude ? `Claude (${process.env.ANTHROPIC_MODEL || 'claude-opus-5-5'})` : process.env.DIFY_API_URL && process.env.DIFY_API_KEY ? `Dify at ${process.env.DIFY_API_URL}` : 'built-in (set ANTHROPIC_API_KEY for Claude, or DIFY_API_URL and DIFY_API_KEY for Dify)'}`),
 )

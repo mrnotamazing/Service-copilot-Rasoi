@@ -1,4 +1,4 @@
-import { Accessibility, Armchair, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, Drama, ShieldAlert, ChevronLeft, Flame, HeartHandshake, HeartPulse, Loader2, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { Accessibility, Armchair, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, ChevronLeft, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -13,11 +13,10 @@ import { ShiftRecap } from '../components/ShiftRecap.tsx'
 import { useRolePage } from '../lib/role.ts'
 import { MOOD_TONE, Reaction } from '../components/Reaction.tsx'
 import { CoachCard } from '../components/Coach.tsx'
-import { PracticeCard, PracticeDrawer } from '../components/Practice.tsx'
+import { AssistantDrawer, PracticeCard } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
 import { tableTimeline } from '../../shared/timeline.ts'
 import { FloorPlan } from '../components/FloorPlan.tsx'
-import { AiAnswerBox } from '../components/AiAnswer.tsx'
 import { BadgeTile, Celebrations, LevelRing, StreakChip, useAwardText } from '../components/game.tsx'
 import { ThemeToggle } from '../components/kit.tsx'
 import { TaskCard, useTaskWords } from '../components/TaskCard.tsx'
@@ -30,7 +29,6 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { en } from '../i18n/en.ts'
 import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
-import { useAi } from '../lib/ai.ts'
 import { chime, haptic } from '../lib/haptics.ts'
 import { setPrefs, usePrefs } from '../lib/prefs.ts'
 import { speakTask } from '../lib/speech.ts'
@@ -88,19 +86,7 @@ export default function ServerView() {
   const overlays = (
     <>
       {game && <Celebrations awards={game.awards} muted={snap.sim.autopilot.includes(staffId)} />}
-      <Drawer open={assist} onOpenChange={setAssist}>
-        <DrawerContent className={cn('mx-auto max-h-[85dvh]', tablet ? 'max-w-xl' : 'max-w-[440px]')}>
-          <DrawerHeader>
-            <DrawerTitle className="flex items-center gap-2 font-display text-2xl">
-              <Sparkles className="size-5 text-primary" /> {t('hdr.ask')}
-            </DrawerTitle>
-            <DrawerDescription>{t('assist.sub')}</DrawerDescription>
-          </DrawerHeader>
-          <div className="overflow-y-auto px-4 pb-6">
-            <AssistTab staffId={staffId} />
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <AssistantDrawer open={assist} onOpenChange={setAssist} staffId={staffId} provider={snap.ai.provider} wide={tablet} />
       <Onboarding staffId={staffId} name={me.name} />
       <NewTaskAlerts top={snap.me.top} />
     </>
@@ -760,7 +746,7 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
       </section>
 
       <CoachCard staffId={staffId} />
-      <PracticeCard />
+      <PracticeCard staffId={staffId} provider={snap.ai.provider} />
 
       {/* Quests */}
       <section>
@@ -907,63 +893,6 @@ function KudosDrawer({ to, snap, staffId, onClose }: { to: string | null; snap: 
 }
 
 // ---------------------------------------------------------------------------
-
-const SOP_EXAMPLES: Key[] = ['assist.q1', 'assist.q2', 'assist.q3']
-
-function AssistTab({ staffId }: { staffId: string }) {
-  const briefing = useAi()
-  const sop = useAi()
-  const [question, setQuestion] = useState('')
-  const [practice, setPractice] = useState(false)
-  const t = useT()
-  const ask = (q: string) => {
-    setQuestion(q)
-    void sop.ask('ask_sop', { question: q, staffId })
-  }
-  return (
-    <div className="space-y-6">
-      <section>
-        <h2 className="font-display text-xl">{t('assist.briefing')}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t('assist.briefingSub')}</p>
-        <Button className="mt-3 h-11 w-full rounded-xl" disabled={briefing.loading} onClick={() => briefing.ask('briefing', { staffId })}>
-          {briefing.loading ? <Loader2 className="animate-spin" /> : <Sparkles />} {briefing.answer ? t('assist.refresh') : t('assist.briefMe')}
-        </Button>
-        <AiAnswerBox answer={briefing.answer} error={briefing.error} className="mt-3" />
-      </section>
-      <section>
-        <h2 className="flex items-center gap-2 font-display text-xl">
-          <MessageSquareText className="size-5 text-primary" /> {t('assist.ask')}
-        </h2>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {SOP_EXAMPLES.map((q) => (
-            <Chip key={q} onClick={() => ask(t(q))}>
-              {t(q)}
-            </Chip>
-          ))}
-        </div>
-        <form
-          className="mt-3 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (question.trim()) ask(question)
-          }}
-        >
-          <Input id="sop-question" name="sop-question" autoComplete="off" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t('assist.placeholder')} aria-label={t('assist.ask')} className="h-10 rounded-full" />
-          <Button type="submit" size="icon" className="size-10 rounded-full" aria-label={t('assist.send')} disabled={sop.loading || !question.trim()}>
-            {sop.loading ? <Loader2 className="animate-spin" /> : <Send />}
-          </Button>
-        </form>
-        <AiAnswerBox answer={sop.answer} error={sop.error} className="mt-3" />
-      </section>
-      <section>
-        <Button variant="secondary" className="h-11 w-full rounded-xl" onClick={() => setPractice(true)}>
-          <Drama /> {t('practice.title')}
-        </Button>
-        <PracticeDrawer open={practice} onOpenChange={setPractice} />
-      </section>
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 
