@@ -1,7 +1,7 @@
 import { AlertTriangle, ChefHat, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
-import { AppHeader, LiveClock, Loading, Stat, TableTile } from '../components/kit.tsx'
+import { AppHeader, LiveClock, Loading, PanelTitle, Stat, TableTile } from '../components/kit.tsx'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +19,11 @@ const OWNER_COLOR: Record<Owner, string> = {
 }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <CardTitle className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">{children}</CardTitle>
+  return (
+    <CardTitle>
+      <PanelTitle>{children}</PanelTitle>
+    </CardTitle>
+  )
 }
 
 export default function ManagerView() {
@@ -35,7 +39,7 @@ export default function ManagerView() {
   return (
     <div className="min-h-screen pb-12">
       <AppHeader title="Service overview" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />} />
-      <main className="mx-auto max-w-6xl space-y-5 px-4 py-5">
+      <main id="main" className="mx-auto max-w-6xl space-y-5 px-4 py-5">
         <Alert>
           <ShieldCheck className="text-good" />
           <AlertDescription>
@@ -98,7 +102,7 @@ export default function ManagerView() {
                       </span>
                       <span className={cn('inline-flex items-center gap-1 text-xs tabular', l.overloaded ? 'text-warn' : 'text-muted-foreground')}>
                         {l.overloaded && <AlertTriangle className="size-3.5" />}
-                        {l.activeTables} tables · {open} open cards
+                        {l.activeTables} {l.activeTables === 1 ? 'table' : 'tables'}, {open} open {open === 1 ? 'card' : 'cards'}
                       </span>
                     </div>
                     <Progress value={Math.min(100, (l.activeTables / (snap.config.sop.maxActiveTablesPerServer + 2)) * 100)} className={cn(l.overloaded && '[&>div]:bg-warn')} />
@@ -140,12 +144,12 @@ export default function ManagerView() {
                     <div className="space-y-1.5" tabIndex={0}>
                       <div className="flex items-baseline justify-between gap-2 text-sm">
                         <span>
-                          {s.label} <span className="text-xs text-muted-foreground">· {s.owner}</span>
+                          {s.label} <span className="text-xs text-muted-foreground">({s.owner})</span>
                         </span>
                         <span className="text-xs tabular text-muted-foreground">{s.count ? `${s.avgMin} / ${s.avgTargetMin} min · ${Math.round(s.lapseRate * 100)}% late` : 'no data yet'}</span>
                       </div>
                       <div className="relative h-3 rounded-full bg-muted">
-                        <div className="h-full rounded-full transition-[width] duration-700" style={{ width: `${(s.avgMin / maxMin) * 100}%`, background: OWNER_COLOR[s.owner] }} />
+                        <div className="h-full origin-left rounded-full transition-transform duration-700" style={{ transform: `scaleX(${s.avgMin / maxMin})`, background: OWNER_COLOR[s.owner] }} />
                         {s.count > 0 && <div className="absolute -top-0.5 h-4 w-0.5 rounded bg-foreground" style={{ left: `${(s.avgTargetMin / maxMin) * 100}%` }} />}
                       </div>
                     </div>
@@ -172,7 +176,7 @@ export default function ManagerView() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm tabular">
-                    <thead className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <thead className="text-left text-xs text-muted-foreground">
                       <tr>
                         <th className="pb-2 font-medium">Station</th>
                         <th className="pb-2 text-right font-medium">Tickets</th>
@@ -240,7 +244,7 @@ function Receipt({ v, server }: { v: VisitRecord; server: string }) {
     <div className="rounded-xl border bg-background/50 p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
         <span>
-          <span className="font-semibold">{v.tableName}</span> <span className="text-muted-foreground">· {v.partySize} guests · {server}</span>
+          <span className="font-semibold">{v.tableName}</span> <span className="text-muted-foreground">{v.partySize} guests, served by {server}</span>
         </span>
         <span className="text-xs tabular text-muted-foreground">
           {clock(v.seatedAt)}–{clock(v.endedAt)}

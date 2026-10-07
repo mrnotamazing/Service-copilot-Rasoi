@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import type { OrderLine } from '../../shared/types.ts'
-import { AppHeader, LiveClock, Loading } from '../components/kit.tsx'
+import { AppHeader, LiveClock, Loading, PanelTitle } from '../components/kit.tsx'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -49,7 +49,7 @@ export default function KitchenView() {
   return (
     <div className="min-h-screen pb-12">
       <AppHeader title="Kitchen pass" sub={`${tickets.length} open ${tickets.length === 1 ? 'ticket' : 'tickets'}`} right={<LiveClock now={snap.now} ok={connected} />} />
-      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[1fr_340px]">
+      <main id="main" className="mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[1fr_340px]">
         <div className="grid content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {tickets.length === 0 && <div className="col-span-full rounded-2xl border border-dashed p-10 text-center text-muted-foreground">No open tickets. New orders appear here the moment they’re fired.</div>}
           <AnimatePresence mode="popLayout" initial={false}>
@@ -76,9 +76,9 @@ export default function KitchenView() {
                     </span>
                   </div>
                   <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
-                    <div className={cn('h-full transition-[width] duration-1000', late ? 'bg-kitchen' : 'bg-primary/70')} style={{ width: `${frac * 100}%` }} />
+                    <div className={cn('h-full origin-left transition-transform duration-1000 ease-linear', late ? 'bg-kitchen' : 'bg-primary/70')} style={{ transform: `scaleX(${frac})` }} />
                   </div>
-                  <div className="mt-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{k.lines[0].course}</div>
+                  <div className="mt-2 text-xs capitalize text-muted-foreground">{k.lines[0].course}s</div>
                   {allergies && (
                     <Badge variant="outline" className="mt-2 w-fit gap-1 border-warn/50 text-warn">
                       <HeartPulse className="size-3.5" /> {allergies.join(', ')}
@@ -111,7 +111,7 @@ export default function KitchenView() {
         <div className="min-w-0 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">From the floor</CardTitle>
+              <CardTitle><PanelTitle>From the floor</PanelTitle></CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2">
@@ -119,7 +119,7 @@ export default function KitchenView() {
                 {fromFloor.map((n) => (
                   <li key={n.id} className={cn('rounded-lg p-2.5 text-sm', n.text.startsWith('ALLERGY') ? 'bg-warn/15 font-medium text-warn' : 'bg-muted')}>
                     <div className="text-[11px] font-normal text-muted-foreground">
-                      {snap.config.staff.find((s) => s.id === n.from)?.name ?? n.from} · {n.tableId ?? 'general'} · {clock(n.at)}
+                      {snap.config.staff.find((s) => s.id === n.from)?.name ?? n.from}, {n.tableId ?? 'general'}, {clock(n.at)}
                     </div>
                     {n.text}
                   </li>
@@ -130,7 +130,7 @@ export default function KitchenView() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">Tell the floor</CardTitle>
+              <CardTitle><PanelTitle>Tell the floor</PanelTitle></CardTitle>
             </CardHeader>
             <CardContent>
               <form
@@ -154,7 +154,7 @@ export default function KitchenView() {
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">
-                  <Input id="floor-note" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. mains 5 min, grill backed up" />
+                  <Input id="floor-note" name="floor-note" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. mains 5 min, grill backed up…" />
                   <Button type="submit" size="icon" aria-label="Send to floor" disabled={!text.trim()}>
                     <Send />
                   </Button>
@@ -165,7 +165,7 @@ export default function KitchenView() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">Availability (86 board)</CardTitle>
+              <CardTitle><PanelTitle>Availability (86 board)</PanelTitle></CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="divide-y">

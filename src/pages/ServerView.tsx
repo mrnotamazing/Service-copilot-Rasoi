@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
-import { AppHeader, LiveClock, Loading, SectionTitle, Stat, TableTile } from '../components/kit.tsx'
+import { AppHeader, LiveClock, Loading, PanelTitle, SectionTitle, Stat, TableTile } from '../components/kit.tsx'
 import { TaskCard } from '../components/TaskCard.tsx'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -68,12 +68,12 @@ export default function ServerView() {
         }
       />
 
-      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[1fr_380px]">
+      <main id="main" className="mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[1fr_380px]">
         <div className="min-w-0 space-y-4">
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-sm text-muted-foreground">
-                Section {section ?? '—'} · {active.length} {active.length === 1 ? 'table' : 'tables'} seated
+                Section {section ?? '—'}, {active.length} {active.length === 1 ? 'table' : 'tables'} seated
               </p>
               <h1 className="font-display text-3xl">Hi {me.name}</h1>
             </div>
@@ -94,6 +94,9 @@ export default function ServerView() {
           )}
 
           <SectionTitle>Next up</SectionTitle>
+          <p className="sr-only" aria-live="polite">
+            {top[0] ? `Next: ${top[0].title}` : 'All caught up'}
+          </p>
           <div className="grid gap-3">
             <AnimatePresence mode="popLayout" initial={false}>
               {top.map((t, i) => (
@@ -165,7 +168,7 @@ export default function ServerView() {
                       void sendNote()
                     }}
                   >
-                    <Input id="note-text" value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder={noteTable ? `Note about ${noteTable}…` : 'Note to the pass…'} />
+                    <Input id="note-text" name="note-text" autoComplete="off" value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder={noteTable ? `Note about ${noteTable}…` : 'Note to the pass…'} />
                     <Button type="submit" size="icon" aria-label="Send to kitchen" disabled={!noteText.trim()}>
                       <Send />
                     </Button>
@@ -174,7 +177,7 @@ export default function ServerView() {
                     {myNotes.length === 0 && <li className="text-sm text-muted-foreground">Messages with the kitchen will show here.</li>}
                     {myNotes.map((n) => (
                       <li key={n.id} className="text-sm">
-                        <span className={cn('mr-2 text-[11px] font-semibold uppercase', n.direction === 'to_floor' ? 'text-kitchen' : 'text-floor-mark')}>{n.direction === 'to_floor' ? 'Kitchen' : 'You'}</span>
+                        <span className={cn('mr-2 text-xs font-semibold', n.direction === 'to_floor' ? 'text-kitchen' : 'text-floor-mark')}>{n.direction === 'to_floor' ? 'Kitchen' : 'You'}</span>
                         {n.tableId && <span className="mr-1 text-muted-foreground">{n.tableId} ·</span>}
                         {n.text}
                         <span className="ml-2 text-[11px] text-muted-foreground tabular">{clock(n.at)}</span>
@@ -192,7 +195,7 @@ export default function ServerView() {
                       if (question.trim()) void sop.ask('ask_sop', { question, staffId })
                     }}
                   >
-                    <Input id="sop-question" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. How do I handle a complaint?" />
+                    <Input id="sop-question" name="sop-question" autoComplete="off" value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. How do I handle a complaint?…" />
                     <Button type="submit" size="icon" aria-label="Ask" disabled={sop.loading || !question.trim()}>
                       {sop.loading ? <Loader2 className="animate-spin" /> : <Send />}
                     </Button>
@@ -221,9 +224,9 @@ export default function ServerView() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                My shift
-                <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal">
+              <CardTitle className="flex items-center justify-between">
+                <PanelTitle>My shift</PanelTitle>
+                <span className="inline-flex items-center gap-1 font-sans text-xs font-normal text-muted-foreground">
                   <Lock className="size-3" /> Only you see this
                 </span>
               </CardTitle>

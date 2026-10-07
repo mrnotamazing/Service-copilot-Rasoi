@@ -71,7 +71,7 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
     >
       {/* Time against the SOP standard: fills toward the deadline, turns amber after it (never red). */}
       <div className="absolute inset-x-0 top-0 h-1 bg-muted" aria-hidden>
-        <div className={cn('h-full transition-[width] duration-1000', over ? 'bg-warn' : 'bg-primary/70')} style={{ width: `${frac * 100}%` }} />
+        <div className={cn('h-full origin-left transition-transform duration-1000 ease-linear', over ? 'bg-warn' : 'bg-primary/70')} style={{ transform: `scaleX(${frac})` }} />
       </div>
 
       <div className="flex items-start gap-3">

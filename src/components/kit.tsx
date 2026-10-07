@@ -25,31 +25,42 @@ const NAV = [
   { to: '/manager', label: 'Overview' },
   { to: '/kitchen', label: 'Kitchen' },
   { to: '/setup', label: 'Setup' },
+  { to: '/about', label: 'How it works' },
 ]
+
+function NavLinks({ className }: { className?: string }) {
+  return (
+    <nav aria-label="Screens" className={className}>
+      {NAV.map((n) => (
+        <NavLink
+          key={n.to}
+          to={n.to}
+          className={({ isActive }) =>
+            cn('shrink-0 rounded-md px-2.5 py-1 text-sm transition-colors', isActive ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground')
+          }
+        >
+          {n.label}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
 
 export function AppHeader({ title, sub, right, nav = true }: { title?: ReactNode; sub?: ReactNode; right?: ReactNode; nav?: boolean }) {
   return (
     <header className="sticky top-[env(safe-area-inset-top,0px)] z-20 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-30 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
+        Skip to main content
+      </a>
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5">
         <Brand />
-        {nav && (
-          <nav className="ml-2 hidden items-center gap-1 md:flex">
-            {NAV.map((n) => (
-              <NavLink
-                key={n.to}
-                to={n.to}
-                className={({ isActive }) => cn('rounded-md px-2.5 py-1 text-sm transition-colors', isActive ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
-              >
-                {n.label}
-              </NavLink>
-            ))}
-          </nav>
-        )}
+        {nav && <NavLinks className="ml-2 hidden items-center gap-1 md:flex" />}
         <div className="ml-auto flex items-center gap-2">
           {right}
           <ThemeToggle />
         </div>
       </div>
+      {nav && <NavLinks className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-2 md:hidden" />}
       {(title || sub) && (
         <div className="mx-auto max-w-6xl px-4 pb-3">
           {title && <h1 className="font-display text-2xl leading-tight">{title}</h1>}
@@ -95,7 +106,7 @@ export function LiveClock({ now, ok }: { now: number; ok: boolean }) {
 export function SectionTitle({ children, right }: { children: ReactNode; right?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{children}</h2>
+      <h2 className="text-sm font-medium text-muted-foreground">{children}</h2>
       {right}
     </div>
   )
@@ -163,7 +174,7 @@ export function TableTile({ t, now, color, onClick, active }: { t: TableState; n
 export function Stat({ label, value, sub, className }: { label: string; value: ReactNode; sub?: ReactNode; className?: string }) {
   return (
     <div className={cn('rounded-xl border bg-card p-3', className)}>
-      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div className="mt-1 font-display text-2xl tabular">{value}</div>
       {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
     </div>
@@ -179,4 +190,9 @@ export function Loading() {
       </div>
     </div>
   )
+}
+
+/** Heading inside a card: sentence case, quiet, never a tracked-out all-caps label. */
+export function PanelTitle({ children, className }: { children: ReactNode; className?: string }) {
+  return <h2 className={cn('font-sans text-sm font-medium', className)}>{children}</h2>
 }

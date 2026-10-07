@@ -48,7 +48,7 @@ export default function SetupView() {
   return (
     <div className="min-h-screen pb-12">
       <AppHeader title="Setup" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />} />
-      <main className="mx-auto grid max-w-6xl gap-5 px-4 py-5 lg:grid-cols-2">
+      <main id="main" className="mx-auto grid max-w-6xl gap-5 px-4 py-5 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <Heading>Service simulator</Heading>
@@ -143,6 +143,8 @@ export default function SetupView() {
                     <Input
                       id={`sop-${f.key}`}
                       type="number"
+                      inputMode="decimal"
+                      name={`sop-${f.key}`}
                       min={0}
                       step={0.5}
                       value={sop[f.key]}
@@ -216,7 +218,7 @@ export default function SetupView() {
                     ))}
                   </ul>
                 )}
-                <div className="mt-2 text-[11px] text-muted-foreground">{i.eventCount ? `${i.eventCount} events · last ${i.lastEventAt ? clock(i.lastEventAt) : '—'}` : 'No events received yet'}</div>
+                <div className="mt-2 text-[11px] text-muted-foreground">{i.eventCount ? `${i.eventCount} events, last at ${i.lastEventAt ? clock(i.lastEventAt) : '—'}` : 'No events received yet'}</div>
               </div>
             ))}
           </CardContent>
