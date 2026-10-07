@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { clock } from '../lib/format.ts'
 import { STANDALONE, post, useSnapshot } from '../lib/live.ts'
+import { useRolePage } from '../lib/role.ts'
 
 const SOP_FIELDS: { key: keyof Sop; label: string; unit: string }[] = [
   { key: 'greetWithinMin', label: 'Greet a seated table within', unit: 'min' },
@@ -32,6 +33,7 @@ function Heading({ children }: { children: React.ReactNode }) {
 }
 
 export default function SetupView() {
+  useRolePage({ kind: 'manager' })
   const { snap, connected } = useSnapshot('manager')
   const [sop, setSop] = useState<Sop | null>(null)
   const [confirmReset, setConfirmReset] = useState(false)

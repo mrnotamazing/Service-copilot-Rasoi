@@ -3,6 +3,7 @@
 
 import { analytics, staffStats, tasksFor } from '../shared/engine.ts'
 import { predictReady, upcomingFor } from '../shared/predict.ts'
+import { cleanProfile } from '../shared/profile.ts'
 import { playerView, teamView } from '../shared/game.ts'
 import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
@@ -53,7 +54,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
           top,
           queued,
           stats: staffStats(hub.state, hub.config).find((s) => s.staffId === staffId) ?? null,
-          myVisits: hub.state.visits.filter((v) => v.serverId === staffId).slice(-10).reverse(),
+          myVisits: hub.state.visits.filter((v) => v.serverId === staffId).slice(-40).reverse(),
           game: playerView(hub.game, staffId),
           upcoming: upcomingFor(hub.state, hub.config, staffId, now, tasks.filter((t) => t.staffId === staffId)),
         },
@@ -80,12 +81,22 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       hub.emit()
       return sim.status()
     },
-    // A staff member's own profile. Only pronouns for now; free text is trimmed and length-limited.
+    // A staff member's own profile: name, pronouns, colour, avatar, languages. Only fields sent are changed.
     '/api/staff/profile': (body) => {
       const id = typeof body.staffId === 'string' ? body.staffId : ''
       if (!hub.config.staff.some((s) => s.id === id)) throw new Error('Unknown staff member.')
-      const pronouns = typeof body.pronouns === 'string' ? body.pronouns.trim().slice(0, 24) : ''
-      hub.updateConfig({ staff: hub.config.staff.map((s) => (s.id === id ? { ...s, pronouns: pronouns || undefined } : s)) })
+      const patch = cleanProfile(body)
+      if (typeof patch === 'string') throw new Error(patch)
+      hub.updateConfig({
+        staff: hub.config.staff.map((s) => {
+          if (s.id !== id) return s
+          const next = { ...s, ...patch }
+          // Empty means "not shown": drop the field rather than store blanks.
+          if (!next.pronouns) delete next.pronouns
+          if (!next.avatar) delete next.avatar
+          return next
+        }),
+      })
       return hub.config.staff.find((s) => s.id === id)
     },
     '/api/config': (body) => {

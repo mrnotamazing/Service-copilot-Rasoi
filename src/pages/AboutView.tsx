@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useSnapshot } from '../lib/live.ts'
+import { useRolePage } from '../lib/role.ts'
 
 const DEMO_STAFF = 's_aisha'
 
@@ -47,6 +48,7 @@ function exampleTasks(now: number): Task[] {
 }
 
 export default function AboutView() {
+  useRolePage(null)
   const { snap } = useSnapshot('server', DEMO_STAFF)
   const now = snap?.now ?? Date.now()
   const live = snap?.me?.top ?? []

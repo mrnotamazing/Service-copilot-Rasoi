@@ -5,11 +5,13 @@ import { Link, NavLink } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { STATUS_LABEL, STATUS_PROGRESS, clock } from '../lib/format.ts'
+import { STATUS_LABEL, STATUS_PROGRESS, clock, useWallClock } from '../lib/format.ts'
 import { useTheme, type ThemeChoice } from '../lib/theme.ts'
 import { cn } from '@/lib/utils'
 import { useT, type Key } from '../i18n/index.ts'
 import { AccessButton } from './AccessPanel.tsx'
+import { RoleSwitcher } from './RoleSwitcher.tsx'
+import { useRole, type Role } from '../lib/role.ts'
 
 export function Brand() {
   return (
@@ -43,7 +45,9 @@ export function ThemeToggle() {
   )
 }
 
-export function LiveClock({ now, ok }: { now: number; ok: boolean }) {
+/** The real time in IST (the restaurant's time zone) and whether the live connection is up. */
+export function LiveClock({ ok }: { now?: number; ok: boolean }) {
+  const now = useWallClock()
   return (
     <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs tabular text-muted-foreground">
       <span className={cn('size-1.5 rounded-full', ok ? 'bg-good' : 'bg-warn pulse-soft')} aria-label={ok ? 'Live' : 'Reconnecting'} />
@@ -138,13 +142,30 @@ export function PanelTitle({ children, className }: { children: ReactNode; class
   return <h2 className={cn('font-sans text-sm font-medium', className)}>{children}</h2>
 }
 
-const SHELL_NAV = [
+type NavItem = { to: string; label: Key; Icon: typeof Users; end?: boolean }
+
+/** Each role sees its own screens: the manager runs the floor, the kitchen runs the pass. */
+function navFor(role: Role | null): NavItem[] {
+  if (role?.kind === 'kitchen') return [{ to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat }, { to: '/about', label: 'nav.how', Icon: BookOpen }]
+  if (role?.kind === 'server') return [{ to: `/server/${role.staffId}`, label: 'nav.myShift', Icon: Users }, { to: '/about', label: 'nav.how', Icon: BookOpen }]
+  if (role?.kind === 'manager')
+    return [
+      { to: '/manager', label: 'nav.overview', Icon: LayoutDashboard },
+      { to: '/', label: 'nav.floorStaff', Icon: Users, end: true },
+      { to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat },
+      { to: '/setup', label: 'nav.setup', Icon: Settings },
+      { to: '/about', label: 'nav.how', Icon: BookOpen },
+    ]
+  return SHELL_NAV
+}
+
+const SHELL_NAV: NavItem[] = [
   { to: '/', label: 'nav.floorStaff', Icon: Users, end: true },
   { to: '/manager', label: 'nav.overview', Icon: LayoutDashboard },
   { to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat },
   { to: '/setup', label: 'nav.setup', Icon: Settings },
   { to: '/about', label: 'nav.how', Icon: BookOpen },
-] satisfies { to: string; label: Key; Icon: typeof Users; end?: boolean }[] as { to: string; label: Key; Icon: typeof Users; end?: boolean }[]
+]
 
 /**
  * The frame every non-phone screen lives in: a sidebar on desktop, a top bar and
@@ -152,6 +173,8 @@ const SHELL_NAV = [
  */
 export function AppShell({ title, sub, right, children, wide = true, bare = false }: { title?: ReactNode; sub?: ReactNode; right?: ReactNode; children: ReactNode; wide?: boolean; bare?: boolean }) {
   const t = useT()
+  const role = useRole()
+  const nav = navFor(role)
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[232px_1fr]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
@@ -164,7 +187,7 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
           <Brand />
         </div>
         <nav aria-label="Screens" className="mt-6 grid gap-0.5">
-          {SHELL_NAV.map(({ to, label, Icon, end }) => (
+          {nav.map(({ to, label, Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -181,12 +204,16 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto flex items-center justify-between rounded-xl border bg-background/60 px-3 py-2">
-          <span className="text-xs text-muted-foreground">Saffron House</span>
-          <span className="flex items-center gap-1">
-            <AccessButton />
-            <ThemeToggle />
-          </span>
+        <div className="mt-auto space-y-2 rounded-2xl border bg-background/60 p-2">
+          {/* Signed in as: switch between a server's app, the kitchen display and the manager console. */}
+          <RoleSwitcher />
+          <div className="flex items-center justify-between border-t px-1 pt-2">
+            <span className="text-[11px] text-muted-foreground">Saffron House</span>
+            <span className="flex items-center gap-1">
+              <AccessButton />
+              <ThemeToggle />
+            </span>
+          </div>
         </div>
       </aside>
       </div>
@@ -204,6 +231,7 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
             <div className="ml-auto flex items-center gap-2">
               {right}
               <span className="flex items-center md:hidden">
+                <RoleSwitcher compact className="size-10" />
                 <AccessButton />
                 <ThemeToggle />
               </span>
@@ -221,8 +249,8 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
         </main>
       </div>
 
-      <nav aria-label="Screens" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pt-1.5 backdrop-blur md:hidden">
-        {SHELL_NAV.map(({ to, label, Icon, end }) => (
+      <nav aria-label="Screens" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }} className="fixed inset-x-0 bottom-0 z-30 grid border-t bg-background/95 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pt-1.5 backdrop-blur md:hidden">
+        {nav.map(({ to, label, Icon, end }) => (
           <NavLink
             key={to}
             to={to}

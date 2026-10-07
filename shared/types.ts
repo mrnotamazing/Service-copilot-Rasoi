@@ -25,6 +25,10 @@ export interface Staff {
   color: string
   /** Optional, chosen by the person (e.g. "they/them"). Shown next to their name to teammates. */
   pronouns?: string
+  /** Chosen by the person: a small photo (data URL), "icon:<id>" for an illustration, or unset for their initial. */
+  avatar?: string
+  /** Languages they're happy to speak with guests and teammates (see shared/profile.ts). */
+  languages?: string[]
 }
 
 export interface TableDef {

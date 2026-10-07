@@ -1,4 +1,4 @@
-import { Accessibility, Armchair, Bot, CakeSlice, Clock3, Drama, ShieldAlert, ChevronLeft, Flame, HeartHandshake, HeartPulse, Loader2, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { Accessibility, Armchair, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, Drama, ShieldAlert, ChevronLeft, Flame, HeartHandshake, HeartPulse, Loader2, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -6,6 +6,12 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { Snapshot } from '../../shared/snapshot.ts'
 import { AccessButton } from '../components/AccessPanel.tsx'
+import { Avatar } from '../components/Avatar.tsx'
+import { ProfileCard } from '../components/ProfileEditor.tsx'
+import { RoleSwitcher } from '../components/RoleSwitcher.tsx'
+import { ShiftRecap } from '../components/ShiftRecap.tsx'
+import { useRolePage } from '../lib/role.ts'
+import { MOOD_TONE, Reaction } from '../components/Reaction.tsx'
 import { CoachCard } from '../components/Coach.tsx'
 import { PracticeCard, PracticeDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
@@ -26,7 +32,7 @@ import { useAi } from '../lib/ai.ts'
 import { chime, haptic } from '../lib/haptics.ts'
 import { setPrefs, usePrefs } from '../lib/prefs.ts'
 import { speakTask } from '../lib/speech.ts'
-import { clock, mmss } from '../lib/format.ts'
+import { clock, useWallClock } from '../lib/format.ts'
 import { act, noteId, post, useSnapshot } from '../lib/live.ts'
 import type { Task, Upcoming } from '../../shared/types.ts'
 
@@ -62,6 +68,8 @@ export default function ServerView() {
   const [assist, setAssist] = useState(false)
   const t = useT()
   const awardText = useAwardText()
+  const wallNow = useWallClock()
+  useRolePage({ kind: 'server', staffId })
 
   const me = snap?.config.staff.find((s) => s.id === staffId)
   const myTables = useMemo(() => snap?.tables.filter((t) => t.serverId === staffId) ?? [], [snap, staffId])
@@ -129,6 +137,7 @@ export default function ServerView() {
               <Sparkles className="size-5" />
               {liveDot}
             </Button>
+            <RoleSwitcher compact />
             <AccessButton className="h-10" />
             <ThemeToggle />
           </div>
@@ -137,7 +146,7 @@ export default function ServerView() {
         <div className="flex min-h-0 min-w-0 flex-col">
           {/* Top bar: me, my rank and progress, my streak, the team goal */}
           <header className="flex items-center gap-4 border-b bg-background/90 px-6 pb-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] backdrop-blur">
-            {game && <LevelRing name={me.name} color={me.color} progress={game.level.progress} level={game.level.level} size={48} />}
+            {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} size={48} />}
             <div className="min-w-0">
               <div className="truncate text-lg font-semibold leading-tight">
                 {me.name} <Pronouns value={me.pronouns} />
@@ -160,7 +169,7 @@ export default function ServerView() {
                 <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-1 h-1.5" aria-label={t('hdr.teamGoal')} />
               </div>
             </div>
-            <span className="ml-auto rounded-full border px-2.5 py-1 text-xs text-muted-foreground tabular lg:ml-0">{clock(snap.now)} IST</span>
+            <span className="ml-auto rounded-full border px-2.5 py-1 text-xs text-muted-foreground tabular lg:ml-0">{clock(wallNow)} IST</span>
             <Link to="?device=phone" className="hidden text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline xl:inline">
               {t('hdr.phoneView')}
             </Link>
@@ -227,7 +236,7 @@ export default function ServerView() {
           <Link to="/" aria-label={t('hdr.back')} className="-ml-1 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground">
             <ChevronLeft className="size-5" />
           </Link>
-          {game && <LevelRing name={me.name} color={me.color} progress={game.level.progress} level={game.level.level} />}
+          {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} />}
           <div className="min-w-0 flex-1">
             <div className="truncate font-semibold leading-tight">
               {me.name} <Pronouns value={me.pronouns} />
@@ -427,8 +436,9 @@ function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tab
           </div>
           <div className="text-xs text-muted-foreground">
             {t.mood && (
-              <span className="mr-1" title={tr.any(`mood.${t.mood.value}`)} aria-label={tr.any(`mood.${t.mood.value}`)}>
-                {MOOD_FACE[t.mood.value]}
+              <span className={cn('mr-1 inline-flex items-center gap-0.5 align-middle', MOOD_TONE[t.mood.value])} title={tr.any(`mood.${t.mood.value}`)}>
+                <Reaction mood={t.mood.value} filled className="size-4" />
+                <span className="sr-only">{tr.any(`mood.${t.mood.value}`)}</span>
               </span>
             )}
             {tr.any(`status.${t.status}`)} · {t.visitId && seatedMin ? tr('tables.detail', { n: t.party?.size ?? '?', min: seatedMin }) : tr('tile.seats', { n: t.seats })}
@@ -711,7 +721,6 @@ const REASON_KEY = new Map<string, Key>(KUDOS_REASONS.map((k) => [en[k], k]))
 
 function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string; wide?: boolean }) {
   const game = snap.me!.game
-  const stats = snap.me!.stats
   const [kudosTo, setKudosTo] = useState<string | null>(null)
   const [recap, setRecap] = useState(false)
   const t = useT()
@@ -723,6 +732,10 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
 
   return (
     <div className={cn(wide ? 'columns-2 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid' : 'space-y-6')}>
+      <div className="rounded-2xl border bg-card p-1.5">
+        <RoleSwitcher />
+      </div>
+      <ProfileCard me={snap.config.staff.find((s) => s.id === staffId)!} />
       <AccessButton variant="row" />
       {/* Rank */}
       <section className="relative overflow-hidden rounded-3xl bg-hero p-5 text-hero-foreground">
@@ -788,9 +801,7 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
         <div className="flex flex-wrap gap-2">
           {teammates.map((t) => (
             <Button key={t.id} variant="outline" className="h-11 flex-1 justify-start gap-2 rounded-xl" onClick={() => setKudosTo(t.id)}>
-              <span className="grid size-6 place-items-center rounded-full text-xs text-white" style={{ background: t.color }} aria-hidden>
-                {t.name[0]}
-              </span>
+              <Avatar staff={t} className="size-6 text-xs" />
               {t.name}
               <Pronouns value={t.pronouns} />
             </Button>
@@ -837,33 +848,10 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
         <Lock className="size-3" /> {t('profile.private')}
       </p>
 
-      <PronounsCard staffId={staffId} current={snap.config.staff.find((s) => s.id === staffId)?.pronouns} />
+
 
       <KudosDrawer to={kudosTo} snap={snap} staffId={staffId} onClose={() => setKudosTo(null)} />
-      <Drawer open={recap} onOpenChange={setRecap}>
-        <DrawerContent className="mx-auto max-w-[440px]">
-          <div className="mx-auto w-full max-w-sm">
-            <DrawerHeader className="text-center">
-              <DrawerDescription>{t('recap.title')}</DrawerDescription>
-              <DrawerTitle className="font-display text-3xl">{words.rank(level.index)}</DrawerTitle>
-            </DrawerHeader>
-            <div className="grid grid-cols-2 gap-2 px-4">
-              <RecapStat value={player.xp} label={t('recap.xp')} />
-              <RecapStat value={`${stats?.smoothTables ?? 0}/${stats?.completedTables ?? 0}`} label={t('recap.smooth')} />
-              <RecapStat value={player.bestStreak} label={t('recap.bestStreak')} />
-              <RecapStat value={stats?.avgGreetSec != null ? mmss(stats.avgGreetSec * 1000) : '—'} label={t('recap.greet')} />
-              <RecapStat value={earned} label={t('recap.badges')} />
-              <RecapStat value={snap.team.kudos.filter((k) => k.to === staffId).length} label={t('recap.kudos')} />
-            </div>
-            <p className="px-4 pt-4 text-center text-sm text-muted-foreground">{t('recap.note')}</p>
-            <DrawerFooter>
-              <Button size="lg" className="h-11" onClick={() => setRecap(false)}>
-                {t('common.done')}
-              </Button>
-            </DrawerFooter>
-          </div>
-        </DrawerContent>
-      </Drawer>
+      <ShiftRecap snap={snap} staffId={staffId} open={recap} onOpenChange={setRecap} />
     </div>
   )
 }
@@ -878,15 +866,6 @@ function Mini({ icon, value, label }: { icon: ReactNode; value: number; label: s
         {value}
       </div>
       <div className="text-[11px] opacity-70">{label}</div>
-    </div>
-  )
-}
-
-function RecapStat({ value, label }: { value: ReactNode; label: string }) {
-  return (
-    <div className="rounded-2xl bg-secondary p-3 text-center">
-      <div className="font-display text-2xl tabular">{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   )
 }
@@ -1097,66 +1076,6 @@ function Pronouns({ value }: { value?: string }) {
   return <span className="ml-1 text-xs font-normal text-muted-foreground">({value})</span>
 }
 
-const PRONOUN_CHOICES: { key: Key; value: string }[] = [
-  { key: 'pronoun.none', value: '' },
-  { key: 'pronoun.they', value: 'they/them' },
-  { key: 'pronoun.she', value: 'she/her' },
-  { key: 'pronoun.he', value: 'he/him' },
-]
-
-/** Optional pronouns, set by the person themselves; teammates see them next to the name. */
-function PronounsCard({ staffId, current = '' }: { staffId: string; current?: string }) {
-  const t = useT()
-  const preset = PRONOUN_CHOICES.some((c) => c.value === current)
-  const [custom, setCustom] = useState(preset ? '' : current)
-  const [other, setOther] = useState(!preset)
-  async function save(pronouns: string) {
-    try {
-      await post('/api/staff/profile', { staffId, pronouns })
-      toast.success(t('profile.saved'))
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t('toast.error'))
-    }
-  }
-  return (
-    <section className="rounded-2xl border p-4">
-      <h2 className="font-display text-xl">{t('profile.aboutMe')}</h2>
-      <p className="mt-0.5 text-sm text-muted-foreground">{t('profile.pronounsHint')}</p>
-      <div role="radiogroup" aria-label={t('profile.pronouns')} className="mt-3 flex flex-wrap gap-1.5">
-        {PRONOUN_CHOICES.map((c) => (
-          <Chip
-            key={c.key}
-            active={!other && current === c.value}
-            onClick={() => {
-              setOther(false)
-              void save(c.value)
-            }}
-          >
-            {t(c.key)}
-          </Chip>
-        ))}
-        <Chip active={other} onClick={() => setOther(true)}>
-          {t('pronoun.other')}
-        </Chip>
-      </div>
-      {other && (
-        <form
-          className="mt-2 flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void save(custom)
-          }}
-        >
-          <Input name="pronouns" aria-label={t('profile.pronouns')} maxLength={24} autoComplete="off" value={custom} onChange={(e) => setCustom(e.target.value)} placeholder={t('pronoun.placeholder')} className="h-10 rounded-full" />
-          <Button type="submit" className="h-10 rounded-full">
-            {t('profile.save')}
-          </Button>
-        </form>
-      )}
-    </section>
-  )
-}
-
 /** Language chips on the first onboarding step, in each language's own name. */
 function LanguageRow() {
   const { lang } = usePrefs()
@@ -1207,9 +1126,7 @@ function NewTaskAlerts({ top }: { top: Task[] }) {
   return <div key={flash} className="edge-flash pointer-events-none fixed inset-0 z-50" aria-hidden />
 }
 
-const MOOD_FACE: Record<string, string> = { happy: '😊', ok: '😐', unhappy: '😟' }
-
-const UP_ICON: Record<Upcoming['kind'], string> = { food_ready: '🍽️', course_end: '⏳', bill_soon: '🧾' }
+const UP_ICON: Record<Upcoming['kind'], typeof Clock3> = { food_ready: HandPlatter, course_end: Hourglass, bill_soon: ReceiptText }
 
 /**
  * What's likely to need the server in the next few minutes, from tonight's real timings.
@@ -1226,7 +1143,10 @@ function ComingUp({ items }: { items: Upcoming[] }) {
       <ul className="divide-y rounded-2xl border border-dashed">
         {items.map((u) => (
           <li key={u.id} className="flex items-center gap-2.5 px-3 py-2 text-sm">
-            <span aria-hidden>{UP_ICON[u.kind]}</span>
+            {(() => {
+              const Icon = UP_ICON[u.kind]
+              return <Icon className="size-4 shrink-0 text-primary" aria-hidden />
+            })()}
             <span className="min-w-0 flex-1">{t.text(u.text)}</span>
           </li>
         ))}

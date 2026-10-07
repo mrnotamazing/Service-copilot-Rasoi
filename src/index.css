@@ -57,24 +57,26 @@
 }
 
 .dark {
+  /* True dark: near-black surfaces (easy on the eyes in a dim dining room, kind to OLED batteries),
+     raised in small steps, with the brand tomato kept for actions and a whisper of warmth in the greys. */
   color-scheme: dark;
-  --background: #2a1e18;
-  --foreground: #fbf3e8;
-  --card: #34251d;
-  --card-foreground: #fbf3e8;
-  --popover: #3a2a21;
-  --popover-foreground: #fbf3e8;
+  --background: #0b0a09;
+  --foreground: #f3eee8;
+  --card: #141211;
+  --card-foreground: #f3eee8;
+  --popover: #1a1816;
+  --popover-foreground: #f3eee8;
   --primary: #e5603e;
-  --primary-foreground: #2a1e18;
-  --secondary: #3f2f26;
-  --secondary-foreground: #fbf3e8;
-  --muted: #3a2b22;
-  --muted-foreground: #c3ad9c;
-  --accent: #4a2a1f;
-  --accent-foreground: #ffd9cb;
+  --primary-foreground: #0b0a09;
+  --secondary: #1e1b19;
+  --secondary-foreground: #f3eee8;
+  --muted: #1a1816;
+  --muted-foreground: #a69d95;
+  --accent: #2a1711;
+  --accent-foreground: #ffcfbd;
   --destructive: #f0715c;
-  --border: rgb(255 240 225 / 0.1);
-  --input: rgb(255 240 225 / 0.16);
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.13);
   --ring: #e5603e;
   --good: #5fbf8f;
   --warn: #e7a94a;
@@ -83,13 +85,13 @@
   --kitchen-mark: #b87a14;
   --chart-1: #3f86d9;
   --chart-2: #b87a14;
-  --sidebar: #241a14;
-  --sidebar-foreground: #fbf3e8;
-  --sidebar-accent: #4a2a1f;
-  --sidebar-accent-foreground: #ffd9cb;
-  --sidebar-border: rgb(255 240 225 / 0.08);
-  --hero: #1f1611;
-  --hero-foreground: #fbf3e8;
+  --sidebar: #080706;
+  --sidebar-foreground: #f3eee8;
+  --sidebar-accent: #221512;
+  --sidebar-accent-foreground: #ffcfbd;
+  --sidebar-border: rgb(255 255 255 / 0.06);
+  --hero: #181513;
+  --hero-foreground: #f3eee8;
   --primary-2: #f39158;
 }
 
@@ -98,6 +100,8 @@
   --font-heading: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
   --color-tomato: var(--tomato);
+  --color-role-kitchen: var(--role-kitchen);
+  --color-role-manager: var(--role-manager);
   --color-chocolate: var(--chocolate);
   --color-cream: var(--cream);
   --color-hero: var(--hero);
@@ -188,6 +192,95 @@
 /* Brand tagline: the one place letter-spaced capitals are used, as on the brand sheet. */
 .tagline { text-transform: uppercase; letter-spacing: 0.28em; font-size: 0.72rem; font-weight: 500; }
 
+/* ---- Roles: each signed-in role gets its own look (set by the "signed in as" switcher) ----
+   Servers keep the brand tomato. The kitchen display is saffron with larger type, readable from
+   across the pass. The manager console is a cool blue-grey, calm and data-first. */
+:root {
+  --role-kitchen: #a35208;
+  --role-manager: #2d63a8;
+}
+html[data-role="kitchen"]:not(.dark) {
+  --background: #fbf7ee;
+  --card: #fffdf7;
+  --popover: #fffdf7;
+  --primary: #a35208;
+  --ring: #a35208;
+  --primary-2: #d98a1f;
+  --accent: #fbe9d2;
+  --accent-foreground: #7a3d06;
+  --sidebar: #f5ecdd;
+  --sidebar-accent: #f8e3c6;
+  --sidebar-accent-foreground: #7a3d06;
+  --hero: #2b1d0c;
+}
+html.dark[data-role="kitchen"] {
+  --background: #0b0a08;
+  --card: #15120d;
+  --popover: #1b1711;
+  --primary: #f0a24a;
+  --primary-foreground: #0b0a08;
+  --ring: #f0a24a;
+  --primary-2: #f6bd6e;
+  --accent: #2b1d0b;
+  --accent-foreground: #ffd9a8;
+  --sidebar: #080705;
+  --sidebar-accent: #24180a;
+  --sidebar-accent-foreground: #ffd9a8;
+  --hero: #19140c;
+}
+html[data-role="kitchen"][data-text="standard"] { font-size: 17px; }
+html[data-role="manager"]:not(.dark) {
+  --background: #f5f7fa;
+  --foreground: #18202b;
+  --card: #ffffff;
+  --card-foreground: #18202b;
+  --popover: #ffffff;
+  --popover-foreground: #18202b;
+  --primary: #2d63a8;
+  --primary-foreground: #ffffff;
+  --ring: #2d63a8;
+  --primary-2: #4f8fd6;
+  --secondary: #eef1f5;
+  --secondary-foreground: #18202b;
+  --muted: #eef1f5;
+  --muted-foreground: #566170;
+  --accent: #e2ecf8;
+  --accent-foreground: #1d4477;
+  --border: #e1e6ed;
+  --input: #d5dce5;
+  --sidebar: #eef2f7;
+  --sidebar-foreground: #18202b;
+  --sidebar-accent: #e2ecf8;
+  --sidebar-accent-foreground: #1d4477;
+  --sidebar-border: #e1e6ed;
+  --hero: #18202b;
+  --hero-foreground: #f5f7fa;
+}
+html.dark[data-role="manager"] {
+  --background: #090b0e;
+  --foreground: #eef2f7;
+  --card: #11151a;
+  --card-foreground: #eef2f7;
+  --popover: #161b21;
+  --popover-foreground: #eef2f7;
+  --primary: #6aa6f0;
+  --primary-foreground: #090b0e;
+  --ring: #6aa6f0;
+  --primary-2: #8fbcf4;
+  --secondary: #171c23;
+  --secondary-foreground: #eef2f7;
+  --muted: #151a20;
+  --muted-foreground: #98a3b1;
+  --accent: #13233a;
+  --accent-foreground: #cfe2fb;
+  --sidebar: #07090b;
+  --sidebar-foreground: #eef2f7;
+  --sidebar-accent: #122033;
+  --sidebar-accent-foreground: #cfe2fb;
+  --hero: #121820;
+  --hero-foreground: #eef2f7;
+}
+
 /* ---- Comfort & access (set from the settings panel via data attributes on <html>) ---- */
 
 /* Text size: everything is in rem, so the whole interface, tap targets included, scales. */
@@ -202,7 +295,7 @@ html[data-font="readable"] body * {
 }
 
 /* High contrast: darker ink, stronger borders and focus, no faded text. */
-html[data-contrast="high"] {
+html[data-contrast="high"]:not(.dark) {
   --foreground: #1a110c;
   --muted-foreground: #3d2c22;
   --border: #8a7464;
@@ -220,8 +313,8 @@ html[data-contrast="high"].dark {
   --primary: #ff8a66;
   --primary-foreground: #1a110c;
   --ring: #ffffff;
-  --card: #1f1611;
-  --background: #140e0b;
+  --card: #121110;
+  --background: #000000;
 }
 html[data-contrast="high"] :focus-visible { outline: 3px solid var(--ring) !important; outline-offset: 2px; }
 
@@ -237,3 +330,6 @@ html[data-motion="reduce"] *::after {
 /* Visual alert for Deaf and hard-of-hearing staff: the screen edge flashes on a new card. */
 @keyframes edge-flash { 0%, 100% { box-shadow: inset 0 0 0 0 transparent; } 30% { box-shadow: inset 0 0 0 6px var(--primary); } }
 .edge-flash { animation: edge-flash 0.9s ease-out 2; }
+
+/* In the dark theme, raised panels get a hairline edge so near-black layers stay distinct. */
+.dark .bg-hero { box-shadow: inset 0 0 0 1px var(--border); }

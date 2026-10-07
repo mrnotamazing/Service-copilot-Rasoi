@@ -6,7 +6,6 @@
 import { newId, type FiredLine, type IncomingEvent } from '../shared/events.ts'
 import type { SimStatus } from '../shared/snapshot.ts'
 import type { Course, TableState } from '../shared/types.ts'
-import { istServiceStart } from '../shared/time.ts'
 import type { Hub } from './hub.ts'
 
 const MIN = 60_000
@@ -63,8 +62,9 @@ export class Simulator {
   start() {
     if (this.running) return
     if (this.startedAt === null) {
-      // Start the evening at 19:00 IST today (service time), whatever timezone the machine is in.
-      this.hub.clock.set(Math.max(istServiceStart(Date.now()), this.hub.events.at(-1)?.at ?? 0))
+      // Service starts now, in real time, so the app's clocks match the wall clock (IST is applied
+      // when times are shown). At a demo speed above 1× service time runs ahead; clocks stay real.
+      this.hub.clock.set(Math.max(Date.now(), this.hub.events.at(-1)?.at ?? 0))
       this.startedAt = this.hub.clock.now()
       this.nextArrival = this.startedAt + 0.2 * MIN
     }

@@ -14,10 +14,12 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { clock, mmss } from '../lib/format.ts'
 import { act, noteId, post, useSnapshot } from '../lib/live.ts'
+import { useRolePage } from '../lib/role.ts'
 
 const FLOOR = '__floor'
 
 export default function KitchenView() {
+  useRolePage({ kind: 'kitchen' })
   const { snap, connected } = useSnapshot('kitchen')
   const [text, setText] = useState('')
   const [table, setTable] = useState(FLOOR)

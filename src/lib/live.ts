@@ -1,5 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { Role, Snapshot } from '../../shared/snapshot.ts'
+import type { Staff } from '../../shared/types.ts'
+
+// The staff list from the latest snapshot, shared with the "signed in as" switcher on every screen.
+let staffList: Staff[] = []
+const staffListeners = new Set<() => void>()
+function rememberStaff(snap: Snapshot) {
+  if (JSON.stringify(snap.config.staff) === JSON.stringify(staffList)) return
+  staffList = snap.config.staff
+  for (const l of staffListeners) l()
+}
+export function useStaffList(): Staff[] {
+  return useSyncExternalStore(
+    (l) => {
+      staffListeners.add(l)
+      return () => staffListeners.delete(l)
+    },
+    () => staffList,
+  )
+}
 
 /** Built as a self-contained demo (no server): everything runs in the page. */
 export const STANDALONE = import.meta.env.VITE_STANDALONE === '1'
@@ -13,7 +32,11 @@ export function useSnapshot(role: Role, staffId?: string): { snap: Snapshot | nu
 
   useEffect(() => {
     if (local) {
-      const push = () => setSnap(structuredClone(local.localApi.snapshot(role, staffId)))
+      const push = () => {
+        const next = structuredClone(local.localApi.snapshot(role, staffId))
+        rememberStaff(next)
+        setSnap(next)
+      }
       push()
       setConnected(true)
       let queued = false
@@ -42,7 +65,11 @@ export function useSnapshot(role: Role, staffId?: string): { snap: Snapshot | nu
         retry.current = 0
         setConnected(true)
       }
-      ws.onmessage = (m) => setSnap(JSON.parse(m.data as string) as Snapshot)
+      ws.onmessage = (m) => {
+        const next = JSON.parse(m.data as string) as Snapshot
+        rememberStaff(next)
+        setSnap(next)
+      }
       ws.onclose = () => {
         setConnected(false)
         if (closed) return

@@ -117,6 +117,14 @@ Built on the research about motivating without controlling (see `shared/game.ts`
 - **Voice**: a pronunciation guide for dishes (`src/lib/pronounce.ts`), speech-friendly text ("T3" → "Table 3", "2×" → "2"), the most natural voice on the device (choose one in Language & accessibility), read sentence by sentence.
 - **IST everywhere**: service starts at 7:00 pm IST and every clock shows IST, whatever timezone the server or device is in (`shared/time.ts`).
 
+## Roles, profiles and themes
+
+- **Signed in as** (bottom of the sidebar, or the Profile tab on a phone): switch the device between a server's app, the kitchen display and the manager console. Each role has its own home, navigation and colours: servers tomato, kitchen saffron with larger type, manager a cool blue-grey (`src/lib/role.ts`, `html[data-role]` in `src/index.css`).
+- **Profiles**: each server can upload a photo (cropped and shrunk on the device), pick an illustrated avatar and colour, change their display name, set pronouns and list the languages they speak (`src/components/ProfileEditor.tsx`, validated by `shared/profile.ts`).
+- **True dark theme**: near-black surfaces with hairline edges; reactions and icons are vector, so they look the same on every phone.
+- **Wrap up my shift**: a private debrief — where your time went step by step against the standard, your strongest step, the one to work on, safety catches, tables won back, and one tip from the coach.
+- **Time**: clocks show the real time in IST; a new simulated service starts now.
+
 ## Inclusive by design
 
 Each server sets these up for themselves from the **Comfort & access** button (the accessibility icon in the header). Settings are saved on the device (`src/lib/prefs.ts`).

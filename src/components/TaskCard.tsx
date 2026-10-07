@@ -2,7 +2,7 @@ import { ArrowRight, BellRing, Check, ChefHat, HeartHandshake, ShieldAlert, Circ
 import { motion, useMotionValue, useTransform } from 'motion/react'
 import { forwardRef, useState } from 'react'
 import { toast } from 'sonner'
-import type { RelatedTask, Task, TaskAction, TaskKind } from '../../shared/types.ts'
+import type { Mood, RelatedTask, Task, TaskAction, TaskKind } from '../../shared/types.ts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -15,6 +15,7 @@ import { act } from '../lib/live.ts'
 import { usePrefs } from '../lib/prefs.ts'
 import { speakTask } from '../lib/speech.ts'
 import { AiAnswerBox } from './AiAnswer.tsx'
+import { MOOD_TONE, Reaction } from './Reaction.tsx'
 
 const ICON: Record<TaskKind, typeof Hand> = {
   greet: Hand,
@@ -34,7 +35,6 @@ const ICON: Record<TaskKind, typeof Hand> = {
 }
 
 /** Check-ins double as a mood read: one tap, three faces. */
-const MOOD_FACE: Record<string, string> = { happy: '😊', ok: '😐', unhappy: '😟' }
 
 /** Cards where the server talks to a guest: offer a suggested line. */
 const GUEST_FACING: TaskKind[] = ['greet', 'kitchen_delay', 'unavailable', 'farewell', 'recovery']
@@ -181,14 +181,25 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
         <div className="mt-4" role="group" aria-label={t('card.mood')}>
           <div className="mb-1.5 text-xs font-medium text-muted-foreground">{t('card.mood')}</div>
           <div className="grid grid-cols-3 gap-2">
-            {task.actions.map((a) => (
-              <Button key={a.label} size="lg" disabled={busy} variant={a.primary ? 'default' : 'secondary'} className="h-12 flex-col gap-0 text-xs font-semibold" onClick={() => run(a.event, a.payload)}>
-                <span className="text-lg leading-none" aria-hidden>
-                  {MOOD_FACE[String(a.payload.mood)]}
-                </span>
-                {words.action(a)}
-              </Button>
-            ))}
+            {task.actions.map((a) => {
+              const mood = a.payload.mood as Mood
+              return (
+                <button
+                  key={a.label}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => run(a.event, a.payload)}
+                  className={cn(
+                    'flex h-16 flex-col items-center justify-center gap-1 rounded-xl border bg-background text-xs font-semibold transition-colors hover:bg-accent disabled:opacity-50',
+                    MOOD_TONE[mood],
+                    a.primary && 'border-good/40 bg-good/8',
+                  )}
+                >
+                  <Reaction mood={mood} filled className="size-7" />
+                  <span className="text-foreground">{words.action(a)}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
       ) : null}

@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { useAi } from '../lib/ai.ts'
 import { clock } from '../lib/format.ts'
 import { act, useSnapshot } from '../lib/live.ts'
+import { useRolePage } from '../lib/role.ts'
 
 const OWNER_COLOR: Record<Owner, string> = {
   floor: 'var(--floor-mark)',
@@ -27,6 +28,7 @@ function Heading({ children }: { children: React.ReactNode }) {
 }
 
 export default function ManagerView() {
+  useRolePage({ kind: 'manager' })
   const { snap, connected } = useSnapshot('manager')
   const summary = useAi()
   if (!snap || !snap.analytics) return <ShellSkeleton />

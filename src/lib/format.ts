@@ -1,4 +1,15 @@
+import { useEffect, useState } from 'react'
 import { istClock } from '../../shared/time.ts'
+
+/** The real time now, ticking every 10 seconds. Clocks show this, not the (possibly sped-up) demo service time. */
+export function useWallClock(): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10_000)
+    return () => clearInterval(id)
+  }, [])
+  return now
+}
 
 /** Wall-clock time in IST (the restaurant's time), e.g. "8:24 pm". */
 export function clock(ms: number): string {

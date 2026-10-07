@@ -2,15 +2,19 @@ import { ArrowRight, BookOpen, ChefHat, HeartHandshake, LayoutDashboard, Play, S
 import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import { Mascot } from '../brand/marks.tsx'
+import { Avatar } from '../components/Avatar.tsx'
 import { AppShell, LiveClock, SectionTitle, ShellSkeleton } from '../components/kit.tsx'
+import { SPOKEN } from '../../shared/profile.ts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { useT, type Key } from '../i18n/index.ts'
 import { en } from '../i18n/en.ts'
 import { post, useSnapshot } from '../lib/live.ts'
+import { useRolePage } from '../lib/role.ts'
 
 export default function Home() {
+  useRolePage(null)
   const { snap, connected } = useSnapshot('kitchen')
   const t = useT()
   if (!snap) return <ShellSkeleton />
@@ -67,15 +71,16 @@ export default function Home() {
           return (
             <Link key={s.id} to={`/server/${s.id}`} className="group flex flex-col rounded-2xl border bg-card p-4 transition-shadow hover:shadow-md hover:ring-1 hover:ring-primary/40">
               <div className="flex items-center gap-3">
-                <span className="grid size-11 place-items-center rounded-full font-display text-lg text-white" style={{ background: s.color }} aria-hidden>
-                  {s.name[0]}
-                </span>
+                <Avatar staff={s} className="size-11 text-lg" />
                 <div className="min-w-0">
                   <div className="font-medium">
                     {s.name}
                     {s.pronouns && <span className="ml-1 text-xs font-normal text-muted-foreground">({s.pronouns})</span>}
                   </div>
                   <div className="text-xs text-muted-foreground">{t('home.section', { s: sectionOf(s.id) ?? '' })}</div>
+                  {s.languages?.length ? (
+                    <div className="mt-0.5 truncate text-xs text-muted-foreground">{t('profile.speaks', { list: s.languages.map((l) => SPOKEN.find((x) => x.id === l)?.native ?? l).join(', ') })}</div>
+                  ) : null}
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">

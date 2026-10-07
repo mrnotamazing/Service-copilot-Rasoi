@@ -8,6 +8,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, D
 import { cn } from '@/lib/utils'
 import { useT } from '../i18n/index.ts'
 import { haptic } from '../lib/haptics.ts'
+import { Avatar } from './Avatar.tsx'
 import { usePrefs } from '../lib/prefs.ts'
 
 /** Award words in the device's language (older awards without keys keep their English). */
@@ -25,7 +26,7 @@ export function useAwardText() {
 export const BADGE_ICONS: Record<string, typeof Hand> = { Hand, Sun, ShieldCheck, Megaphone, Flame, Timer, Sparkles, HeartHandshake, Crown }
 
 /** Avatar wrapped in a ring that fills toward the next rank. */
-export function LevelRing({ name, color, progress, level, size = 44 }: { name: string; color: string; progress: number; level: number; size?: number }) {
+export function LevelRing({ name, color, avatar, progress, level, size = 44 }: { name: string; color: string; avatar?: string; progress: number; level: number; size?: number }) {
   const r = size / 2 - 3
   const c = 2 * Math.PI * r
   return (
@@ -45,9 +46,7 @@ export function LevelRing({ name, color, progress, level, size = 44 }: { name: s
           style={{ transition: 'stroke-dasharray .8s cubic-bezier(.2,.8,.2,1)' }}
         />
       </svg>
-      <span className="absolute inset-[5px] grid place-items-center rounded-full font-display text-base text-white" style={{ background: color }}>
-        {name[0]}
-      </span>
+      <Avatar staff={{ name, color, avatar }} className="absolute inset-[5px] text-base" />
       <span className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full border-2 border-background bg-primary text-[10px] font-bold text-primary-foreground tabular">
         {level}
       </span>

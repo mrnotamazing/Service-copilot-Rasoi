@@ -3,7 +3,7 @@
 // copilot always works. The copilot builds the facts; Dify only phrases them.
 
 import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
-import { analytics } from '../shared/engine.ts'
+import { analytics, segmentsFor } from '../shared/engine.ts'
 import { SCENARIOS, scoreReply } from '../shared/practice.ts'
 import { predictReady } from '../shared/predict.ts'
 import type { Hub } from './hub.ts'
@@ -107,7 +107,11 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
         }
       }
       case 'coach': {
-        const mine = hub.state.visits.filter((v) => v.serverId === req.staffId)
+        // Finished tables plus steps already done at tables still being served.
+        const live = Object.values(hub.state.tables)
+          .filter((t) => t.serverId === req.staffId && t.visitId)
+          .map((t) => ({ ...liveVisit(t, cfg) }))
+        const mine = [...hub.state.visits.filter((v) => v.serverId === req.staffId), ...live]
         const facts = coachFacts(mine, cfg)
         return {
           prompt:
@@ -240,13 +244,31 @@ function stageStats(visits: VisitRecord[]) {
   }).filter((x) => x.n > 0)
 }
 
+/** A table still being served, shaped like a finished visit so the coach can learn from it. */
+function liveVisit(t: TableState, cfg: RestaurantConfig): VisitRecord {
+  const segments = segmentsFor(t, cfg)
+  return {
+    visitId: t.visitId!,
+    tableId: t.id,
+    tableName: t.name,
+    serverId: t.serverId,
+    partySize: t.party?.size ?? 0,
+    seatedAt: t.seatedAt ?? 0,
+    endedAt: 0,
+    segments,
+    smooth: false,
+    mood: t.mood?.value,
+    recovered: t.mood?.value === 'unhappy' ? !!t.recoveredAt : undefined,
+  }
+}
+
 const mmss = (min: number) => `${Math.floor(min)}:${String(Math.round((min % 1) * 60)).padStart(2, '0')}`
 
 function coachFacts(visits: VisitRecord[], cfg: RestaurantConfig): string[] {
   void cfg
   const moods = visits.filter((v) => v.mood)
   return [
-    `- Tables served tonight: ${visits.length}; fully to standard: ${visits.filter((v) => v.smooth).length}`,
+    `- Tables finished tonight: ${visits.filter((v) => v.endedAt > 0).length}; fully to standard: ${visits.filter((v) => v.smooth).length}`,
     ...stageStats(visits).map((s) => `- ${STAGE_WORDS[s.stage].name}: average ${mmss(s.avg)} vs standard ${mmss(s.target)}, ${s.lapses} of ${s.n} past standard`),
     moods.length ? `- Guest mood at check-ins: ${moods.filter((v) => v.mood === 'happy').length} happy of ${moods.length}; unhappy tables won back: ${visits.filter((v) => v.recovered).length}` : '',
   ].filter(Boolean)
@@ -254,16 +276,17 @@ function coachFacts(visits: VisitRecord[], cfg: RestaurantConfig): string[] {
 
 function coachFallback(visits: VisitRecord[], cfg: RestaurantConfig): string {
   void cfg
-  if (!visits.length) return 'Finish a table or two and I’ll have a tip for you. Kitchen delays never count against you here.'
+  if (!stageStats(visits).length) return 'Finish a table or two and I’ll have a tip for you. Kitchen delays never count against you here.'
   const stats = stageStats(visits)
-  const best = [...stats].sort((a, b) => a.lapses / a.n - b.lapses / b.n || a.avg / a.target - b.avg / b.target)[0]
+  const finished = visits.filter((v) => v.endedAt > 0)
+  const best = [...stats].filter((s) => s.avg <= s.target).sort((a, b) => a.lapses / a.n - b.lapses / b.n || a.avg / a.target - b.avg / b.target)[0]
   const focus = [...stats].filter((s) => s.lapses > 0).sort((a, b) => b.lapses / b.n - a.lapses / a.n)[0]
   const lines = [
     best ? `What went well: your ${STAGE_WORDS[best.stage].name} averaged ${mmss(best.avg)} against a ${mmss(best.target)} standard.` : '',
     focus && focus !== best
       ? `One thing to try: ${STAGE_WORDS[focus.stage].name} ran past standard on ${focus.lapses} of ${focus.n} tables. ${STAGE_WORDS[focus.stage].tip}`
       : 'One thing to try: keep doing exactly this, and use the “Coming up” list to get one step ahead.',
-    `${visits.filter((v) => v.smooth).length} of ${visits.length} tables went fully to standard. Kitchen delays aren’t counted against you.`,
+    finished.length ? `${finished.filter((v) => v.smooth).length} of ${finished.length} finished tables went fully to standard. Kitchen delays aren’t counted against you.` : 'Kitchen delays aren’t counted against you.',
   ]
   return lines.filter(Boolean).join('\n')
 }

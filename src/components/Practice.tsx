@@ -1,4 +1,4 @@
-import { ChevronLeft, Drama, Loader2, Mic, RotateCcw, Send, Star, Volume2 } from 'lucide-react'
+import { ChevronLeft, CircleCheck, Drama, Lightbulb, Loader2, Mic, RotateCcw, Send, Star, Volume2 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { AiAnswer, PracticeTurn } from '../../server/ai.ts'
@@ -137,9 +137,22 @@ export function PracticeDrawer({ open, onOpenChange }: { open: boolean; onOpenCh
                           ))}
                         </div>
                       ) : null}
-                      <p className="whitespace-pre-line leading-relaxed" lang={source === 'built-in' ? 'en' : undefined}>
-                        {turn.feedback}
-                      </p>
+                      <ul className="space-y-1 leading-relaxed" lang={source === 'built-in' ? 'en' : undefined}>
+                        {turn.feedback
+                          .split('\n')
+                          .filter(Boolean)
+                          .map((line, j) => {
+                            const good = line.startsWith('✓')
+                            const tip = line.startsWith('→')
+                            const Icon = good ? CircleCheck : tip ? Lightbulb : null
+                            return (
+                              <li key={j} className="flex items-start gap-1.5">
+                                {Icon && <Icon className={cn('mt-0.5 size-4 shrink-0', good ? 'text-good' : 'text-primary')} aria-hidden />}
+                                <span>{good || tip ? line.slice(1).trim() : line}</span>
+                              </li>
+                            )
+                          })}
+                      </ul>
                     </div>
                   )}
                 </motion.div>
