@@ -1,7 +1,7 @@
-import { AlertTriangle, ChefHat, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { AlertTriangle, ChefHat, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
-import { AppHeader, LiveClock, Loading, PanelTitle, Stat, TableTile } from '../components/kit.tsx'
+import { AppShell, LiveClock, ShellSkeleton, PanelTitle, Stat, TableTile } from '../components/kit.tsx'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,7 +29,7 @@ function Heading({ children }: { children: React.ReactNode }) {
 export default function ManagerView() {
   const { snap, connected } = useSnapshot('manager')
   const summary = useAi()
-  if (!snap || !snap.analytics) return <Loading />
+  if (!snap || !snap.analytics) return <ShellSkeleton />
   const a = snap.analytics
   const name = (id: string) => snap.config.staff.find((s) => s.id === id)?.name ?? id
   const color = (id: string) => snap.config.staff.find((s) => s.id === id)?.color
@@ -37,9 +37,8 @@ export default function ManagerView() {
   const maxMin = Math.max(1, ...a.stages.map((s) => Math.max(s.avgMin, s.avgTargetMin)))
 
   return (
-    <div className="min-h-screen pb-12">
-      <AppHeader title="Service overview" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />} />
-      <main id="main" className="mx-auto max-w-6xl space-y-5 px-4 py-5">
+    <AppShell title="Service overview" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />}>
+      <div className="space-y-5">
         <Alert>
           <ShieldCheck className="text-good" />
           <AlertDescription>
@@ -53,6 +52,39 @@ export default function ManagerView() {
           <Stat label="Floor lapses" value={a.lapsesByOwner.floor} sub={lapses ? `${Math.round((a.lapsesByOwner.floor / lapses) * 100)}% of all lapses` : 'none yet'} />
           <Stat label="Kitchen lapses" value={a.lapsesByOwner.kitchen} sub={lapses ? `${Math.round((a.lapsesByOwner.kitchen / lapses) * 100)}% of all lapses` : 'none yet'} />
         </div>
+
+        <Card>
+          <CardHeader>
+            <Heading>Team goal and recognition</Heading>
+            <CardDescription>Shared by the whole floor. Individual XP and badges stay on each server’s phone.</CardDescription>
+            <CardAction>
+              <Users className="size-4 text-muted-foreground" />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-5 md:grid-cols-[1fr_1.4fr]">
+            <div>
+              <div className="flex items-baseline justify-between text-sm">
+                <span>Tables served fully to standard</span>
+                <span className="font-display text-2xl tabular">
+                  {Math.min(snap.team.smooth, snap.team.goal)}
+                  <span className="text-base text-muted-foreground">/{snap.team.goal}</span>
+                </span>
+              </div>
+              <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-2 h-2" aria-label="Team goal progress" />
+            </div>
+            <ul className="space-y-1.5">
+              {snap.team.kudos.length === 0 && <li className="text-sm text-muted-foreground">Kudos staff send each other appear here.</li>}
+              {snap.team.kudos.slice(0, 4).map((k) => (
+                <li key={k.id} className="flex items-center gap-2 text-sm">
+                  <HeartHandshake className="size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 truncate">
+                    <b className="font-medium">{name(k.from)}</b> thanked <b className="font-medium">{name(k.to)}</b>: {k.reason}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -211,8 +243,8 @@ export default function ManagerView() {
             <Legend />
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   )
 }
 

@@ -2,7 +2,7 @@ import { Pause, Play, RotateCcw, Sparkles } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type { Sop } from '../../shared/types.ts'
-import { AppHeader, LiveClock, Loading } from '../components/kit.tsx'
+import { AppShell, LiveClock, ShellSkeleton } from '../components/kit.tsx'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,15 +40,14 @@ export default function SetupView() {
     if (snap && !sop) setSop(snap.config.sop)
   }, [snap, sop])
 
-  if (!snap || !sop) return <Loading />
+  if (!snap || !sop) return <ShellSkeleton />
   const sim = snap.sim
   const servers = snap.config.staff.filter((s) => s.role === 'server')
   const dify = snap.ai.provider === 'dify'
 
   return (
-    <div className="min-h-screen pb-12">
-      <AppHeader title="Setup" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />} />
-      <main id="main" className="mx-auto grid max-w-6xl gap-5 px-4 py-5 lg:grid-cols-2">
+    <AppShell title="Setup" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />}>
+      <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <Heading>Service simulator</Heading>
@@ -223,7 +222,7 @@ export default function SetupView() {
             ))}
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   )
 }

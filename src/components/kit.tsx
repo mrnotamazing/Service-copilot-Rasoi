@@ -1,4 +1,4 @@
-import { CakeSlice, HeartPulse, Monitor, Moon, Star, Sun, UtensilsCrossed } from 'lucide-react'
+import { BookOpen, CakeSlice, ChefHat, HeartPulse, LayoutDashboard, Monitor, Moon, Settings, Star, Sun, Users, UtensilsCrossed } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
@@ -18,56 +18,6 @@ export function Brand() {
         Rasoi <span className="text-muted-foreground">Copilot</span>
       </span>
     </Link>
-  )
-}
-
-const NAV = [
-  { to: '/manager', label: 'Overview' },
-  { to: '/kitchen', label: 'Kitchen' },
-  { to: '/setup', label: 'Setup' },
-  { to: '/about', label: 'How it works' },
-]
-
-function NavLinks({ className }: { className?: string }) {
-  return (
-    <nav aria-label="Screens" className={className}>
-      {NAV.map((n) => (
-        <NavLink
-          key={n.to}
-          to={n.to}
-          className={({ isActive }) =>
-            cn('shrink-0 rounded-md px-2.5 py-1 text-sm transition-colors', isActive ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground')
-          }
-        >
-          {n.label}
-        </NavLink>
-      ))}
-    </nav>
-  )
-}
-
-export function AppHeader({ title, sub, right, nav = true }: { title?: ReactNode; sub?: ReactNode; right?: ReactNode; nav?: boolean }) {
-  return (
-    <header className="sticky top-[env(safe-area-inset-top,0px)] z-20 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-2 focus:z-30 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
-        Skip to main content
-      </a>
-      <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5">
-        <Brand />
-        {nav && <NavLinks className="ml-2 hidden items-center gap-1 md:flex" />}
-        <div className="ml-auto flex items-center gap-2">
-          {right}
-          <ThemeToggle />
-        </div>
-      </div>
-      {nav && <NavLinks className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-2 md:hidden" />}
-      {(title || sub) && (
-        <div className="mx-auto max-w-6xl px-4 pb-3">
-          {title && <h1 className="font-display text-2xl leading-tight">{title}</h1>}
-          {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
-        </div>
-      )}
-    </header>
   )
 }
 
@@ -181,18 +131,118 @@ export function Stat({ label, value, sub, className }: { label: string; value: R
   )
 }
 
-export function Loading() {
-  return (
-    <div className="grid min-h-screen place-items-center">
-      <div className="flex items-center gap-3 text-muted-foreground">
-        <span className="size-2 rounded-full bg-primary pulse-soft" />
-        Connecting to service…
-      </div>
-    </div>
-  )
-}
 
 /** Heading inside a card: sentence case, quiet, never a tracked-out all-caps label. */
 export function PanelTitle({ children, className }: { children: ReactNode; className?: string }) {
   return <h2 className={cn('font-sans text-sm font-medium', className)}>{children}</h2>
+}
+
+const SHELL_NAV = [
+  { to: '/', label: 'Floor staff', Icon: Users, end: true },
+  { to: '/manager', label: 'Overview', Icon: LayoutDashboard },
+  { to: '/kitchen', label: 'Kitchen', Icon: ChefHat },
+  { to: '/setup', label: 'Setup', Icon: Settings },
+  { to: '/about', label: 'How it works', Icon: BookOpen },
+]
+
+/**
+ * The frame every non-phone screen lives in: a sidebar on desktop, a top bar and
+ * bottom tabs on phones, so it navigates like an installed app rather than a website.
+ */
+export function AppShell({ title, sub, right, children, wide = true, bare = false }: { title?: ReactNode; sub?: ReactNode; right?: ReactNode; children: ReactNode; wide?: boolean; bare?: boolean }) {
+  return (
+    <div className="min-h-dvh md:grid md:grid-cols-[232px_1fr]">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
+        Skip to main content
+      </a>
+      <aside className="sticky top-0 hidden h-dvh flex-col border-r bg-sidebar px-3 py-4 md:flex">
+        <div className="px-2">
+          <Brand />
+        </div>
+        <nav aria-label="Screens" className="mt-6 grid gap-0.5">
+          {SHELL_NAV.map(({ to, label, Icon, end }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors',
+                  isActive ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
+                )
+              }
+            >
+              <Icon className="size-4" />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="mt-auto flex items-center justify-between rounded-xl border bg-background/60 px-3 py-2">
+          <span className="text-xs text-muted-foreground">Saffron House</span>
+          <ThemeToggle />
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-col pb-[calc(env(safe-area-inset-bottom,0px)+64px)] md:pb-0">
+        <header className="sticky top-0 z-20 border-b bg-background/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/70">
+          <div className={cn('mx-auto flex items-center gap-3 px-4 py-3 md:px-8', wide ? 'max-w-6xl' : 'max-w-3xl')}>
+            <div className="md:hidden">
+              <Brand />
+            </div>
+            <div className="hidden min-w-0 md:block">
+              {title && <h1 className="truncate font-display text-xl leading-tight">{title}</h1>}
+              {sub && <p className="truncate text-xs text-muted-foreground">{sub}</p>}
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              {right}
+              <span className="md:hidden">
+                <ThemeToggle />
+              </span>
+            </div>
+          </div>
+        </header>
+        {title && (
+          <div className="mx-auto w-full max-w-6xl px-4 pt-4 md:hidden">
+            <h1 className="font-display text-2xl leading-tight">{title}</h1>
+            {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
+          </div>
+        )}
+        <main id="main" className={cn('w-full flex-1', !bare && 'mx-auto px-4 py-5 md:px-8 md:py-8', !bare && (wide ? 'max-w-6xl' : 'max-w-3xl'))}>
+          {children}
+        </main>
+      </div>
+
+      <nav aria-label="Screens" className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t bg-background/95 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pt-1.5 backdrop-blur md:hidden">
+        {SHELL_NAV.map(({ to, label, Icon, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            className={({ isActive }) => cn('flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium', isActive ? 'text-primary' : 'text-muted-foreground')}
+          >
+            <Icon className="size-5" />
+            <span className="max-w-full truncate px-0.5">{label}</span>
+          </NavLink>
+        ))}
+      </nav>
+    </div>
+  )
+}
+
+/** Shown while the first snapshot arrives, in the shape of the page. */
+export function ShellSkeleton() {
+  return (
+    <div className="min-h-dvh md:grid md:grid-cols-[232px_1fr]" aria-busy="true" aria-label="Loading">
+      <div className="hidden border-r bg-sidebar md:block" />
+      <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 md:px-8">
+        <div className="h-7 w-48 animate-pulse rounded-md bg-muted" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
+          ))}
+        </div>
+        <div className="h-56 animate-pulse rounded-xl bg-muted" />
+      </div>
+    </div>
+  )
 }

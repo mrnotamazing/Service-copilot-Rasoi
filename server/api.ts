@@ -2,6 +2,7 @@
 // The Node server exposes it over HTTP/WebSocket; the browser demo calls it directly.
 
 import { analytics, staffStats, tasksFor } from '../shared/engine.ts'
+import { playerView, teamView } from '../shared/game.ts'
 import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
 import type { RestaurantConfig } from '../shared/types.ts'
@@ -37,6 +38,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       notes: hub.state.notes.slice(-40),
       sim: sim.status(),
       ai: { provider: ai.provider },
+      team: teamView(hub.game),
     }
     if (role === 'server' && staffId) {
       const { top, queued } = tasksFor(tasks, staffId)
@@ -48,6 +50,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
           queued,
           stats: staffStats(hub.state, hub.config).find((s) => s.staffId === staffId) ?? null,
           myVisits: hub.state.visits.filter((v) => v.serverId === staffId).slice(-10).reverse(),
+          game: playerView(hub.game, staffId),
         },
       }
     }

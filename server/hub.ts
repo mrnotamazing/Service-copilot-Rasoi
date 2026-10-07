@@ -4,6 +4,7 @@
 import { DEMO_CONFIG } from '../shared/config.ts'
 import { applyEvent, deriveTasks, initialState, type EngineState } from '../shared/engine.ts'
 import { EVENT_TYPES, newId, type CopilotEvent, type IncomingEvent } from '../shared/events.ts'
+import { afterEvent, beforeEvent, initialGame, type GameState } from '../shared/game.ts'
 import type { RestaurantConfig, Task } from '../shared/types.ts'
 import { Clock } from './clock.ts'
 
@@ -27,6 +28,7 @@ export const memoryStore = (): HubStore => ({
 export class Hub {
   config: RestaurantConfig
   state: EngineState
+  game: GameState
   events: CopilotEvent[] = []
   readonly clock = new Clock()
   private listeners = new Set<() => void>()
@@ -36,6 +38,7 @@ export class Hub {
     const saved = store.loadConfig()
     this.config = saved ? { ...DEMO_CONFIG, ...saved } : structuredClone(DEMO_CONFIG)
     this.state = initialState(this.config)
+    this.game = initialGame(this.config)
     for (const ev of store.loadEvents()) this.ingestStored(ev)
     const last = this.events.at(-1)
     if (last) this.clock.set(Math.max(last.at, Date.now()))
@@ -43,8 +46,16 @@ export class Hub {
 
   private ingestStored(ev: CopilotEvent) {
     this.events.push(ev)
-    applyEvent(this.state, ev, this.config)
+    this.apply(ev)
     this.track(ev)
+  }
+
+  /** Engine and game advance together; the game reads timings from the state before the event. */
+  private apply(ev: CopilotEvent) {
+    const closed = this.state.visits.length
+    beforeEvent(this.game, ev, this.state, this.config)
+    applyEvent(this.state, ev, this.config)
+    afterEvent(this.game, this.state.visits.slice(closed), this.config)
   }
 
   private track(ev: CopilotEvent) {
@@ -71,7 +82,7 @@ export class Hub {
       payload: input.payload,
     } as CopilotEvent
     this.events.push(ev)
-    applyEvent(this.state, ev, this.config)
+    this.apply(ev)
     this.track(ev)
     this.store.append(ev)
     this.emit()
@@ -87,6 +98,7 @@ export class Hub {
     this.events = []
     this.sourceStats.clear()
     this.state = initialState(this.config)
+    this.game = initialGame(this.config)
     this.store.clear()
     this.emit()
   }
@@ -96,7 +108,8 @@ export class Hub {
     this.store.saveConfig(this.config)
     // Rebuild from the log so SOP changes re-score history consistently.
     this.state = initialState(this.config)
-    for (const ev of this.events) applyEvent(this.state, ev, this.config)
+    this.game = initialGame(this.config)
+    for (const ev of this.events) this.apply(ev)
     this.emit()
   }
 

@@ -91,6 +91,18 @@ curl -X POST localhost:4000/api/events -H 'content-type: application/json' \
   -d '{"type":"table.seated","payload":{"tableId":"T3","partySize":4,"allergies":["nuts"]}}'
 ```
 
+## Gamification (private, cooperative)
+
+Built on the research about motivating without controlling (see `shared/game.ts`):
+
+- **XP** for every good move: swift welcomes, heads-ups before guests ask, food hot from the pass. Late steps still earn a little; nothing is ever taken away.
+- **Ranks**: Commis → Server → Senior server → Captain → Head waiter → Maître d’.
+- **Streaks with shields**: tables served fully to standard build a streak; every third earns a shield that absorbs one slip (streak freezes make streaks last far longer).
+- **Combo** for consecutive on-time actions, **badges** (several reachable in the first shift), and **three quests** per night.
+- **Team goal and kudos** instead of a leaderboard: competitive leaderboards lowered motivation in Hanus & Fox (2015); the social layer here is cooperative.
+- **Private**: XP, streaks and badges only reach the server’s own phone. Managers see the team goal and kudos.
+- **Feels like an app**: swipe cards right/left, haptics on wins, confetti for badges and ranks, onboarding, shift recap, bottom tabs, installable to the home screen.
+
 ## AI assistance (Dify)
 
 | Where | Button | AI writes |

@@ -1,9 +1,9 @@
-import { ArrowRight, ChefHat, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles } from 'lucide-react'
+import { ArrowRight, ChefHat, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, Users } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Task } from '../../shared/types.ts'
-import { AppHeader } from '../components/kit.tsx'
+import { AppShell } from '../components/kit.tsx'
 import { TaskCard } from '../components/TaskCard.tsx'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -52,9 +52,8 @@ export default function AboutView() {
   const cards = live.length ? live.slice(0, 2) : exampleTasks(now)
 
   return (
-    <div className="min-h-screen">
-      <AppHeader />
-      <main id="main">
+    <AppShell bare>
+      <>
         {/* Hero: the thesis, with the product itself as the image. */}
         <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-12 lg:grid-cols-[1.1fr_1fr] lg:pt-20">
           <div className="min-w-0">
@@ -207,6 +206,30 @@ export default function AboutView() {
           </div>
         </Section>
 
+        <Section title="Motivation without surveillance" lead="Service is a game servers already play: timing, reading the room, rescuing a table. The copilot keeps score for them, not on them.">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              [<Sparkles key="a" />, 'XP for every good move', 'A swift welcome, a heads-up before the guest asks, food hot from the pass. Late steps still earn a little: the game never takes points away.'],
+              [<Flame key="b" />, 'Streaks with shields', 'Tables served fully to standard build a streak. Every third earns a shield that absorbs one slip, so one bad moment doesn’t wipe the evening.'],
+              [<Trophy key="c" />, 'Ranks, badges and quests', 'Commis to Maître d’. Badges like Allergy guardian and Heads-up hero, some reachable in the first shift, and three small quests each night.'],
+              [<Users key="d" />, 'A team goal, not a leaderboard', 'The floor works toward one shared target. Staff thank each other with kudos, which earn XP for both and show on the team board.'],
+              [<Smartphone key="e" />, 'Feels like a real app', 'Swipe a card right when it’s done, left for later. A buzz on a win, a quick celebration for a badge, a shift recap at close. Installs to the home screen.'],
+              [<ShieldCheck key="f" />, 'Private by default', 'XP, streaks and badges live on the server’s own phone. Managers only see the team goal and kudos, never individual scores.'],
+            ].map(([icon, t, d]) => (
+              <div key={t as string} className="rounded-2xl border bg-card p-5">
+                <span className="text-primary [&_svg]:size-5">{icon}</span>
+                <h3 className="mt-2 font-medium">{t}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{d}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 max-w-[70ch] text-sm leading-relaxed text-muted-foreground">
+            Why this shape: points and levels on their own neither help nor harm intrinsic motivation (Mekler et al., 2017), while competitive leaderboards and badges lowered motivation and
+            performance in a semester-long study (Hanus &amp; Fox, 2015). Streak freezes make streaks last several times longer, and achievements that can be earned early keep new users
+            engaged (Duolingo; Trophy, 2026). So the design keeps the feedback, removes the comparison, and makes the social layer cooperative.
+          </p>
+        </Section>
+
         <Section title="Under the hood" lead="One event format in the middle, so any POS can plug in and every screen stays in sync.">
           <Architecture />
           <div className="mt-8 grid gap-3 md:grid-cols-3">
@@ -278,8 +301,10 @@ export default function AboutView() {
                 <li>Chung, B., &amp; Hoffman, K. D. (1998). Critical incidents: Service failures that matter most. <i>Cornell HRA Quarterly</i>, 39(3), 66–71.</li>
                 <li>Colquitt, J. A. (2001). On the dimensionality of organizational justice. <i>Journal of Applied Psychology</i>, 86(3), 386–400.</li>
                 <li>Deci, E. L., &amp; Ryan, R. M. (1985). <i>Intrinsic motivation and self-determination in human behavior</i>. Plenum.</li>
+                <li>Hanus, M. D., &amp; Fox, J. (2015). Assessing the effects of gamification in the classroom. <i>Computers &amp; Education</i>, 80, 152–161.</li>
                 <li>Kelley, H. H. (1967). Attribution theory in social psychology. <i>Nebraska Symposium on Motivation</i>, 15, 192–238.</li>
                 <li>Kluger, A. N., &amp; DeNisi, A. (1996). The effects of feedback interventions on performance. <i>Psychological Bulletin</i>, 119(2), 254–284.</li>
+                <li>Mekler, E. D., Brühlmann, F., Tuch, A. N., &amp; Opwis, K. (2017). Towards understanding the effects of individual gamification elements on intrinsic motivation and performance. <i>Computers in Human Behavior</i>, 71, 525–534.</li>
                 <li>Ravid, D. M., et al. (2020). EPM 2020: A review and meta-analysis of electronic performance monitoring. <i>Personnel Psychology</i>, 73(1), 1–56.</li>
                 <li>Rogers, E. M. (2003). <i>Diffusion of innovations</i> (5th ed.). Free Press.</li>
                 <li>Sweller, J. (1988). Cognitive load during problem solving. <i>Cognitive Science</i>, 12(2), 257–285.</li>
@@ -287,8 +312,8 @@ export default function AboutView() {
             </div>
           </div>
         </section>
-      </main>
-    </div>
+      </>
+    </AppShell>
   )
 }
 

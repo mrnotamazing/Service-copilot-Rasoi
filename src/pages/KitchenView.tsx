@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import type { OrderLine } from '../../shared/types.ts'
-import { AppHeader, LiveClock, Loading, PanelTitle } from '../components/kit.tsx'
+import { AppShell, LiveClock, ShellSkeleton, PanelTitle } from '../components/kit.tsx'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,7 +34,7 @@ export default function KitchenView() {
     return [...map.values()].sort((a, b) => a.lines[0].firedAt - b.lines[0].firedAt)
   }, [snap])
 
-  if (!snap) return <Loading />
+  if (!snap) return <ShellSkeleton />
   const allergyByTable = Object.fromEntries(snap.tables.filter((t) => t.party?.allergies.length).map((t) => [t.name, t.party!.allergies]))
   const fromFloor = snap.notes.filter((n) => n.direction === 'to_kitchen').slice(-12).reverse()
 
@@ -47,9 +47,8 @@ export default function KitchenView() {
   }
 
   return (
-    <div className="min-h-screen pb-12">
-      <AppHeader title="Kitchen pass" sub={`${tickets.length} open ${tickets.length === 1 ? 'ticket' : 'tickets'}`} right={<LiveClock now={snap.now} ok={connected} />} />
-      <main id="main" className="mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[1fr_340px]">
+    <AppShell title="Kitchen pass" sub={`${tickets.length} open ${tickets.length === 1 ? 'ticket' : 'tickets'}`} right={<LiveClock now={snap.now} ok={connected} />}>
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="grid content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {tickets.length === 0 && <div className="col-span-full rounded-2xl border border-dashed p-10 text-center text-muted-foreground">No open tickets. New orders appear here the moment they’re fired.</div>}
           <AnimatePresence mode="popLayout" initial={false}>
@@ -193,7 +192,7 @@ export default function KitchenView() {
             </label>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   )
 }
