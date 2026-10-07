@@ -91,7 +91,6 @@ curl -X POST localhost:4000/api/events -H 'content-type: application/json' \
 ## Run it
 
 ```bash
-cd service-copilot
 npm install
 npm run dev      # API on :4000, web app on :5173 (open on phones via your LAN IP)
 npm test         # engine tests
