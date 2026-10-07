@@ -1,4 +1,6 @@
 import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom'
+import { Toaster } from '@/components/ui/sonner'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { STANDALONE } from './lib/live.ts'
 import Home from './pages/Home.tsx'
 import KitchenView from './pages/KitchenView.tsx'
@@ -10,14 +12,17 @@ const Router = STANDALONE ? HashRouter : BrowserRouter
 
 export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/server/:staffId" element={<ServerView />} />
-        <Route path="/kitchen" element={<KitchenView />} />
-        <Route path="/manager" element={<ManagerView />} />
-        <Route path="/setup" element={<SetupView />} />
-      </Routes>
-    </Router>
+    <TooltipProvider delayDuration={300}>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/server/:staffId" element={<ServerView />} />
+          <Route path="/kitchen" element={<KitchenView />} />
+          <Route path="/manager" element={<ManagerView />} />
+          <Route path="/setup" element={<SetupView />} />
+        </Routes>
+      </Router>
+      <Toaster position="top-center" />
+    </TooltipProvider>
   )
 }

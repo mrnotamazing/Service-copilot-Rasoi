@@ -1,4 +1,7 @@
-# Service Copilot
+# Rasoi Service Copilot
+
+> **New here?** Start with [docs/getting-started.md](docs/getting-started.md): install, run and use it, step by step.
+> To turn on AI through Dify, see [docs/dify-setup.md](docs/dify-setup.md).
 
 An AI service copilot for fine-dining floor staff. It reads what the restaurant's
 POS already knows (tables seated, KOTs fired, food ready, bills printed and
@@ -87,6 +90,21 @@ curl -X POST localhost:4000/api/integrations/petpooja/dine-in -H 'content-type: 
 curl -X POST localhost:4000/api/events -H 'content-type: application/json' \
   -d '{"type":"table.seated","payload":{"tableId":"T3","partySize":4,"allergies":["nuts"]}}'
 ```
+
+## AI assistance (Dify)
+
+| Where | Button | AI writes |
+|---|---|---|
+| Guest-facing cards (greet, delay, dish unavailable, goodbye) | What do I say? | A gracious line to say at the table |
+| Server → Briefing | Brief me | Section rundown: allergies, regulars, occasions, kitchen delays |
+| Server → Ask | Ask | Answers from your SOP manual |
+| Manager | Summarise | The night's bottlenecks in plain English |
+
+The copilot builds the facts; Dify phrases them (`server/ai.ts`). Without Dify configured, or if it fails, a built-in writer answers instead, so the buttons always work.
+
+## Front end
+
+React 19 + Vite + Tailwind CSS v4, with [shadcn/ui](https://ui.shadcn.com) components (`src/components/ui`), [Motion](https://motion.dev) for card animations, [Sonner](https://sonner.emilkowal.ski) toasts and [Lucide](https://lucide.dev) icons. Light and dark themes (toggle in the header). Add more shadcn components with `npx shadcn@latest add <name>`.
 
 ## Run it
 

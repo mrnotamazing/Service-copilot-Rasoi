@@ -1,10 +1,18 @@
-import { Bell, BellRing, ChefHat, CircleDollarSign, Clock, Hand, HandPlatter, HeartPulse, MessageCircle, Sparkles, Utensils, UtensilsCrossed } from 'lucide-react'
-import { useState } from 'react'
+import { BellRing, ChefHat, CircleDollarSign, Clock, Hand, HandPlatter, HeartPulse, Loader2, MessageCircle, Sparkles, Utensils, UtensilsCrossed, Wand2 } from 'lucide-react'
+import { motion } from 'motion/react'
+import { forwardRef, useState } from 'react'
+import { toast } from 'sonner'
 import type { Task, TaskKind } from '../../shared/types.ts'
-import { act } from '../lib/live.ts'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
+import { useAi } from '../lib/ai.ts'
 import { mmss } from '../lib/format.ts'
+import { act } from '../lib/live.ts'
+import { AiAnswerBox } from './AiAnswer.tsx'
 
-const ICON: Record<TaskKind, typeof Bell> = {
+const ICON: Record<TaskKind, typeof Hand> = {
   greet: Hand,
   take_order: Utensils,
   allergy: HeartPulse,
@@ -19,9 +27,19 @@ const ICON: Record<TaskKind, typeof Bell> = {
   kitchen_message: BellRing,
 }
 
-export function TaskCard({ task, now, lead, staffId }: { task: Task; now: number; lead?: boolean; staffId: string }) {
+/** Cards where the server talks to a guest: offer a suggested line. */
+const GUEST_FACING: TaskKind[] = ['greet', 'kitchen_delay', 'unavailable', 'farewell']
+
+const DONE_TOAST: Partial<Record<string, string>> = {
+  'allergy.confirmed': 'Allergy sent to the kitchen',
+  'note.acked': 'Marked as seen',
+  'task.snoozed': 'Moved to later',
+}
+
+export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; lead?: boolean; staffId: string }>(function TaskCard({ task, now, lead, staffId }, ref) {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<Record<number, boolean>>({})
+  const ai = useAi()
   const Icon = ICON[task.kind]
   const left = task.dueAt - now
   const over = left < 0
@@ -32,63 +50,78 @@ export function TaskCard({ task, now, lead, staffId }: { task: Task; now: number
     setBusy(true)
     try {
       await act(event, event === 'task.snoozed' ? { ...payload, taskId: task.id, staffId } : payload)
+      const msg = DONE_TOAST[event]
+      if (msg) toast.success(msg)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save that. Check the connection and try again.')
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <article className={`card-in relative overflow-hidden rounded-2xl border bg-surface ${lead ? 'border-saffron/60 p-5' : 'border-line p-4'}`}>
-      {/* time-to-standard bar: fills toward the SOP time, warm amber once past it (never red) */}
-      <div className="absolute inset-x-0 top-0 h-1 bg-line">
-        <div className={`h-full transition-[width] duration-1000 ${over ? 'bg-warn' : 'bg-saffron/70'}`} style={{ width: `${frac * 100}%` }} />
+    <motion.article
+      ref={ref}
+      layout
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, x: 40, transition: { duration: 0.18 } }}
+      transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+      className={cn('relative overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-xs', lead ? 'border-primary/50 p-5 shadow-md shadow-primary/5' : 'p-4')}
+    >
+      {/* Time against the SOP standard: fills toward the deadline, turns amber after it (never red). */}
+      <div className="absolute inset-x-0 top-0 h-1 bg-muted" aria-hidden>
+        <div className={cn('h-full transition-[width] duration-1000', over ? 'bg-warn' : 'bg-primary/70')} style={{ width: `${frac * 100}%` }} />
       </div>
+
       <div className="flex items-start gap-3">
-        <div className={`grid shrink-0 place-items-center rounded-xl ${lead ? 'size-12 bg-saffron/15 text-saffron' : 'size-10 bg-raised text-muted'}`}>
+        <div className={cn('grid shrink-0 place-items-center rounded-xl', lead ? 'size-12 bg-primary/15 text-primary' : 'size-10 bg-muted text-muted-foreground')}>
           <Icon className={lead ? 'size-6' : 'size-5'} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-[11px] text-muted">
-            {task.tableName !== 'All' && <span className="rounded-md bg-raised px-1.5 py-0.5 font-semibold text-ink">{task.tableName}</span>}
-            <span className={`inline-flex items-center gap-1 ${over ? 'text-warn' : ''}`}>
+          <div className="flex flex-wrap items-center gap-2">
+            {task.tableName !== 'All' && <Badge variant="secondary" className="font-semibold">{task.tableName}</Badge>}
+            <span className={cn('inline-flex items-center gap-1 text-xs tabular', over ? 'text-warn' : 'text-muted-foreground')}>
               <Clock className="size-3" />
               {over ? `${mmss(left)} past standard` : `within ${mmss(left)}`}
             </span>
           </div>
-          <h3 className={`mt-1 font-semibold leading-snug ${lead ? 'text-lg' : 'text-base'}`}>{task.title}</h3>
-          <p className="mt-1 text-sm text-muted">{task.hint}</p>
+          <h3 className={cn('mt-1.5 font-semibold leading-snug', lead ? 'text-lg' : 'text-base')}>{task.title}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{task.hint}</p>
           {task.checklist && (
-            <ul className="mt-2 space-y-1">
+            <ul className="mt-3 grid gap-2">
               {task.checklist.map((c, i) => (
-                <li key={c}>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" className="size-4 accent-[var(--color-saffron)]" checked={!!done[i]} onChange={(e) => setDone({ ...done, [i]: e.target.checked })} />
-                    <span className={done[i] ? 'text-faint line-through' : ''}>{c}</span>
+                <li key={c} className="flex items-center gap-2.5 text-sm">
+                  <Checkbox id={`${task.id}-${i}`} checked={!!done[i]} onCheckedChange={(v) => setDone({ ...done, [i]: v === true })} />
+                  <label htmlFor={`${task.id}-${i}`} className={cn('cursor-pointer', done[i] && 'text-muted-foreground line-through')}>
+                    {c}
                   </label>
                 </li>
               ))}
             </ul>
           )}
+          <AiAnswerBox answer={ai.answer} error={ai.error} quote className="mt-3" />
         </div>
       </div>
-      <div className="mt-4 flex gap-2">
+
+      <div className="mt-4 flex flex-wrap gap-2">
         {task.actions.map((a) => (
-          <button
-            key={a.label}
-            type="button"
-            disabled={busy}
-            onClick={() => run(a.event, a.payload)}
-            className={`flex-1 rounded-xl py-3 text-sm font-semibold transition active:scale-[.98] disabled:opacity-50 ${a.primary ? 'bg-saffron text-bg hover:brightness-110' : 'bg-raised hover:bg-line'}`}
-          >
+          <Button key={a.label} size="lg" disabled={busy} variant={a.primary ? 'default' : 'secondary'} className="h-11 flex-1 text-sm font-semibold" onClick={() => run(a.event, a.payload)}>
             {a.label}
-          </button>
+          </Button>
         ))}
+        {GUEST_FACING.includes(task.kind) && ai.answer?.source !== 'built-in' && (
+          <Button size="lg" variant="outline" className="h-11" disabled={ai.loading} onClick={() => ai.ask('guest_script', { taskId: task.id, staffId })}>
+            {ai.loading ? <Loader2 className="animate-spin" /> : <Wand2 />}
+            {ai.answer ? 'Another line' : 'What do I say?'}
+          </Button>
+        )}
         {task.actions.every((a) => a.event !== 'task.snoozed') && (
-          <button type="button" disabled={busy} onClick={() => run('task.snoozed', { minutes: 2 })} className="rounded-xl px-4 py-3 text-sm text-muted hover:bg-raised hover:text-ink">
+          <Button size="lg" variant="ghost" className="h-11 text-muted-foreground" disabled={busy} onClick={() => run('task.snoozed', { minutes: 2 })}>
             Later
-          </button>
+          </Button>
         )}
       </div>
-    </article>
+    </motion.article>
   )
-}
+})

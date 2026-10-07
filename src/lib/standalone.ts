@@ -10,7 +10,8 @@ const sim = new Simulator(hub)
 export const localApi = createApi(hub, sim)
 export const onLocalChange = (fn: () => void) => hub.onChange(fn)
 
-export function localPost(path: string, body: ApiBody): unknown {
+export async function localPost(path: string, body: ApiBody): Promise<unknown> {
+  if (path === '/api/ai') return localApi.ask(body)
   const handled = localApi.post(path, body)
   if (!handled) throw new Error(`Not available in the demo: ${path}`)
   return handled.result

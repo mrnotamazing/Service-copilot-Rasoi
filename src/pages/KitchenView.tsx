@@ -1,15 +1,25 @@
 import { Bot, Check, HeartPulse, Send } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
-import { Dot, Panel, TopBar } from '../components/ui.tsx'
-import { act, noteId, post, useSnapshot } from '../lib/live.ts'
-import { clock, mmss } from '../lib/format.ts'
-import { Loading } from './ServerView.tsx'
+import { toast } from 'sonner'
 import type { OrderLine } from '../../shared/types.ts'
+import { AppHeader, LiveClock, Loading } from '../components/kit.tsx'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { cn } from '@/lib/utils'
+import { clock, mmss } from '../lib/format.ts'
+import { act, noteId, post, useSnapshot } from '../lib/live.ts'
+
+const FLOOR = '__floor'
 
 export default function KitchenView() {
   const { snap, connected } = useSnapshot('kitchen')
   const [text, setText] = useState('')
-  const [table, setTable] = useState('')
+  const [table, setTable] = useState(FLOOR)
 
   const tickets = useMemo(() => {
     if (!snap) return []
@@ -30,134 +40,156 @@ export default function KitchenView() {
 
   async function sendNote() {
     if (!text.trim()) return
-    await act('note.sent', { noteId: noteId(), direction: 'to_floor', tableId: table || undefined, text: text.trim(), from: 'k_pass' }, 'kitchen')
+    const tableId = table === FLOOR ? undefined : table
+    await act('note.sent', { noteId: noteId(), direction: 'to_floor', tableId, text: text.trim(), from: 'k_pass' }, 'kitchen')
+    toast.success(tableId ? `Sent to ${tableId}'s server` : 'Sent to the whole floor')
     setText('')
   }
 
   return (
     <div className="min-h-screen pb-12">
-      <TopBar
-        title="Kitchen pass"
-        sub={`${tickets.length} open tickets`}
-        right={
-          <>
-            <span className="font-mono text-sm text-muted">{clock(snap.now)}</span>
-            <Dot ok={connected} />
-          </>
-        }
-      />
-      <main className="mx-auto grid max-w-6xl gap-4 px-4 py-4 lg:grid-cols-[1fr_340px]">
+      <AppHeader title="Kitchen pass" sub={`${tickets.length} open ${tickets.length === 1 ? 'ticket' : 'tickets'}`} right={<LiveClock now={snap.now} ok={connected} />} />
+      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-5 lg:grid-cols-[1fr_340px]">
         <div className="grid content-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {tickets.length === 0 && <div className="col-span-full rounded-2xl border border-dashed border-line p-10 text-center text-muted">No open tickets</div>}
-          {tickets.map((k) => {
-            const fired = k.lines[0].firedAt
-            const expected = Math.max(...k.lines.map((l) => l.expectedReadyAt))
-            const late = snap.now > expected + snap.config.sop.kitchenDelayToleranceMin * 60_000
-            const ready = k.lines.every((l) => l.status === 'ready')
-            const allergies = allergyByTable[k.table]
-            return (
-              <article key={k.ticketId} className={`card-in rounded-2xl border bg-surface p-4 ${ready ? 'border-good/60' : late ? 'border-kitchen' : 'border-line'}`}>
-                <div className="flex items-center justify-between">
-                  <span className="font-display text-xl">{k.table}</span>
-                  <span className={`font-mono text-sm ${late ? 'text-kitchen' : 'text-muted'}`}>
-                    {mmss(snap.now - fired)} / {mmss(expected - fired)}
-                  </span>
-                </div>
-                <div className="text-[11px] uppercase tracking-wider text-muted">{k.lines[0].course}</div>
-                {allergies && (
-                  <div className="mt-2 inline-flex items-center gap-1 rounded-md bg-warn/15 px-2 py-1 text-xs font-semibold text-warn">
-                    <HeartPulse className="size-3.5" /> {allergies.join(', ')}
-                  </div>
-                )}
-                <ul className="mt-2 space-y-1 text-sm">
-                  {k.lines.map((l) => (
-                    <li key={l.id} className="flex justify-between gap-2">
-                      <span>
-                        {l.qty}× {l.name}
-                      </span>
-                      <span className="text-[11px] text-faint">{l.station}</span>
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  type="button"
-                  disabled={ready}
-                  onClick={() => void act('item.ready', { ticketId: k.ticketId }, 'kitchen')}
-                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-raised py-2.5 text-sm font-semibold hover:bg-line disabled:bg-good/15 disabled:text-good"
+          {tickets.length === 0 && <div className="col-span-full rounded-2xl border border-dashed p-10 text-center text-muted-foreground">No open tickets. New orders appear here the moment they’re fired.</div>}
+          <AnimatePresence mode="popLayout" initial={false}>
+            {tickets.map((k) => {
+              const fired = k.lines[0].firedAt
+              const expected = Math.max(...k.lines.map((l) => l.expectedReadyAt))
+              const late = snap.now > expected + snap.config.sop.kitchenDelayToleranceMin * 60_000
+              const ready = k.lines.every((l) => l.status === 'ready')
+              const allergies = allergyByTable[k.table]
+              const frac = Math.min(1, (snap.now - fired) / Math.max(1, expected - fired))
+              return (
+                <motion.article
+                  key={k.ticketId}
+                  layout
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  className={cn('flex flex-col rounded-2xl border bg-card p-4', ready ? 'border-good/60' : late && 'border-kitchen')}
                 >
-                  <Check className="size-4" /> {ready ? 'At the pass' : 'Ready'}
-                </button>
-              </article>
-            )
-          })}
+                  <div className="flex items-center justify-between">
+                    <span className="font-display text-2xl">{k.table}</span>
+                    <span className={cn('text-sm tabular', late ? 'font-semibold text-kitchen' : 'text-muted-foreground')}>
+                      {mmss(snap.now - fired)} / {mmss(expected - fired)}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1 overflow-hidden rounded-full bg-muted">
+                    <div className={cn('h-full transition-[width] duration-1000', late ? 'bg-kitchen' : 'bg-primary/70')} style={{ width: `${frac * 100}%` }} />
+                  </div>
+                  <div className="mt-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{k.lines[0].course}</div>
+                  {allergies && (
+                    <Badge variant="outline" className="mt-2 w-fit gap-1 border-warn/50 text-warn">
+                      <HeartPulse className="size-3.5" /> {allergies.join(', ')}
+                    </Badge>
+                  )}
+                  <ul className="mt-2 flex-1 space-y-1 text-sm">
+                    {k.lines.map((l) => (
+                      <li key={l.id} className="flex justify-between gap-2">
+                        <span>
+                          {l.qty}× {l.name}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">{l.station}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className={cn('mt-3 h-10 w-full', ready && 'bg-good/15 text-good hover:bg-good/15')}
+                    variant={ready ? 'secondary' : 'default'}
+                    disabled={ready}
+                    onClick={() => void act('item.ready', { ticketId: k.ticketId }, 'kitchen')}
+                  >
+                    <Check /> {ready ? 'At the pass' : 'Ready'}
+                  </Button>
+                </motion.article>
+              )
+            })}
+          </AnimatePresence>
         </div>
 
-        <div className="space-y-4">
-          <Panel title="From the floor">
-            <ul className="space-y-2">
-              {fromFloor.length === 0 && <li className="text-sm text-faint">No notes yet</li>}
-              {fromFloor.map((n) => (
-                <li key={n.id} className={`rounded-xl p-2.5 text-sm ${n.text.startsWith('ALLERGY') ? 'bg-warn/15 text-warn' : 'bg-raised'}`}>
-                  <div className="text-[11px] text-muted">
-                    {snap.config.staff.find((s) => s.id === n.from)?.name ?? n.from} · {n.tableId ?? 'general'} · {clock(n.at)}
-                  </div>
-                  {n.text}
-                </li>
-              ))}
-            </ul>
-          </Panel>
-
-          <Panel title="Tell the floor">
-            <form
-              className="space-y-2"
-              onSubmit={(e) => {
-                e.preventDefault()
-                void sendNote()
-              }}
-            >
-              <select value={table} onChange={(e) => setTable(e.target.value)} className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm">
-                <option value="">Whole floor</option>
-                {snap.tables.filter((t) => t.visitId).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-              <div className="flex gap-2">
-                <input value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. mains 5 min, grill backed up" className="min-w-0 flex-1 rounded-xl border border-line bg-bg px-3 py-2 text-sm outline-none focus:border-saffron" />
-                <button type="submit" className="rounded-xl bg-raised px-3 text-saffron hover:bg-line" aria-label="Send">
-                  <Send className="size-4" />
-                </button>
-              </div>
-            </form>
-          </Panel>
-
-          <Panel title="Availability (86 board)">
-            <ul className="divide-y divide-line">
-              {snap.config.menu.map((m) => {
-                const off = snap.unavailable.includes(m.id)
-                return (
-                  <li key={m.id} className="flex items-center justify-between py-1.5 text-sm">
-                    <span className={off ? 'text-faint line-through' : ''}>{m.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => void act('item.stock', { menuItemId: m.id, available: off }, 'kitchen')}
-                      className={`rounded-lg px-2 py-0.5 text-xs ${off ? 'bg-warn/15 text-warn' : 'bg-raised text-muted'}`}
-                    >
-                      {off ? 'Off' : 'On'}
-                    </button>
+        <div className="min-w-0 space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">From the floor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {fromFloor.length === 0 && <li className="text-sm text-muted-foreground">Notes from servers will appear here.</li>}
+                {fromFloor.map((n) => (
+                  <li key={n.id} className={cn('rounded-lg p-2.5 text-sm', n.text.startsWith('ALLERGY') ? 'bg-warn/15 font-medium text-warn' : 'bg-muted')}>
+                    <div className="text-[11px] font-normal text-muted-foreground">
+                      {snap.config.staff.find((s) => s.id === n.from)?.name ?? n.from} · {n.tableId ?? 'general'} · {clock(n.at)}
+                    </div>
+                    {n.text}
                   </li>
-                )
-              })}
-            </ul>
-          </Panel>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">Tell the floor</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form
+                className="space-y-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void sendNote()
+                }}
+              >
+                <Select value={table} onValueChange={setTable}>
+                  <SelectTrigger id="note-table" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={FLOOR}>Whole floor</SelectItem>
+                    {snap.tables.filter((t) => t.visitId).map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex gap-2">
+                  <Input id="floor-note" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. mains 5 min, grill backed up" />
+                  <Button type="submit" size="icon" aria-label="Send to floor" disabled={!text.trim()}>
+                    <Send />
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">Availability (86 board)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="divide-y">
+                {snap.config.menu.map((m) => {
+                  const off = snap.unavailable.includes(m.id)
+                  return (
+                    <li key={m.id} className="flex items-center justify-between py-2 text-sm">
+                      <label htmlFor={`stock-${m.id}`} className={cn('cursor-pointer', off && 'text-muted-foreground line-through')}>
+                        {m.name}
+                      </label>
+                      <Switch id={`stock-${m.id}`} checked={!off} onCheckedChange={(on) => void act('item.stock', { menuItemId: m.id, available: on }, 'kitchen')} aria-label={`${m.name} available`} />
+                    </li>
+                  )
+                })}
+              </ul>
+            </CardContent>
+          </Card>
 
           {snap.sim.startedAt !== null && (
-            <label className="flex items-center justify-between rounded-2xl border border-line bg-surface p-4 text-sm">
+            <label htmlFor="auto-kitchen" className="flex items-center justify-between gap-3 rounded-xl border border-dashed bg-muted/40 px-4 py-3 text-sm">
               <span className="inline-flex items-center gap-2">
-                <Bot className="size-4 text-muted" /> Demo: kitchen cooks automatically
+                <Bot className="size-4 text-muted-foreground" /> Demo: kitchen cooks automatically
               </span>
-              <input type="checkbox" className="size-5 accent-[var(--color-saffron)]" checked={snap.sim.autoKitchen} onChange={(e) => void post('/api/sim/settings', { autoKitchen: e.target.checked })} />
+              <Switch id="auto-kitchen" checked={snap.sim.autoKitchen} onCheckedChange={(v) => void post('/api/sim/settings', { autoKitchen: v })} />
             </label>
           )}
         </div>

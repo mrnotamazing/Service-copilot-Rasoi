@@ -3,3 +3,4 @@ dist
 data/*.ndjson
 data/config.json
 dist-demo
+.env

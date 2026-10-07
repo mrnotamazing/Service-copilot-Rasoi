@@ -61,7 +61,7 @@ export function useSnapshot(role: Role, staffId?: string): { snap: Snapshot | nu
 }
 
 export async function post<T = unknown>(path: string, body: unknown = {}): Promise<T> {
-  if (local) return local.localPost(path, body as Record<string, unknown>) as T
+  if (local) return (await local.localPost(path, body as Record<string, unknown>)) as T
   const res = await fetch(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error ?? res.statusText)

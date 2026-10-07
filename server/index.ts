@@ -18,7 +18,7 @@ const INGEST_KEY = process.env.COPILOT_INGEST_KEY // required for POS webhooks w
 
 const hub = new Hub(fileStore(join(root, 'data/events.ndjson'), join(root, 'data/config.json')))
 const sim = new Simulator(hub)
-const api = createApi(hub, sim)
+const api = createApi(hub, sim, { url: process.env.DIFY_API_URL, key: process.env.DIFY_API_KEY })
 const snapshot = api.snapshot
 
 // ---------------------------------------------------------------------------
@@ -109,6 +109,13 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       }
       const body = req.method === 'POST' ? await readJson(req) : {}
       if (req.method === 'POST' && (typeof body !== 'object' || body === null || Array.isArray(body))) throw new AdapterError('Expected a JSON object')
+      if (req.method === 'POST' && url.pathname === '/api/ai') {
+        try {
+          return send(res, 200, await api.ask(body as Record<string, unknown>))
+        } catch (e) {
+          return send(res, 400, { error: e instanceof Error ? e.message : String(e) })
+        }
+      }
       if (req.method === 'POST') {
         const handled = api.post(url.pathname, body as Record<string, unknown>)
         if (handled) return send(res, 200, handled.result)
@@ -148,4 +155,6 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => clients.delete(client))
 })
 
-server.listen(PORT, () => console.log(`Service Copilot API on http://localhost:${PORT}`))
+server.listen(PORT, () =>
+  console.log(`Service Copilot API on http://localhost:${PORT} · AI: ${process.env.DIFY_API_URL && process.env.DIFY_API_KEY ? `Dify at ${process.env.DIFY_API_URL}` : 'built-in (set DIFY_API_URL and DIFY_API_KEY to use Dify)'}`),
+)

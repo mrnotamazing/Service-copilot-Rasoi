@@ -6,12 +6,15 @@ import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
 import type { RestaurantConfig } from '../shared/types.ts'
 import { CATALOG } from './adapters/index.ts'
+import { AiError, createAi, type AiKind, type DifyOptions } from './ai.ts'
 import type { Hub } from './hub.ts'
 import type { Simulator } from './simulator.ts'
 
 export type ApiBody = Record<string, unknown>
 
-export function createApi(hub: Hub, sim: Simulator) {
+export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
+  const ai = createAi(hub, dify)
+
   function integrations(): IntegrationStatus[] {
     return CATALOG.map((c) => {
       const s = hub.sourceStat(c.id === 'generic' ? 'api' : c.id)
@@ -33,6 +36,7 @@ export function createApi(hub: Hub, sim: Simulator) {
       unavailable: Object.keys(hub.state.unavailable),
       notes: hub.state.notes.slice(-40),
       sim: sim.status(),
+      ai: { provider: ai.provider },
     }
     if (role === 'server' && staffId) {
       const { top, queued } = tasksFor(tasks, staffId)
@@ -82,8 +86,17 @@ export function createApi(hub: Hub, sim: Simulator) {
     },
   }
 
+  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop']
+
   return {
     snapshot,
+    /** AI assistance (async: may call Dify). Throws AiError for a bad request. */
+    async ask(body: ApiBody) {
+      const kind = AI_KINDS.find((k) => k === body.kind)
+      if (!kind) throw new AiError('Unknown kind of AI request.')
+      const str = (v: unknown) => (typeof v === 'string' ? v.slice(0, 500) : undefined)
+      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question) })
+    },
     /** Returns undefined when the path isn't one of the app routes. */
     post(path: string, body: ApiBody): { result: unknown } | undefined {
       const route = routes[path]

@@ -35,6 +35,8 @@ export interface Snapshot {
   unavailable: string[]
   notes: Note[]
   sim: SimStatus
+  /** Where AI answers come from: a connected Dify app, or the built-in writer. */
+  ai: { provider: 'dify' | 'built-in' }
   /** server role: own top tasks and private stats */
   me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[] }
   /** manager role: process analytics, no per-person stats */

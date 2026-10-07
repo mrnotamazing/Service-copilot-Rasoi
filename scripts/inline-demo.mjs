@@ -3,7 +3,10 @@ import { readFileSync, writeFileSync } from 'node:fs'
 const dir = 'dist-demo'
 let html = readFileSync(`${dir}/index.html`, 'utf8')
 html = html.replace(/<script type="module" crossorigin src="\.\/(assets\/[^"]+)"><\/script>/g, (_, f) => `<script type="module">${readFileSync(`${dir}/${f}`, 'utf8').replace(/<\/script/g, '<\\/script')}</script>`)
-html = html.replace(/<link rel="stylesheet" crossorigin href="\.\/(assets\/[^"]+)">/g, (_, f) => `<style>${readFileSync(`${dir}/${f}`, 'utf8')}</style>`)
+// Fonts referenced from the CSS become data: URIs so the single file is complete.
+const inlineFonts = (css) =>
+  css.replace(/url\(\.\/([\w.-]+\.woff2)\)/g, (_, f) => `url(data:font/woff2;base64,${readFileSync(`${dir}/assets/${f}`).toString('base64')})`)
+html = html.replace(/<link rel="stylesheet" crossorigin href="\.\/(assets\/[^"]+)">/g, (_, f) => `<style>${inlineFonts(readFileSync(`${dir}/${f}`, 'utf8'))}</style>`)
 // The artifact host supplies the doctype/html/head/body skeleton.
 const head = html.match(/<head>([\s\S]*)<\/head>/)[1].replace(/<meta charset[^>]*>|<meta name="viewport"[^>]*>/g, '')
 const body = html.match(/<body>([\s\S]*)<\/body>/)[1]
