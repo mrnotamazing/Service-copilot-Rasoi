@@ -7,6 +7,7 @@
 // voice for that cuisine, a respelling tuned for English voices is used instead.
 
 import type { Lang } from './prefs.ts'
+import { DISH_NAMES } from '../../shared/dishNames.ts'
 
 /** A cuisine voice a dish word can be handed to. */
 export type Origin = 'hi' | 'it' | 'fr'
@@ -37,20 +38,7 @@ const DISH_WORDS: Record<string, DishWord[]> = {
 }
 
 /** Whole dish names in each Indian language and Spanish, read by that language's own voice. */
-const DISH_LOCAL: Record<string, Partial<Record<Lang, string>>> = {
-  'Burrata & heirloom tomato': { hi: 'बुराटा और हेयरलूम टमाटर', ne: 'बुराटा र हेयरलूम टमाटर', bn: 'বুরাটা ও হেয়ারলুম টমেটো', ta: 'புர்ராட்டா மற்றும் ஹெயர்லூம் தக்காளி', es: 'burrata con tomate de herencia' },
-  'Galouti kebab': { hi: 'गलौटी कबाब', ne: 'गलौटी कबाब', bn: 'গলৌটি কাবাব', ta: 'கலௌட்டி கபாப்', es: 'galuti kebab' },
-  'Wild mushroom soup': { hi: 'वाइल्ड मशरूम सूप', ne: 'जंगली च्याउको सुप', bn: 'ওয়াইল্ড মাশরুম স্যুপ', ta: 'காட்டுக் காளான் சூப்', es: 'sopa de setas silvestres' },
-  'Paneer tikka': { hi: 'पनीर टिक्का', ne: 'पनिर टिक्का', bn: 'পনির টিক্কা', ta: 'பனீர் டிக்கா', es: 'panir tika' },
-  'Slow-cooked lamb shank': { hi: 'धीमी आँच पर पका लैम्ब शैंक', ne: 'बिस्तारै पकाइएको लैम्ब शैंक', bn: 'ধীরে রান্না ল্যাম্ব শ্যাঙ্ক', ta: 'மெதுவாகச் சமைத்த லேம்ப் ஷாங்க்', es: 'paletilla de cordero a fuego lento' },
-  'Pan-seared sea bass': { hi: 'पैन-सीयर्ड सी बास', ne: 'प्यान-सियर्ड सी बास', bn: 'প্যান-সিয়ার্ড সি বাস', ta: 'பான்-சியர்டு சீ பாஸ்', es: 'lubina a la plancha' },
-  'Truffle risotto': { hi: 'ट्रफ़ल रिसोटो', ne: 'ट्रफल रिसोटो', bn: 'ট্রাফল রিসোটো', ta: 'ட்ரஃபிள் ரிசோட்டோ', es: 'risotto de trufa' },
-  'Dum biryani': { hi: 'दम बिरयानी', ne: 'दम बिरयानी', bn: 'দম বিরিয়ানি', ta: 'தம் பிரியாணி', es: 'dum biriani' },
-  'Pumpkin gnocchi': { hi: 'कद्दू न्योकी', ne: 'फर्सीको न्योकी', bn: 'কুমড়োর নিয়োকি', ta: 'பூசணி ஞோக்கி', es: 'ñoquis de calabaza' },
-  'Chocolate fondant': { hi: 'चॉकलेट फ़ोंडां', ne: 'चकलेट फन्डाँ', bn: 'চকোলেট ফঁদাঁ', ta: 'சாக்லேட் ஃபொண்டான்ட்', es: 'coulant de chocolate' },
-  'Pistachio kulfi': { hi: 'पिस्ता कुल्फ़ी', ne: 'पिस्ता कुल्फी', bn: 'পেস্তা কুলফি', ta: 'பிஸ்தா குல்ஃபி', es: 'kulfi de pistacho' },
-  'Saffron crème brûlée': { hi: 'केसर क्रेम ब्रूले', ne: 'केसर क्रेम ब्रुले', bn: 'জাফরান ক্রেম ব্রুলে', ta: 'குங்குமப்பூ க்ரெம் ப்ரூலே', es: 'crème brûlée de azafrán' },
-}
+const DISH_LOCAL: Record<string, Partial<Record<Lang, string>>> = DISH_NAMES
 
 /** Single words English voices often get wrong (dishes not on the menu, guest names). */
 const WORDS_EN: Record<string, string> = {

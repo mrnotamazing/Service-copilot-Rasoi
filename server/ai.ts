@@ -3,6 +3,7 @@
 // works. The copilot builds the facts; the model only phrases them and holds the conversation.
 
 import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
+import { dishesNamed } from '../shared/dishNames.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
 import { SCENARIOS, scoreReply } from '../shared/practice.ts'
 import { predictReady } from '../shared/predict.ts'
@@ -234,11 +235,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     if (practice && req.finish) apiTurns.push({ role: 'user', text: '(Finish the practice and give me my debrief.)' })
     else if (practice && apiTurns.at(-1)?.role === 'assistant') apiTurns.push({ role: 'user', text: '(Continue.)' })
     const builtIn = practice ? practiceBuiltIn(sc!.id, turns, !!req.finish) : askBuiltIn(turns.at(-1)!.text, req, now)
-    const asked = practice ? '' : turns.at(-1)!.text.toLowerCase()
-    const facts = cfg.menu
-      .filter((m) => m.name.toLowerCase().split(/\W+/).some((w) => w.length > 3 && !/^(with|sauce|fresh)$/.test(w) && asked.includes(w)))
-      .slice(0, 2)
-      .map(dishFacts)
+    const facts = practice ? [] : dishesNamed(turns.at(-1)!.text, cfg.menu).slice(0, 2).map(dishFacts)
     return {
       facts,
       prompt: `${stableSystem(cfg)}\n\n${live}\n\nConversation so far:\n${apiTurns.map((t) => `${t.role === 'user' ? 'SERVER' : practice ? 'GUEST' : 'TABLEMATE'}: ${t.text}`).join('\n')}`,
@@ -290,7 +287,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       const facts = briefingFacts(Object.values(hub.state.tables).filter((t) => t.serverId === req.staffId), cfg, hub.state.unavailable, now)
       return { text: facts.map((f) => `• ${f.replace(/^- /, '')}`).join('\n'), suggestions: ['How do I warn guests about a delay?', 'Explain Jain food'] }
     }
-    const dish = cfg.menu.find((m) => m.name.toLowerCase().split(/\W+/).some((w) => w.length > 3 && q.includes(w)))
+    const dish = dishesNamed(question, cfg.menu)[0]
     if (dish) return { text: dishFacts(dish), suggestions: ['How do I describe a dish well?', 'How do I handle allergies?'] }
     if (/vegan dishes|which dishes|onion or garlic|contain/.test(q)) {
       const tag = /onion|garlic|jain/.test(q) ? 'root' : /vegan/.test(q) ? null : null
