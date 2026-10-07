@@ -126,16 +126,18 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
           <Icon className={lead ? 'size-6' : 'size-5'} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {task.tableName !== 'All' && <Badge variant="secondary" className="font-semibold">{task.tableName}</Badge>}
-            <span className={cn('inline-flex items-center gap-1 text-xs tabular', over ? 'text-warn' : 'text-muted-foreground')}>
-              <Clock className="size-3" />
-              {over ? t('card.past', { t: mmss(left) }) : t('card.within', { t: mmss(left) })}
-            </span>
+          <div className="flex items-start gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+              {task.tableName !== 'All' && <Badge variant="secondary" className="font-semibold">{task.tableName}</Badge>}
+              <span className={cn('inline-flex items-center gap-1 text-xs tabular', over ? 'text-warn' : 'text-muted-foreground')}>
+                <Clock className="size-3" />
+                {over ? t('card.past', { t: mmss(left) }) : t('card.within', { t: mmss(left) })}
+              </span>
+            </div>
             <button
               type="button"
               onClick={() => speak(`${task.tableName !== 'All' ? task.tableName + '. ' : ''}${words.title}. ${words.hint}`)}
-              className="-my-1 ml-auto grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="-my-1 -mr-1 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label={t('card.read')}
               title={t('card.read')}
             >

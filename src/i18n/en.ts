@@ -348,6 +348,17 @@ export const en = {
   'profile.saved': "Saved",
   'acc.open': "Language & accessibility",
   'acc.openSub': "Language, read aloud, text size, alerts",
+  'tables.details': "Table details",
+  'tables.pick': "Tap a table to see its guests and order.",
+  'tables.order': "Order",
+  'tables.noOrder': "No order yet.",
+  'line.fired': "In the kitchen",
+  'line.ready': "Ready at the pass",
+  'line.served': "Served",
+  'line.unavailable': "Off the menu",
+  'line.late': "{n} min late",
+  'kitchen.to': "To",
+  'kitchen.quick': "Quick notes",
 } as const
 
 export type Key = keyof typeof en

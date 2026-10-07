@@ -62,6 +62,8 @@ export default function ServerView() {
 
   const me = snap?.config.staff.find((s) => s.id === staffId)
   const myTables = useMemo(() => snap?.tables.filter((t) => t.serverId === staffId) ?? [], [snap, staffId])
+  // The table open on the Tables tab: the one asked for, else the first seated one.
+  const picked = myTables.find((t) => t.id === params.get('table')) ?? myTables.find((t) => t.visitId) ?? myTables[0]
   const unread = useUnreadKitchen(snap, staffId, tab === 'kitchen' || (tablet && tab === 'home'))
 
   if (!snap) return <PhoneSkeleton />
@@ -165,29 +167,33 @@ export default function ServerView() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="h-full p-6">
                 {tab === 'home' && (
-                  <div className="grid gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_300px] xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_340px]">
+                  <div className="mx-auto grid max-w-[1600px] items-start gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(300px,0.8fr)]">
                     <div className="min-w-0 space-y-4">
                       <AutopilotToggle snap={snap} staffId={staffId} />
                       <NextUp snap={snap} staffId={staffId} />
+                      {/* On iPads the kitchen chat sits under the cards, where there is room. */}
+                      <div className="xl:hidden">
+                        <KitchenPanel snap={snap} staffId={staffId} myTables={myTables} className="h-[480px]" />
+                      </div>
                     </div>
                     <div className="min-w-0 space-y-6">
-                      <SectionMap snap={snap} color={me.color} myTables={myTables} />
+                      <SectionMap snap={snap} color={me.color} myTables={myTables} onPick={(id) => setParams({ tab: 'tables', table: id }, { replace: true })} />
                       <GuestList snap={snap} myTables={myTables} />
-                      <div className="lg:hidden">
-                        <KitchenPanel snap={snap} staffId={staffId} myTables={myTables} />
-                      </div>
                     </div>
-                    <div className="hidden min-w-0 lg:block">
-                      <div className="sticky top-0">
-                        <KitchenPanel snap={snap} staffId={staffId} myTables={myTables} />
-                      </div>
+                    <div className="sticky top-0 hidden min-w-0 xl:block">
+                      <KitchenPanel snap={snap} staffId={staffId} myTables={myTables} className="h-[calc(100dvh-8.5rem)] max-h-[720px]" />
                     </div>
                   </div>
                 )}
                 {tab === 'tables' && (
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <SectionMap snap={snap} color={me.color} myTables={myTables} large />
-                    <GuestList snap={snap} myTables={myTables} />
+                  <div className="mx-auto grid max-w-[1400px] items-start gap-6 md:grid-cols-[minmax(0,1fr)_minmax(320px,400px)]">
+                    <div className="min-w-0 space-y-6">
+                      <SectionMap snap={snap} color={me.color} myTables={myTables} large picked={picked?.id} onPick={(id) => setParam('table', id)} />
+                      <GuestList snap={snap} myTables={myTables} picked={picked?.id} onPick={(id) => setParam('table', id)} />
+                    </div>
+                    <div className="sticky top-0 min-w-0">
+                      <TableDetail snap={snap} table={picked} />
+                    </div>
                   </div>
                 )}
                 {tab === 'kitchen' && (
@@ -239,7 +245,7 @@ export default function ServerView() {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={tab} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.15 }} className="px-4 pb-6 pt-4">
               {tab === 'home' && <FloorTab snap={snap} staffId={staffId} onKudos={() => setTab('profile')} />}
-              {tab === 'tables' && <TablesTab snap={snap} color={me.color} myTables={myTables} />}
+              {tab === 'tables' && <TablesTab snap={snap} color={me.color} myTables={myTables} picked={params.get('table') ? picked : undefined} onPick={(id) => setParam('table', id)} />}
               {tab === 'kitchen' && <KitchenTab snap={snap} staffId={staffId} myTables={myTables} />}
               {tab === 'profile' && <ProgressTab snap={snap} staffId={staffId} />}
             </motion.div>
@@ -378,29 +384,109 @@ function NextUp({ snap, staffId }: { snap: Snapshot; staffId: string }) {
   )
 }
 
-function TablesTab({ snap, color, myTables }: { snap: Snapshot; color: string; myTables: Snapshot['tables'] }) {
+function TablesTab({ snap, color, myTables, picked, onPick }: { snap: Snapshot; color: string; myTables: Snapshot['tables']; picked?: Snapshot['tables'][number]; onPick: (id: string) => void }) {
   return (
     <div className="space-y-5">
-      <SectionMap snap={snap} color={color} myTables={myTables} />
-      <GuestList snap={snap} myTables={myTables} />
+      <SectionMap snap={snap} color={color} myTables={myTables} picked={picked?.id} onPick={onPick} />
+      {picked && <TableDetail snap={snap} table={picked} />}
+      <GuestList snap={snap} myTables={myTables} picked={picked?.id} onPick={onPick} />
     </div>
   )
 }
 
-function SectionMap({ snap, color, myTables, large }: { snap: Snapshot; color: string; myTables: Snapshot['tables']; large?: boolean }) {
+const LINE_TONE: Record<string, string> = {
+  fired: 'bg-kitchen/12 text-kitchen',
+  ready: 'bg-primary/12 text-primary',
+  served: 'bg-good/12 text-good',
+  unavailable: 'bg-muted text-muted-foreground line-through',
+}
+
+/** Everything about one table on one card: who is there, what they need, and where each dish is. */
+function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tables'][number] }) {
+  const tr = useT()
+  if (!t) return <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">{tr('tables.pick')}</p>
+  const seatedMin = t.seatedAt ? Math.max(1, Math.round((snap.now - t.seatedAt) / 60_000)) : null
+  const courses = ['drink', 'starter', 'main', 'dessert'] as const
+  return (
+    <section className="rounded-2xl border bg-card p-4" aria-label={tr('tables.details')}>
+      <div className="flex items-start gap-3">
+        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-secondary font-display text-lg">{t.name}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-1.5 font-medium">
+            {t.visitId ? (t.party?.guestName ?? tr('party.of', { n: t.party?.size ?? '?' })) : tr('status.available')}
+            {t.party?.vip && <Star className="size-3.5 text-primary" aria-label={tr('tables.regular')} />}
+            {t.party?.occasion && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-normal text-primary">
+                <CakeSlice className="size-3" /> {tr.any(`occ.${t.party.occasion}`)}
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {tr.any(`status.${t.status}`)} · {t.visitId && seatedMin ? tr('tables.detail', { n: t.party?.size ?? '?', min: seatedMin }) : tr('tile.seats', { n: t.seats })}
+          </div>
+        </div>
+      </div>
+
+      {(t.party?.allergies.length || t.party?.needs?.length) ? (
+        <div className="mt-3 space-y-1.5">
+          {t.party?.allergies.length ? (
+            <div className="flex items-center gap-1.5 rounded-lg bg-warn/12 px-2 py-1.5 text-sm font-medium text-warn">
+              <HeartPulse className="size-4 shrink-0" /> {tr('party.allergy', { list: t.party.allergies.join(', ') })}
+            </div>
+          ) : null}
+          {t.party?.needs?.map((n) => (
+            <div key={n} className="flex items-start gap-1.5 rounded-lg bg-primary/8 px-2 py-1.5 text-sm">
+              <Accessibility className="mt-0.5 size-4 shrink-0 text-primary" /> {tr.any(`need.${n}`)}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {t.visitId && (
+        <>
+          <h3 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tr('tables.order')}</h3>
+          {t.lines.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{tr('tables.noOrder')}</p>
+          ) : (
+            <ul className="divide-y rounded-xl border">
+              {courses
+                .flatMap((c) => t.lines.filter((l) => l.course === c))
+                .map((l) => {
+                  const late = l.status === 'fired' && snap.now > l.expectedReadyAt ? Math.round((snap.now - l.expectedReadyAt) / 60_000) : 0
+                  return (
+                    <li key={l.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                      <span className="min-w-0 truncate">
+                        <span className="text-muted-foreground tabular">{l.qty}×</span> {l.name}
+                        <span className="ml-1.5 text-xs text-muted-foreground">{tr.any(`course.${l.course}`)}</span>
+                      </span>
+                      <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-xs font-medium', LINE_TONE[l.status])}>
+                        {late > 0 ? tr('line.late', { n: late }) : tr.any(`line.${l.status}`)}
+                      </span>
+                    </li>
+                  )
+                })}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+function SectionMap({ snap, color, myTables, large, picked, onPick }: { snap: Snapshot; color: string; myTables: Snapshot['tables']; large?: boolean; picked?: string; onPick?: (id: string) => void }) {
   return (
     <section>
       <h2 className="mb-2 font-display text-xl">{useT()('tables.mySection')}</h2>
-      <div className={cn('grid gap-2', large ? 'grid-cols-3 lg:grid-cols-4' : 'grid-cols-3')}>
+      <div className={cn('grid gap-2', large ? 'grid-cols-[repeat(auto-fill,minmax(120px,1fr))]' : 'grid-cols-[repeat(auto-fill,minmax(84px,1fr))]')}>
         {myTables.map((t) => (
-          <TableTile key={t.id} t={t} now={snap.now} color={color} />
+          <TableTile key={t.id} t={t} now={snap.now} color={color} active={picked === t.id} onClick={onPick ? () => onPick(t.id) : undefined} />
         ))}
       </div>
     </section>
   )
 }
 
-function GuestList({ snap, myTables }: { snap: Snapshot; myTables: Snapshot['tables'] }) {
+function GuestList({ snap, myTables, picked, onPick }: { snap: Snapshot; myTables: Snapshot['tables']; picked?: string; onPick?: (id: string) => void }) {
   const seated = myTables.filter((t) => t.visitId)
   const tr = useT()
   return (
@@ -409,12 +495,16 @@ function GuestList({ snap, myTables }: { snap: Snapshot; myTables: Snapshot['tab
       {seated.length === 0 ? (
         <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">{tr('tables.none')}</p>
       ) : (
-        <ul className="divide-y rounded-2xl border bg-card">
+        <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
           {seated.map((t) => {
             const pending = t.lines.filter((l) => l.status === 'fired').length
             const ready = t.lines.filter((l) => l.status === 'ready').length
             return (
-              <li key={t.id} className="flex items-start gap-3 p-3">
+              <li
+                key={t.id}
+                className={cn('flex items-start gap-3 p-3', onPick && 'cursor-pointer transition-colors hover:bg-accent/60', picked === t.id && 'bg-accent/70')}
+                onClick={onPick ? () => onPick(t.id) : undefined}
+              >
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary font-semibold">{t.name}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 text-sm font-medium">
@@ -423,7 +513,7 @@ function GuestList({ snap, myTables }: { snap: Snapshot; myTables: Snapshot['tab
                     {t.party?.occasion && <CakeSlice className="size-3.5 text-primary" aria-label={tr.any(`occ.${t.party.occasion}`)} />}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {tr('tables.detail', { n: t.party?.size ?? '?', min: Math.round((snap.now - (t.seatedAt ?? snap.now)) / 60_000) })}
+                    {tr('tables.detail', { n: t.party?.size ?? '?', min: Math.max(1, Math.round((snap.now - (t.seatedAt ?? snap.now)) / 60_000)) })}
                     {pending ? `, ${tr('tables.inKitchen', { n: pending })}` : ''}
                     {ready ? `, ${tr('tables.ready', { n: ready })}` : ''}
                   </div>
@@ -434,7 +524,7 @@ function GuestList({ snap, myTables }: { snap: Snapshot; myTables: Snapshot['tab
                   ) : null}
                   {/* Access and dietary needs from the booking: what to do, so nobody has to ask twice. */}
                   {t.party?.needs?.map((n) => (
-                    <div key={n} className="mt-1 flex items-start gap-1 rounded-md bg-primary/8 px-1.5 py-0.5 text-xs text-foreground">
+                    <div key={n} className="mt-1 flex w-fit items-start gap-1 rounded-md bg-primary/8 px-1.5 py-0.5 text-xs text-foreground">
                       <Accessibility className="mt-0.5 size-3 shrink-0 text-primary" /> {tr.any(`need.${n}`)}
                     </div>
                   ))}
@@ -490,9 +580,9 @@ function KitchenTab({ snap, staffId, myTables }: { snap: Snapshot; staffId: stri
 }
 
 /** Compact kitchen thread for the tablet's home screen. */
-function KitchenPanel({ snap, staffId, myTables }: { snap: Snapshot; staffId: string; myTables: Snapshot['tables'] }) {
+function KitchenPanel({ snap, staffId, myTables, className }: { snap: Snapshot; staffId: string; myTables: Snapshot['tables']; className?: string }) {
   return (
-    <section className="flex h-[min(560px,calc(100dvh-140px))] flex-col rounded-2xl border bg-card p-4">
+    <section className={cn('flex flex-col rounded-2xl border bg-card p-4', className)}>
       <h2 className="flex items-center gap-2 font-display text-xl">
         <UtensilsCrossed className="size-5 text-primary" /> {useT()('nav.kitchen')}
       </h2>
@@ -518,7 +608,12 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
   return (
     <div className={cn('flex flex-col', className)}>
       <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-        {thread.length === 0 && <li className="py-8 text-center text-sm text-muted-foreground">{tr('kitchen.empty')}</li>}
+        {thread.length === 0 && (
+          <li className="flex h-full flex-col items-center justify-center gap-2 px-6 py-8 text-center text-sm text-muted-foreground">
+            <MessageSquareText className="size-8 text-primary/40" />
+            {tr('kitchen.empty')}
+          </li>
+        )}
         {thread.map((n) => {
           const mine = n.direction === 'to_kitchen'
           return (
@@ -533,7 +628,8 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
         })}
       </ul>
       <div className="mt-3 space-y-2 border-t pt-3">
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={tr('kitchen.to')}>
+          <span className="mr-0.5 text-xs text-muted-foreground">{tr('kitchen.to')}</span>
           <Chip active={table === ''} onClick={() => setTable('')}>
             {tr('kitchen.general')}
           </Chip>
@@ -542,7 +638,8 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
               {t.name}
             </Chip>
           ))}
-          <span className="mx-1 w-px shrink-0 bg-border" />
+        </div>
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={tr('kitchen.quick')}>
           {QUICK.map((q) => (
             <Chip key={q} onClick={() => void send(en[q])}>
               {tr(q)}
