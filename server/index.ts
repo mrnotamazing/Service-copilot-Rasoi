@@ -18,14 +18,17 @@ const INGEST_KEY = process.env.COPILOT_INGEST_KEY // required for POS webhooks w
 
 const hub = new Hub(fileStore(join(root, 'data/events.ndjson'), join(root, 'data/config.json')))
 const sim = new Simulator(hub)
-// Claude is used for the assistant when an Anthropic key is configured; otherwise Dify, then built-in.
+// The assistant's language model: Claude when an Anthropic key is configured, otherwise a free local
+// model through Ollama when it's running (set OLLAMA=off to skip), otherwise Dify, then built-in.
 const useClaude = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
 const claude = useClaude ? await import('./claude.ts') : null
+const ollamaMod = !useClaude && process.env.OLLAMA !== 'off' ? await import('./ollama.ts') : null
+const ollama = ollamaMod?.createOllama({ host: process.env.OLLAMA_HOST, model: process.env.OLLAMA_MODEL })
 const api = createApi(hub, sim, {
   url: process.env.DIFY_API_URL,
   key: process.env.DIFY_API_KEY,
-  chat: claude?.createClaude(),
-  chatErrorReason: claude?.claudeErrorReason,
+  chat: claude?.createClaude() ?? ollama?.model,
+  chatErrorReason: claude?.claudeErrorReason ?? ollamaMod?.ollamaErrorReason,
 })
 const snapshot = api.snapshot
 
@@ -163,6 +166,16 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => clients.delete(client))
 })
 
-server.listen(PORT, () =>
-  console.log(`Service Copilot API on http://localhost:${PORT} · AI: ${useClaude ? `Claude (${process.env.ANTHROPIC_MODEL || 'claude-opus-5-5'})` : process.env.DIFY_API_URL && process.env.DIFY_API_KEY ? `Dify at ${process.env.DIFY_API_URL}` : 'built-in (set ANTHROPIC_API_KEY for Claude, or DIFY_API_URL and DIFY_API_KEY for Dify)'}`),
-)
+server.listen(PORT, async () => {
+  const st = ollama ? await ollama.refresh() : null
+  const ai = useClaude
+    ? `Claude (${process.env.ANTHROPIC_MODEL || 'claude-opus-5-5'})`
+    : st?.model
+      ? `Ollama (${st.model}, free and local)`
+      : process.env.DIFY_API_URL && process.env.DIFY_API_KEY
+        ? `Dify at ${process.env.DIFY_API_URL}`
+        : st?.running
+          ? `built-in. Ollama is running but has no model: run "ollama pull ${ollamaMod!.SUGGESTED_MODEL}"`
+          : 'built-in (start Ollama for a free local AI, or set ANTHROPIC_API_KEY for Claude)'
+  console.log(`Service Copilot API on http://localhost:${PORT} · AI: ${ai}`)
+})

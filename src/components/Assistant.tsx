@@ -54,7 +54,7 @@ export function Assistant({ staffId, provider, initialMode = 'ask' }: { staffId:
           ))}
         </div>
         <Badge variant="outline" className="shrink-0 gap-1 text-[10px] font-normal text-muted-foreground">
-          <Sparkles className="size-3" /> {provider === 'claude' ? t('chat.byClaude') : provider === 'dify' ? t('assist.dify') : t('assist.builtIn')}
+          <Sparkles className="size-3" /> {provider === 'claude' ? t('chat.byClaude') : provider === 'ollama' ? t('chat.byOllama') : provider === 'dify' ? t('assist.dify') : t('assist.builtIn')}
         </Badge>
       </div>
       {/* Each mode keeps its own conversation while you switch back and forth. */}

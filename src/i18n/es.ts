@@ -508,6 +508,7 @@ export const es: Record<Key, string> = {
   'chat.ask': "Preguntar",
   'chat.practice': "Practicar",
   'chat.byClaude': "IA con Claude",
+  'chat.byOllama': "IA local (Ollama)",
   'chat.sub': "Tu colega experto en servicio, el menú de hoy y tus mesas. También para practicar momentos difíciles.",
   'chat.hello': "¡Hola! Pregúntame lo que quieras sobre el servicio, el menú de hoy, alergias y dietas, o tus mesas. Te respondo en tu idioma.",
   'chat.placeholder': "Pregunta lo que quieras…",

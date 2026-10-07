@@ -145,7 +145,7 @@ describe('assistant chat', () => {
     hub.ingest({ type: 'table.seated', payload: { tableId: 'T1', partySize: 2, needs: ['jain'] } })
     const ai = createAi(hub)
     const dish = await ai.ask({ kind: 'chat', mode: 'ask', staffId: 's_aisha', messages: [{ role: 'user', text: 'What is in the galouti kebab?' }] })
-    expect(dish.text).toMatch(/Galouti kebab.*Contains: meat, onion, garlic or root veg, nuts.*Not suitable as-is for vegan, Jain/)
+    expect(dish.text).toMatch(/Galouti kebab.*Contains: meat, onion, garlic or root veg, nuts.*Not suitable as-is for vegetarian, vegan, Jain/)
     const brief = await ai.ask({ kind: 'chat', mode: 'ask', staffId: 's_aisha', messages: [{ role: 'user', text: 'Brief me on my section' }] })
     expect(brief.text).toMatch(/T1/)
     const lesson = await ai.ask({ kind: 'chat', mode: 'ask', messages: [{ role: 'user', text: 'A guest is angry their food was cold' }] })

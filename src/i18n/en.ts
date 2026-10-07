@@ -529,6 +529,7 @@ export const en = {
   'chat.ask': "Ask",
   'chat.practice': "Practice",
   'chat.byClaude': "AI via Claude",
+  'chat.byOllama': "Local AI (Ollama)",
   'chat.sub': "Your expert colleague for service, tonight’s menu and your tables. Practise tough moments too.",
   'chat.hello': "Hi! Ask me anything about service, tonight’s menu, allergies and diets, or your tables. I answer in your language.",
   'chat.placeholder': "Ask anything…",

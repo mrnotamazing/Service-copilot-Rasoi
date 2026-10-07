@@ -37,7 +37,7 @@ export interface Snapshot {
   notes: Note[]
   sim: SimStatus
   /** Where AI answers come from: a connected Dify app, or the built-in writer. */
-  ai: { provider: 'claude' | 'dify' | 'built-in' }
+  ai: { provider: 'claude' | 'ollama' | 'dify' | 'built-in'; model?: string }
   /** Shared with everyone: the team goal and kudos. Never individual scores. */
   team: ReturnType<typeof teamView>
   /** server role: own top tasks and private stats */

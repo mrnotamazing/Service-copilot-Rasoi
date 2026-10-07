@@ -13,6 +13,7 @@ export function createClaude(): ChatModel {
   const client = new Anthropic()
   return {
     name: 'claude',
+    label: () => MODEL,
     async reply(system, turns: ChatTurn[]) {
       const response = await client.beta.messages.create({
         model: MODEL,

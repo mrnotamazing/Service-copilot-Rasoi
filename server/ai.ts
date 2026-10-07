@@ -13,17 +13,24 @@ import type { Hub } from './hub.ts'
 export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat'
 
 /** One message in the assistant chat. In practice mode the guest's lines are the assistant's. */
+export type AiProvider = 'claude' | 'ollama' | 'dify' | 'built-in'
+
 export interface ChatTurn {
   role: 'user' | 'assistant'
   text: string
 }
 
-/** A conversational language model (Claude). `stable` is cacheable; `live` changes every message. */
+/** A conversational language model (Claude, or a local Ollama model). `stable` is cacheable; `live` changes every message. */
 export interface ChatModel {
-  name: 'claude'
+  name: 'claude' | 'ollama'
   /** False while the model can't be used (e.g. the demo page hasn't been granted Claude); the next provider answers. */
   available?(): boolean
-  reply(system: { stable: string; live: string }, turns: ChatTurn[]): Promise<string>
+  /** Small local models can get menu facts wrong: add the menu's own line for any dish the question names. */
+  checkFacts?: boolean
+  /** Which model is answering, for the Setup page (e.g. "gemma3:4b"). */
+  label?(): string | undefined
+  /** `reminder` restates the format and length in one line; small local models follow it far better than the long system prompt. */
+  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[]): Promise<string>
 }
 
 export interface PracticeTurn {
@@ -61,7 +68,7 @@ export const INCLUSIVE_STYLE =
 
 export interface AiAnswer {
   text: string
-  source: 'claude' | 'dify' | 'built-in'
+  source: AiProvider
   /** Set when Dify was configured but the call failed and the built-in answer was used instead. */
   notice?: string
   /** Practice only: coaching on the server's last reply, 1–3 stars, and whether the role-play is over. */
@@ -73,7 +80,7 @@ export interface AiAnswer {
 }
 
 export interface DifyOptions {
-  /** A conversational model (Claude), preferred over Dify when present. */
+  /** A conversational model (Claude or Ollama), preferred over Dify when present. */
   chat?: ChatModel
   /** Turns a model error into a short reason for the notice. */
   chatErrorReason?: (e: unknown) => string
@@ -227,24 +234,49 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     if (practice && req.finish) apiTurns.push({ role: 'user', text: '(Finish the practice and give me my debrief.)' })
     else if (practice && apiTurns.at(-1)?.role === 'assistant') apiTurns.push({ role: 'user', text: '(Continue.)' })
     const builtIn = practice ? practiceBuiltIn(sc!.id, turns, !!req.finish) : askBuiltIn(turns.at(-1)!.text, req, now)
+    const asked = practice ? '' : turns.at(-1)!.text.toLowerCase()
+    const facts = cfg.menu
+      .filter((m) => m.name.toLowerCase().split(/\W+/).some((w) => w.length > 3 && !/^(with|sauce|fresh)$/.test(w) && asked.includes(w)))
+      .slice(0, 2)
+      .map(dishFacts)
     return {
+      facts,
       prompt: `${stableSystem(cfg)}\n\n${live}\n\nConversation so far:\n${apiTurns.map((t) => `${t.role === 'user' ? 'SERVER' : practice ? 'GUEST' : 'TABLEMATE'}: ${t.text}`).join('\n')}`,
       fallback: builtIn.text,
       extra: { feedback: builtIn.feedback, stars: builtIn.stars, done: builtIn.done, suggestions: builtIn.suggestions },
-      system: { stable: stableSystem(cfg), live },
+      system: {
+        stable: stableSystem(cfg),
+        live,
+        reminder: practice
+          ? req.finish
+            ? 'Step out of character: two things I did well, one thing to practise, then a last line "STARS: n" (1-3).'
+            : 'Reply in exactly this format, nothing else:\nCOACH: ✓ <what worked> → <one improvement>\nGUEST: <the guest’s next line, in character>'
+          : `You are TableMate, my trainer. Answer my last message directly in 2-5 short sentences or bullets, no headings, no thinking out loud. Use ${language} unless I wrote in another language.`,
+      },
       turns: apiTurns,
       parse: practice
-        ? (answer: string) => {
+        ? (raw: string) => {
+            // Smaller models often bold the labels (**COACH:**); read them either way.
+            const answer = raw.replace(/\*\*\s*(COACH|GUEST|STARS)\s*:?\s*\*\*\s*:?/gi, '$1:')
             if (req.finish) {
               const stars = Number(answer.match(/STARS:\s*([1-3])/i)?.[1]) || builtIn.stars
               return { text: answer.replace(/STARS:\s*[1-3]\s*$/i, '').trim(), stars, done: true, feedback: undefined }
             }
             const coach = answer.match(/COACH:\s*([\s\S]*?)(?:\n\s*GUEST:|$)/i)?.[1]?.trim()
-            let guest = answer.match(/GUEST:\s*([\s\S]*)$/i)?.[1]?.trim() ?? answer.trim()
+            // Without labels, keep the guest's words and drop any stray coaching lines.
+            let guest =
+              answer.match(/GUEST:\s*([\s\S]*)$/i)?.[1]?.trim() ??
+              answer
+                .split('\n')
+                .filter((l) => !/^\s*(✓|→|COACH:)/i.test(l))
+                .join('\n')
+                .trim()
             const done = /\[END\]/i.test(guest)
             guest = guest.replace(/\[END\]/gi, '').trim()
             const last = [...turns].reverse().find((t) => t.role === 'user')?.text
-            return { text: guest, feedback: coach && coach !== '-' ? coach : undefined, stars: last ? scoreReply(sc!.id, last).stars : undefined, done }
+            // If the model skipped the coaching, the rubric's own coaching stands in.
+            // No usable guest line (e.g. only coaching came back): the scripted guest line stands in.
+            return { text: guest || builtIn.text, feedback: coach && coach !== '-' ? coach : builtIn.feedback, stars: last ? scoreReply(sc!.id, last).stars : undefined, done }
           }
         : (answer: string) => ({ text: answer, suggestions: builtIn.suggestions }),
     }
@@ -302,8 +334,11 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
   const modelReady = () => !!model && (model.available?.() ?? true)
 
   return {
-    get provider(): 'claude' | 'dify' | 'built-in' {
-      return modelReady() ? 'claude' : dify ? 'dify' : 'built-in'
+    get provider(): AiProvider {
+      return modelReady() ? model!.name : dify ? 'dify' : 'built-in'
+    },
+    get modelLabel(): string | undefined {
+      return modelReady() ? model!.label?.() : undefined
     },
     async ask(req: AiRequest): Promise<AiAnswer> {
       const built = build(req)
@@ -315,7 +350,9 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
         try {
           const system = built.system ?? { stable: stableSystem(hub.config), live: `Reply in ${language}.` }
           const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }])
-          return { ...built.extra, ...(built.parse ? built.parse(answer) : { text: answer }), source: 'claude' }
+          const out = { ...built.extra, ...(built.parse ? built.parse(answer) : { text: answer }), source: model.name }
+          if (model.checkFacts && built.facts?.length) out.text = `${out.text}\n\nFrom the menu: ${built.facts.join('\n')}`
+          return out
         } catch (e) {
           notice = `${opts.chatErrorReason?.(e) ?? (e instanceof Error ? e.message : String(e))}. Showing the built-in answer.`
           if (!dify) return { text: fallback, source: 'built-in', notice, ...built.extra }
@@ -342,8 +379,10 @@ interface Built {
   extra?: Partial<AiAnswer>
   /** Splits a structured model answer into fields. */
   parse?: (answer: string) => Partial<AiAnswer> & { text: string }
+  /** Menu lines for dishes the question names, for models that need a fact check. */
+  facts?: string[]
   /** Chat kinds: the system prompt (cacheable part + live part) and the turns for a chat model. */
-  system?: { stable: string; live: string }
+  system?: { stable: string; live: string; reminder?: string }
   turns?: ChatTurn[]
 }
 
@@ -352,7 +391,7 @@ interface Built {
  * menu with what each dish contains, and the training notes. Identical on every request for a
  * given config, so it caches.
  */
-function stableSystem(cfg: RestaurantConfig): string {
+export function stableSystem(cfg: RestaurantConfig): string {
   return [
     `You are TableMate, the assistant inside the floor team's app at ${cfg.name}, a fine-dining restaurant in India. You are an expert service trainer and a friendly colleague: hospitality standards, guest recovery, allergens and dietary practice (vegan, Jain, halal), accessibility etiquette, recommending with care, teamwork and staying calm in a rush.`,
     '',
@@ -381,6 +420,7 @@ function stableSystem(cfg: RestaurantConfig): string {
 function dishFacts(m: RestaurantConfig['menu'][number]): string {
   const c = m.contains ?? []
   const clashes = [
+    c.some((x) => ['meat', 'fish', 'shellfish'].includes(x)) ? 'vegetarian' : '',
     c.some((x) => ['meat', 'fish', 'shellfish', 'dairy', 'egg', 'honey'].includes(x)) ? 'vegan' : '',
     c.some((x) => ['meat', 'fish', 'shellfish', 'egg', 'root'].includes(x)) ? 'Jain' : '',
     c.some((x) => ['pork', 'alcohol', 'nonhalal'].includes(x)) ? 'halal' : '',

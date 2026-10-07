@@ -43,7 +43,7 @@ export default function Home() {
             </Button>
           ) : (
             <Badge variant="outline" className="gap-1 border-white/20 text-hero-foreground/80">
-              <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? t('chat.byClaude') : snap.ai.provider === 'dify' ? t('assist.dify') : t('home.aiBuiltIn')}
+              <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? t('chat.byClaude') : snap.ai.provider === 'ollama' ? t('chat.byOllama') : snap.ai.provider === 'dify' ? t('assist.dify') : t('home.aiBuiltIn')}
             </Badge>
           )}
         </div>

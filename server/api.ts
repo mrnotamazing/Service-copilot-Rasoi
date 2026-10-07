@@ -42,7 +42,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       unavailable: Object.keys(hub.state.unavailable),
       notes: hub.state.notes.slice(-40),
       sim: sim.status(),
-      ai: { provider: ai.provider },
+      ai: { provider: ai.provider, model: ai.modelLabel },
       team: teamView(hub.game),
     }
     if (role === 'server' && staffId) {

@@ -168,28 +168,49 @@ export default function SetupView() {
             <CardDescription>The assistant chat and practice room, suggested lines for guests, section briefings, the private coach and the manager’s shift summary.</CardDescription>
             <CardAction>
               <Badge variant={snap.ai.provider === 'built-in' ? 'secondary' : 'default'} className="gap-1">
-                <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? 'Claude connected' : dify ? 'Dify connected' : 'Built-in trainer'}
+                <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? 'Claude connected' : snap.ai.provider === 'ollama' ? 'Local AI connected' : dify ? 'Dify connected' : 'Built-in trainer'}
               </Badge>
             </CardAction>
           </CardHeader>
           <CardContent className="text-sm">
             {snap.ai.provider === 'claude' ? (
               <p className="text-muted-foreground">The assistant runs on Claude: it answers in each server’s language, knows your standards and menu, and plays guests in practice. If Claude can’t be reached, the built-in trainer answers and says so.</p>
+            ) : snap.ai.provider === 'ollama' ? (
+              <p className="text-muted-foreground">
+                The assistant runs on <span className="text-foreground">{snap.ai.model}</span> through Ollama, free and on this computer: nothing is sent anywhere. Answers are slower than a cloud AI and weaker in some languages. If Ollama is closed, the built-in trainer answers and says so.
+              </p>
             ) : dify ? (
               <p className="text-muted-foreground">Requests go to your Dify app. If Dify is unreachable, the copilot falls back to the built-in trainer and says so on the answer.</p>
             ) : STANDALONE ? (
               <p className="text-muted-foreground">This demo runs in the browser. Opened on claude.ai, it asks Claude on your own account (you’ll be asked to allow it the first time). Opened anywhere else, or if you decline, it uses the built-in trainer (English, set questions only). On your own computer, add an Anthropic API key for full answers.</p>
             ) : (
-              <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
-                <li>
-                  Get an API key from <span className="text-foreground">console.anthropic.com</span>.
-                </li>
-                <li>
-                  In the project folder, copy <code className="rounded bg-muted px-1">.env.example</code> to <code className="rounded bg-muted px-1">.env</code> and set <code className="rounded bg-muted px-1">ANTHROPIC_API_KEY</code>.
-                </li>
-                <li>Restart <code className="rounded bg-muted px-1">npm run dev</code>. This badge turns to “Claude connected”.</li>
-                <li>Prefer Dify? Set <code className="rounded bg-muted px-1">DIFY_API_URL</code> and <code className="rounded bg-muted px-1">DIFY_API_KEY</code> instead (see <code className="rounded bg-muted px-1">docs/dify-setup.md</code>).</li>
-              </ol>
+              <div className="space-y-3 text-muted-foreground">
+                <div>
+                  <div className="font-medium text-foreground">Free, on this computer (Ollama)</div>
+                  <ol className="mt-1 list-decimal space-y-1 pl-5">
+                    <li>
+                      Install Ollama from <span className="text-foreground">ollama.com</span> and open it.
+                    </li>
+                    <li>
+                      In a terminal, run <code className="rounded bg-muted px-1">ollama pull gemma3:4b</code> (a 3 GB download, once).
+                    </li>
+                    <li>Within a few seconds this badge turns to “Local AI connected”. No restart needed.</li>
+                  </ol>
+                </div>
+                <div>
+                  <div className="font-medium text-foreground">Best quality (Claude, paid)</div>
+                  <ol className="mt-1 list-decimal space-y-1 pl-5">
+                    <li>
+                      Get an API key from <span className="text-foreground">console.anthropic.com</span>.
+                    </li>
+                    <li>
+                      In the project folder, copy <code className="rounded bg-muted px-1">.env.example</code> to <code className="rounded bg-muted px-1">.env</code> and set <code className="rounded bg-muted px-1">ANTHROPIC_API_KEY</code>.
+                    </li>
+                    <li>Restart <code className="rounded bg-muted px-1">npm run dev</code>. This badge turns to “Claude connected”.</li>
+                    <li>Prefer Dify? Set <code className="rounded bg-muted px-1">DIFY_API_URL</code> and <code className="rounded bg-muted px-1">DIFY_API_KEY</code> instead (see <code className="rounded bg-muted px-1">docs/dify-setup.md</code>).</li>
+                  </ol>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -3,7 +3,7 @@
 **The right service. At the right time.**
 
 > **New here?** Start with [docs/getting-started.md](docs/getting-started.md): install, run and use it, step by step.
-> To turn on the Claude chat assistant, put `ANTHROPIC_API_KEY=...` in `.env` (see `.env.example`) and restart `npm run dev`. Dify is still supported: [docs/dify-setup.md](docs/dify-setup.md).
+> **Free AI chat:** install [Ollama](https://ollama.com), run `ollama pull gemma3:4b`, then `npm run dev`. No key, nothing leaves your computer. Step by step: [docs/ollama-setup.md](docs/ollama-setup.md). For the best answers, put `ANTHROPIC_API_KEY=...` in `.env` instead (see `.env.example`). Dify is still supported: [docs/dify-setup.md](docs/dify-setup.md).
 
 An AI service copilot for fine-dining floor staff. It reads what the restaurant's
 POS already knows (tables seated, KOTs fired, food ready, bills printed and
@@ -146,7 +146,7 @@ Each server sets these up for themselves from the **Comfort & access** button (t
 - **Respectful wording**: every AI prompt asks for gender-neutral, respectful language (no "sir/madam", they/them when unknown) and replies in the server's language. Staff can add optional pronouns on their Profile tab (`POST /api/staff/profile`).
 - **Guest needs**: wheelchair, hearing, vision, high chair, Jain, halal and vegan needs from the booking (`needs` on `table.seated`) appear on the greeting card, the guest list and the briefing as what to do.
 
-## AI assistance (Claude, Dify or built-in)
+## AI assistance (Claude, Ollama, Dify or built-in)
 
 | Where | Button | AI writes |
 |---|---|---|
@@ -156,7 +156,7 @@ Each server sets these up for themselves from the **Comfort & access** button (t
 | Server → Profile | Practice tough moments | A role-play guest, coaching per reply and a debrief |
 | Manager | Summarise | The night's bottlenecks in plain English |
 
-The copilot builds the facts; a language model phrases them (`server/ai.ts`). Order of preference: **Claude** (`server/claude.ts`, official Anthropic SDK, set `ANTHROPIC_API_KEY`; the long standards-and-menu prompt is cached), then **Dify**, then a **built-in** writer and trainer (English, set topics only), so every button always works. The shareable demo has no server: opened on claude.ai, it asks Claude on the viewer's own account through the artifact's `sample` capability (`src/lib/standalone.ts`), so custom questions work there without a key. If the model declines a request, the API retries on a fallback model automatically.
+The copilot builds the facts; a language model phrases them (`server/ai.ts`). Order of preference: **Claude** (`server/claude.ts`, official Anthropic SDK, set `ANTHROPIC_API_KEY`; the long standards-and-menu prompt is cached), then **Ollama** (`server/ollama.ts`: a free model on this computer, picked up automatically whenever the Ollama app is running with a model installed; `gemma3:4b` is a good multilingual choice), then **Dify**, then a **built-in** writer and trainer (English, set topics only), so every button always works. The shareable demo has no server: opened on claude.ai, it asks Claude on the viewer's own account through the artifact's `sample` capability (`src/lib/standalone.ts`), so custom questions work there without a key. If the model declines a request, the API retries on a fallback model automatically.
 
 ## Front end
 
