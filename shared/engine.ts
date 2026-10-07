@@ -24,6 +24,8 @@ import type {
 } from './types.ts'
 
 const MIN = 60_000
+/** A step only counts as past standard once it is this far over (avoids flagging a few seconds). */
+export const LAPSE_GRACE_MIN = 0.25
 
 export interface EngineState {
   tables: Record<string, TableState>
@@ -297,7 +299,7 @@ function closeVisit(state: EngineState, t: TableState, config: RestaurantConfig,
 export function segmentsFor(t: TableState, config: RestaurantConfig, resetAt?: number): Segment[] {
   const sop = config.sop
   const out: Segment[] = []
-  const seg = (s: Omit<Segment, 'lapse'>) => out.push({ ...s, lapse: (s.end - s.start) / MIN > s.targetMin })
+  const seg = (s: Omit<Segment, 'lapse'>) => out.push({ ...s, lapse: (s.end - s.start) / MIN > s.targetMin + LAPSE_GRACE_MIN })
 
   const greetEnd = t.greetedAt ?? t.firstOrderAt
   if (t.seatedAt && greetEnd)

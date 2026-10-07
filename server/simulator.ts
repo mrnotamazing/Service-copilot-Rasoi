@@ -156,8 +156,10 @@ export class Simulator {
       const size = pick([2, 2, 2, 2, 3, 4, 4, 4, 5, 6])
       this.waitlist.push({ size, since: now })
       const peak = elapsed > 15 * MIN && elapsed < 70 * MIN ? 1.8 : 1
-      this.nextArrival = now + (rand(2, 5) * MIN) / (peak * this.intensity)
+      this.nextArrival = now + (rand(5, 10) * MIN) / (peak * this.intensity)
     }
+    // Guests who wait too long for a table leave.
+    this.waitlist = this.waitlist.filter((g) => now - g.since < 25 * MIN)
     for (const g of [...this.waitlist]) {
       const free = tables.filter((t) => t.status === 'available' && t.seats >= g.size).sort((a, b) => a.seats - b.seats)[0]
       if (!free) continue
@@ -246,7 +248,7 @@ export class Simulator {
         if ((this.busyUntil.get(staffId) ?? 0) > now) continue
         const task = tasks.find((k) => k.staffId === staffId)
         if (!task) continue
-        if (!this.reaction.has(task.id)) this.reaction.set(task.id, (chance(0.18) ? rand(2.5, 5) : rand(0.3, 1.6)) * MIN)
+        if (!this.reaction.has(task.id)) this.reaction.set(task.id, (chance(0.08) ? rand(2.5, 5) : rand(0.2, 1.1)) * MIN)
         if (now < task.createdAt + this.reaction.get(task.id)!) continue
         const action = task.actions.find((a) => a.primary) ?? task.actions[0]
         const payload = action.event === 'task.snoozed' ? { ...action.payload, taskId: task.id, staffId } : action.payload
