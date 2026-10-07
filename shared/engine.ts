@@ -8,6 +8,7 @@
 import type { CopilotEvent } from './events.ts'
 import type {
   Course,
+  TaskText,
   MenuItem,
   Note,
   OrderLine,
@@ -89,7 +90,7 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       t.visitId = `${t.id}@${at}`
       t.seatedAt = at
       t.lastAttentionAt = at
-      t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], occasion: p.occasion, vip: p.vip }
+      t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], needs: p.needs ?? [], occasion: p.occasion, vip: p.vip }
       break
     }
     case 'table.assigned': {
@@ -351,6 +352,33 @@ function alternativesFor(state: EngineState, config: RestaurantConfig, line: Ord
     .map((m) => m.name)
 }
 
+const NEED_WORDS: Record<string, string> = {
+  wheelchair: 'wheelchair user',
+  hearing: 'hard of hearing',
+  vision: 'low vision',
+  highchair: 'high chair needed',
+  jain: 'Jain',
+  halal: 'halal',
+  vegan: 'vegan',
+}
+
+/** The party as translatable parts: size, name, regular, occasion, allergies, needs. */
+function partyText(t: TableState): TaskText[] {
+  const p = t.party
+  if (!p) return []
+  const out: TaskText[] = []
+  if (p.size) out.push({ k: 'party.of', p: { n: p.size } })
+  if (p.guestName) out.push({ raw: p.guestName })
+  if (p.vip) out.push({ k: 'party.regular' })
+  if (p.occasion) out.push({ k: `occ.${p.occasion}` })
+  if (p.allergies.length) out.push({ k: 'party.allergy', p: { list: p.allergies.join(', ') } })
+  for (const n of p.needs ?? []) out.push({ k: `need.${n}` })
+  return out
+}
+
+const raw = (s: string): TaskText => ({ raw: s })
+const k = (key: string, p?: Record<string, string | number>): TaskText => ({ k: key, p })
+
 function describeParty(t: TableState): string {
   const p = t.party
   if (!p) return ''
@@ -359,6 +387,7 @@ function describeParty(t: TableState): string {
   if (p.vip) bits.push('regular guest')
   if (p.occasion) bits.push(p.occasion)
   if (p.allergies.length) bits.push(`allergy: ${p.allergies.join(', ')}`)
+  for (const n of p.needs ?? []) bits.push(NEED_WORDS[n] ?? n)
   return bits.filter(Boolean).join(' · ')
 }
 
@@ -377,7 +406,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
     const add = (
       kind: TaskKind,
       suffix: string,
-      o: { title: string; hint: string; impact: number; dueAt: number; createdAt: number; actions: TaskAction[]; checklist?: string[]; staffId?: string },
+      o: { title: string; hint: string; impact: number; dueAt: number; createdAt: number; actions: TaskAction[]; checklist?: string[]; staffId?: string; text?: Task['text'] },
     ) => {
       const staffId = o.staffId ?? t.serverId
       tasks.push({
@@ -389,6 +418,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         title: o.title,
         hint: o.hint,
         checklist: o.checklist,
+        text: o.text,
         impact: o.impact,
         dueAt: o.dueAt,
         createdAt: o.createdAt,
@@ -403,6 +433,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('greet', '', {
         title: `Welcome ${t.name}`,
         hint: [describeParty(t), 'Water, menus, today’s specials'].filter(Boolean).join(' · '),
+        text: { title: k('t.greet', { table: t.name }), hint: { parts: [...partyText(t), k('h.greet')] } },
         impact: t.party?.vip ? 4 : 3,
         createdAt: t.seatedAt,
         dueAt: t.seatedAt + sop.greetWithinMin * MIN,
@@ -416,6 +447,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         add('take_order', '', {
           title: `${t.name} may be ready to order`,
           hint: 'Menus have been down a while. Offer recommendations if they’re undecided.',
+          text: { title: k('t.take_order', { table: t.name }), hint: k('h.take_order') },
           impact: 2,
           createdAt: due - 2 * MIN,
           dueAt: due,
@@ -428,6 +460,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('allergy', '', {
         title: `Flag ${t.name}’s allergy to the kitchen`,
         hint: `${t.party.allergies.join(', ')}: one tap sends it to the pass and confirms it on the ticket.`,
+        text: { title: k('t.allergy', { table: t.name }), hint: k('h.allergy', { list: t.party.allergies.join(', ') }) },
         impact: 5,
         createdAt: t.firstOrderAt,
         dueAt: t.firstOrderAt + 1 * MIN,
@@ -442,6 +475,10 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('unavailable', off.map((l) => l.id).join(','), {
         title: `${off.map((l) => l.name).join(', ')} is off: tell ${t.name}`,
         hint: alts.length ? `Suggest instead: ${alts.join(' or ')}` : 'Offer the guest a choice from the menu.',
+        text: {
+          title: k('t.unavailable', { dishes: off.map((l) => l.name).join(', '), table: t.name }),
+          hint: alts.length ? k('h.unavailable', { alts: alts.join(' / ') }) : k('h.unavailable_none'),
+        },
         impact: 5,
         createdAt: since,
         dueAt: since + 1 * MIN,
@@ -460,6 +497,10 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('kitchen_delay', ticketId, {
         title: `${t.name} ${late[0].course}s running ${minutes(over)} late`,
         hint: `Kitchen is behind on ${late.map((l) => l.name).join(', ')}. A heads-up now beats an apology later.`,
+        text: {
+          title: k('t.kitchen_delay', { table: t.name, course: `@course.${late[0].course}`, min: Math.max(1, Math.round(over / MIN)) }),
+          hint: k('h.kitchen_delay', { dishes: late.map((l) => l.name).join(', ') }),
+        },
         impact: 4,
         createdAt: appear,
         dueAt: appear + 1 * MIN,
@@ -474,6 +515,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('pickup', ready.map((l) => l.id).join(','), {
         title: `Pick up ${t.name} ${ready[0].course}s from the pass`,
         hint: ready.map((l) => `${l.qty}× ${l.name}`).join(', '),
+        text: { title: k('t.pickup', { table: t.name, course: `@course.${ready[0].course}` }), hint: raw(ready.map((l) => `${l.qty}× ${l.name}`).join(', ')) },
         impact: 4,
         createdAt: readyAt,
         dueAt: readyAt + sop.pickupWithinMin * MIN,
@@ -491,6 +533,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         add('checkback', course, {
           title: `Check in on ${t.name}’s ${course}s`,
           hint: 'A quick “how is everything?”. Catch issues while they can still be fixed.',
+          text: { title: k('t.checkback', { table: t.name, course: `@course.${course}` }), hint: k('h.checkback') },
           impact: 2,
           createdAt: checkAt,
           dueAt: checkAt + 2 * MIN,
@@ -502,6 +545,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         add('clear_course', course, {
           title: `${t.name} done with ${course}s? Clear & ${next}`,
           hint: 'Clear once the whole table has finished.',
+          text: { title: k('t.clear_course', { table: t.name, course: `@course.${course}`, next: `@next.${course}` }), hint: k('h.clear_course') },
           impact: 2,
           createdAt: clearAt - 1 * MIN,
           dueAt: clearAt + 2 * MIN,
@@ -515,6 +559,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('present_bill', '', {
         title: `${t.name} asked for the bill`,
         hint: 'Bill is printed. Present it and check how the evening went.',
+        text: { title: k('t.present_bill', { table: t.name }), hint: k('h.present_bill') },
         impact: 4,
         createdAt: t.billRequestedAt,
         dueAt: t.billRequestedAt + sop.billPresentWithinMin * MIN,
@@ -527,6 +572,10 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         title: `Say goodbye to ${t.name}`,
         hint: [t.party?.guestName ? `Thank ${t.party.guestName}` : 'Thank them', t.party?.occasion ? `wish them a happy ${t.party.occasion}` : 'invite them back']
           .join(', '),
+        text: {
+          title: k('t.farewell', { table: t.name }),
+          hint: { sep: ', ', parts: [t.party?.guestName ? k('h.farewell_thank', { name: t.party.guestName }) : k('h.farewell_thank_them'), t.party?.occasion ? k('h.farewell_occasion', { occasion: `@occ.${t.party.occasion}` }) : k('h.farewell_back')] },
+        },
         impact: 3,
         createdAt: t.settledAt,
         dueAt: t.settledAt + sop.farewellWithinMin * MIN,
@@ -543,6 +592,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         createdAt: start,
         dueAt: t.settledAt + sop.resetWithinMin * MIN,
         checklist: RESET_CHECKLIST,
+        text: { title: k('t.reset', { table: t.name }), hint: k(available <= 1 ? 'h.reset_waiting' : 'h.reset'), checklist: ['reset.c1', 'reset.c2', 'reset.c3', 'reset.c4', 'reset.c5'] },
         actions: [{ label: 'Table ready', event: 'table.reset', payload: { tableId: t.id }, primary: true }],
       })
     }
@@ -563,6 +613,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         staffId,
         title: `Kitchen: ${n.text}`,
         hint: t ? `About ${t.name}` : 'For the whole floor',
+        text: { title: { parts: [k('t.kitchen_message'), raw(n.text)], sep: ' ' }, hint: t ? k('h.kitchen_about', { table: t.name }) : k('h.kitchen_all') },
         impact: 4,
         createdAt: n.at,
         dueAt: n.at + 1 * MIN,

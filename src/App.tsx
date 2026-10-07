@@ -3,6 +3,7 @@ import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { STANDALONE } from './lib/live.ts'
+import { usePrefs } from './lib/prefs.ts'
 import AboutView from './pages/AboutView.tsx'
 import Home from './pages/Home.tsx'
 import KitchenView from './pages/KitchenView.tsx'
@@ -13,9 +14,10 @@ import SetupView from './pages/SetupView.tsx'
 const Router = STANDALONE ? HashRouter : BrowserRouter
 
 export default function App() {
+  const { reduceMotion } = usePrefs()
   return (
-    // Motion follows the device's reduce-motion setting.
-    <MotionConfig reducedMotion="user">
+    // Motion follows the device's reduce-motion setting, or the in-app switch in Comfort & access.
+    <MotionConfig reducedMotion={reduceMotion ? 'always' : 'user'}>
       <TooltipProvider delayDuration={300}>
         <Router>
           <Routes>

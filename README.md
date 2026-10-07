@@ -98,12 +98,24 @@ curl -X POST localhost:4000/api/events -H 'content-type: application/json' \
 Built on the research about motivating without controlling (see `shared/game.ts`):
 
 - **XP** for every good move: swift welcomes, heads-ups before guests ask, food hot from the pass. Late steps still earn a little; nothing is ever taken away.
-- **Ranks**: Commis → Server → Senior server → Captain → Head waiter → Maître d’.
+- **Ranks**: Commis → Server → Senior server → Captain → Head of floor → Maître d’.
 - **Streaks with shields**: tables served fully to standard build a streak; every third earns a shield that absorbs one slip (streak freezes make streaks last far longer).
 - **Combo** for consecutive on-time actions, **badges** (several reachable in the first shift), and **three quests** per night.
 - **Team goal and kudos** instead of a leaderboard: competitive leaderboards lowered motivation in Hanus & Fox (2015); the social layer here is cooperative.
 - **Private**: XP, streaks and badges only reach the server’s own phone. Managers see the team goal and kudos.
 - **Feels like an app**: swipe cards right/left, haptics on wins, confetti for badges and ranks, onboarding, shift recap, bottom tabs, installable to the home screen.
+
+## Inclusive by design
+
+Each server sets these up for themselves from the **Comfort & access** button (the accessibility icon in the header). Settings are saved on the device (`src/lib/prefs.ts`).
+
+- **Six languages** for the server app: English, हिन्दी, नेपाली, বাংলা, தமிழ், Español (`src/i18n/`). Task cards, actions, badges, quests and onboarding all translate. The engine sends task text as keys and values, so each phone shows it in its own language. Kitchen notes and kudos are stored in English so everyone can read them.
+- **Read aloud**: new top tasks are spoken in the chosen language with the device's own voice (`src/lib/speech.ts`), at an adjustable speed. Every card has a speaker button.
+- **Reading**: larger text, an easy-to-read font (Atkinson Hyperlegible) and high contrast.
+- **Alerts without sound**: a flashing screen edge for Deaf and hard-of-hearing staff, plus an optional chime and vibration.
+- **Calm and focus**: one card at a time, reduced motion, quiet celebrations (XP still counts) and a left-handed layout.
+- **Respectful wording**: every AI prompt asks for gender-neutral, respectful language (no "sir/madam", they/them when unknown) and replies in the server's language. Staff can add optional pronouns on their Profile tab (`POST /api/staff/profile`).
+- **Guest needs**: wheelchair, hearing, vision, high chair, Jain, halal and vegan needs from the booking (`needs` on `table.seated`) appear on the greeting card, the guest list and the briefing as what to do.
 
 ## AI assistance (Dify)
 

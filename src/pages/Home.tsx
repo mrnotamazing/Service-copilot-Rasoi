@@ -6,33 +6,40 @@ import { AppShell, LiveClock, SectionTitle, ShellSkeleton } from '../components/
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { useT, type Key } from '../i18n/index.ts'
+import { en } from '../i18n/en.ts'
 import { post, useSnapshot } from '../lib/live.ts'
 
 export default function Home() {
   const { snap, connected } = useSnapshot('kitchen')
+  const t = useT()
   if (!snap) return <ShellSkeleton />
   const servers = snap.config.staff.filter((s) => s.role === 'server')
   const sectionOf = (id: string) => Object.entries(snap.config.sections).find(([, s]) => s === id)?.[0]
   const idle = snap.sim.startedAt === null && snap.tables.every((t) => !t.visitId)
   const seated = snap.tables.filter((t) => t.visitId).length
   const name = (id: string) => snap.config.staff.find((s) => s.id === id)?.name ?? id
+  const reasonText = (r: string) => {
+    const k = (Object.keys(en) as Key[]).find((key) => key.startsWith('kudos.r') && en[key] === r)
+    return k ? t(k) : r
+  }
 
   return (
-    <AppShell title="Tonight’s service" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />} wide={false}>
+    <AppShell title={t('home.title')} sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />} wide={false}>
       <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="relative overflow-hidden rounded-3xl bg-hero p-5 text-hero-foreground">
         <Mascot className="pointer-events-none absolute right-5 top-1/2 w-44 -translate-y-1/2 max-sm:hidden" speed="var(--hero-foreground)" />
         <div className="relative flex flex-wrap items-center justify-between gap-3 sm:pr-48">
           <div>
-            <p className="text-sm opacity-75">{idle ? 'Doors aren’t open yet' : `${seated} of ${snap.tables.length} tables seated`}</p>
-            <h2 className="font-display text-2xl">{idle ? 'Ready when you are' : 'Service is running'}</h2>
+            <p className="text-sm opacity-75">{idle ? t('home.closed') : t('home.seated', { n: seated, total: snap.tables.length })}</p>
+            <h2 className="font-display text-2xl">{idle ? t('home.ready') : t('home.running')}</h2>
           </div>
           {idle ? (
             <Button size="lg" className="h-11" onClick={() => void post('/api/sim/start')}>
-              <Play /> Start a simulated service
+              <Play /> {t('home.start')}
             </Button>
           ) : (
             <Badge variant="outline" className="gap-1 border-white/20 text-hero-foreground/80">
-              <Sparkles className="size-3" /> {snap.ai.provider === 'dify' ? 'AI via Dify' : 'Built-in AI writer'}
+              <Sparkles className="size-3" /> {snap.ai.provider === 'dify' ? t('assist.dify') : t('home.aiBuiltIn')}
             </Badge>
           )}
         </div>
@@ -40,18 +47,18 @@ export default function Home() {
           <Users className="size-4 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
             <div className="flex justify-between text-sm">
-              <span>Team goal: tables served fully to standard</span>
+              <span>{t('home.teamGoal')}</span>
               <span className="tabular opacity-75">
                 {Math.min(snap.team.smooth, snap.team.goal)}/{snap.team.goal}
               </span>
             </div>
-            <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-1.5 h-1.5 bg-white/15" aria-label="Team goal progress" />
+            <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-1.5 h-1.5 bg-white/15" aria-label={t('home.teamGoal')} />
           </div>
         </div>
       </motion.section>
 
       <div className="mt-8">
-        <SectionTitle>Who’s on the floor</SectionTitle>
+        <SectionTitle>{t('home.who')}</SectionTitle>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         {servers.map((s) => {
@@ -64,16 +71,19 @@ export default function Home() {
                   {s.name[0]}
                 </span>
                 <div className="min-w-0">
-                  <div className="font-medium">{s.name}</div>
-                  <div className="text-xs text-muted-foreground">Section {sectionOf(s.id)}</div>
+                  <div className="font-medium">
+                    {s.name}
+                    {s.pronouns && <span className="ml-1 text-xs font-normal text-muted-foreground">({s.pronouns})</span>}
+                  </div>
+                  <div className="text-xs text-muted-foreground">{t('home.section', { s: sectionOf(s.id) ?? '' })}</div>
                 </div>
               </div>
               <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                 <span className="tabular">
-                  {tables} {tables === 1 ? 'table' : 'tables'}, {open} {open === 1 ? 'card' : 'cards'}
+                  {t('home.load', { tables, cards: open })}
                 </span>
                 <span className="inline-flex items-center gap-1 font-medium text-primary">
-                  Open their screen <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                  {t('home.open')} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </div>
             </Link>
@@ -84,14 +94,14 @@ export default function Home() {
       {snap.team.kudos.length > 0 && (
         <>
           <div className="mt-8">
-            <SectionTitle>Kudos tonight</SectionTitle>
+            <SectionTitle>{t('home.kudos')}</SectionTitle>
           </div>
           <ul className="mt-3 space-y-2">
             {snap.team.kudos.slice(0, 4).map((k) => (
               <li key={k.id} className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-sm">
                 <HeartHandshake className="size-4 shrink-0 text-primary" />
                 <span className="min-w-0 truncate">
-                  <b className="font-medium">{name(k.from)}</b> thanked <b className="font-medium">{name(k.to)}</b>: {k.reason}
+                  {t('profile.thanked', { from: name(k.from), to: name(k.to), reason: reasonText(k.reason) })}
                 </span>
               </li>
             ))}
@@ -100,13 +110,13 @@ export default function Home() {
       )}
 
       <div className="mt-8">
-        <SectionTitle>Other screens</SectionTitle>
+        <SectionTitle>{t('home.other')}</SectionTitle>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         {[
-          { to: '/kitchen', label: 'Kitchen pass', sub: 'Tickets, availability, notes', Icon: ChefHat },
-          { to: '/manager', label: 'Manager overview', sub: 'Bottlenecks and delay receipts', Icon: LayoutDashboard },
-          { to: '/about', label: 'How it works', sub: 'The problem, design and theory', Icon: BookOpen },
+          { to: '/kitchen', label: t('home.kitchenLabel'), sub: t('home.kitchenSub'), Icon: ChefHat },
+          { to: '/manager', label: t('home.managerLabel'), sub: t('home.managerSub'), Icon: LayoutDashboard },
+          { to: '/about', label: t('nav.how'), sub: t('home.howSub'), Icon: BookOpen },
         ].map(({ to, label, sub, Icon }) => (
           <Link key={to} to={to} className="group rounded-2xl border bg-card p-4 transition-shadow hover:shadow-md hover:ring-1 hover:ring-primary/40">
             <Icon className="size-5 text-primary" />

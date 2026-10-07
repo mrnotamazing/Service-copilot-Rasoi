@@ -23,6 +23,11 @@ export interface Award {
   xp: number
   title: string
   detail?: string
+  /** Translation key and params for the title (and detail), rendered in each device's language. */
+  k?: string
+  p?: Record<string, string | number>
+  dk?: string
+  dp?: Record<string, string | number>
 }
 
 export interface PlayerState {
@@ -62,7 +67,7 @@ export const LEVELS: { xp: number; title: string }[] = [
   { xp: 120, title: 'Server' },
   { xp: 320, title: 'Senior server' },
   { xp: 650, title: 'Captain' },
-  { xp: 1100, title: 'Head waiter' },
+  { xp: 1100, title: 'Head of floor' },
   { xp: 1700, title: 'Maître d’' },
 ]
 
@@ -159,16 +164,16 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
     if (game.kudos.length > 50) game.kudos.splice(0, game.kudos.length - 50)
     if (game.players[from]) {
       bump(game, from, 'kudosSent', ev.at, config)
-      award(game, from, ev.at, 5, 'xp', 'Kudos sent', `to ${name(config, to)}`, config)
+      award(game, from, ev.at, 5, 'xp', 'Kudos sent', `to ${name(config, to)}`, config, { k: 'a.kudosSent', dk: 'd.to', dp: { name: name(config, to) } })
     }
-    award(game, to, ev.at, 10, 'kudos', `Kudos from ${name(config, from)}`, reason, config)
+    award(game, to, ev.at, 10, 'kudos', `Kudos from ${name(config, from)}`, reason, config, { k: 'a.kudosFrom', p: { name: name(config, from) } })
     return
   }
   // Only staff taps earn XP; POS events and manager overrides don't.
   if (ev.source !== 'app') return
 
   const tableOf = (id: string) => state.tables[id]
-  const credit = (staffId: string | undefined, xp: number, title: string, detail: string | undefined, g?: Grade) => {
+  const credit = (staffId: string | undefined, xp: number, title: string, detail: string | undefined, g?: Grade, key?: string) => {
     if (!staffId || !game.players[staffId]) return
     const p = game.players[staffId]
     if (g === 'late') p.combo = 0
@@ -177,7 +182,11 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
       p.bestCombo = Math.max(p.bestCombo, p.combo)
     }
     const comboBonus = g && g !== 'late' && p.combo >= 3 ? Math.min(10, p.combo) : 0
-    award(game, staffId, ev.at, xp + comboBonus, 'xp', title, comboBonus ? `${detail ? detail + ', ' : ''}combo ×${p.combo}` : detail, config)
+    award(game, staffId, ev.at, xp + comboBonus, 'xp', title, comboBonus ? `${detail ? detail + ', ' : ''}combo ×${p.combo}` : detail, config, {
+      k: key,
+      dk: comboBonus ? 'd.combo' : undefined,
+      dp: comboBonus ? { table: detail ?? '', n: p.combo } : undefined,
+    })
   }
 
   switch (ev.type) {
@@ -187,7 +196,7 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
       const g = grade(ev.at - t.seatedAt, sop.greetWithinMin)
       bump(game, t.serverId, 'greets', ev.at, config)
       if (ev.at - t.seatedAt <= MIN) bump(game, t.serverId, 'fastGreets', ev.at, config)
-      credit(t.serverId, GRADE_XP[g], `${GRADE_WORD[g]} welcome`, t.name, g)
+      credit(t.serverId, GRADE_XP[g], `${GRADE_WORD[g]} welcome`, t.name, g, `a.welcome.${g}`)
       return
     }
     case 'item.served': {
@@ -201,28 +210,28 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
       const waited = ev.at - Math.min(...ready.map((x) => x.l.readyAt!))
       const g = grade(waited, sop.pickupWithinMin)
       if (waited <= 30_000) bump(game, t.serverId, 'fastPickups', ev.at, config)
-      credit(t.serverId, GRADE_XP[g], g === 'swift' ? 'Hot to the table' : `${GRADE_WORD[g]}: served`, t.name, g)
+      credit(t.serverId, GRADE_XP[g], g === 'swift' ? 'Hot to the table' : `${GRADE_WORD[g]}: served`, t.name, g, `a.served.${g}`)
       return
     }
     case 'guest.informed': {
       const t = Object.values(state.tables).find((x) => x.lines.some((l) => ev.payload.lineIds.includes(l.id)))
       if (!t) return
       bump(game, t.serverId, 'informs', ev.at, config)
-      credit(t.serverId, 15, ev.payload.reason === 'delay' ? 'Heads-up given' : 'Guest kept in the loop', t.name, 'on_time')
+      credit(t.serverId, 15, ev.payload.reason === 'delay' ? 'Heads-up given' : 'Guest kept in the loop', t.name, 'on_time', ev.payload.reason === 'delay' ? 'a.headsUp' : 'a.loop')
       return
     }
     case 'allergy.confirmed': {
       const t = tableOf(ev.payload.tableId)
       if (!t || t.allergyConfirmedAt) return
       bump(game, t.serverId, 'allergies', ev.at, config)
-      credit(t.serverId, 20, 'Allergy flagged', t.name, 'on_time')
+      credit(t.serverId, 20, 'Allergy flagged', t.name, 'on_time', 'a.allergy')
       return
     }
     case 'bill.presented': {
       const t = tableOf(ev.payload.tableId)
       if (!t?.billRequestedAt || t.billPresentedAt) return
       const g = grade(ev.at - t.billRequestedAt, sop.billPresentWithinMin)
-      credit(t.serverId, GRADE_XP[g], `${GRADE_WORD[g]}: bill presented`, t.name, g)
+      credit(t.serverId, GRADE_XP[g], `${GRADE_WORD[g]}: bill presented`, t.name, g, `a.bill.${g}`)
       return
     }
     case 'table.reset': {
@@ -230,7 +239,7 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
       if (!t?.settledAt) return
       const g = grade(ev.at - t.settledAt, sop.resetWithinMin)
       if (ev.at - t.settledAt <= 3 * MIN) bump(game, t.serverId, 'fastResets', ev.at, config)
-      credit(t.serverId, GRADE_XP[g], `${GRADE_WORD[g]}: table reset`, t.name, g)
+      credit(t.serverId, GRADE_XP[g], `${GRADE_WORD[g]}: table reset`, t.name, g, `a.reset.${g}`)
       return
     }
     case 'server.checkback':
@@ -239,7 +248,8 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
       const t = tableOf(ev.payload.tableId)
       if (!t) return
       const label = ev.type === 'server.checkback' ? 'Checked in' : ev.type === 'course.cleared' ? 'Course cleared' : 'Warm goodbye'
-      credit(t.serverId, 5, label, t.name)
+      const key = ev.type === 'server.checkback' ? 'a.checkin' : ev.type === 'course.cleared' ? 'a.cleared' : 'a.goodbye'
+      credit(t.serverId, 5, label, t.name, undefined, key)
       return
     }
   }
@@ -256,14 +266,14 @@ export function afterEvent(game: GameState, newVisits: VisitRecord[], config: Re
       p.bestStreak = Math.max(p.bestStreak, p.streak)
       bump(game, v.serverId, 'smooth', v.endedAt, config)
       setCounter(game, v.serverId, 'bestStreak', p.bestStreak, v.endedAt, config)
-      award(game, v.serverId, v.endedAt, 25, 'xp', 'Table served to standard', `${v.tableName}, streak ${p.streak}`, config)
+      award(game, v.serverId, v.endedAt, 25, 'xp', 'Table served to standard', `${v.tableName}, streak ${p.streak}`, config, { k: 'a.smooth', dk: 'd.streak', dp: { table: v.tableName, n: p.streak } })
       if (p.counters.smooth % 3 === 0) {
         p.shields = Math.min(3, p.shields + 1)
-        award(game, v.serverId, v.endedAt, 0, 'shield', 'Streak shield earned', 'Protects your streak from one slip', config)
+        award(game, v.serverId, v.endedAt, 0, 'shield', 'Streak shield earned', 'Protects your streak from one slip', config, { k: 'a.shieldEarned', dk: 'd.shieldEarned' })
       }
     } else if (p.shields > 0) {
       p.shields--
-      award(game, v.serverId, v.endedAt, 0, 'shield', 'Shield used', `Your streak of ${p.streak} is safe`, config)
+      award(game, v.serverId, v.endedAt, 0, 'shield', 'Shield used', `Your streak of ${p.streak} is safe`, config, { k: 'a.shieldUsed', dk: 'd.shieldUsed', dp: { n: p.streak } })
     } else {
       p.streak = 0
     }
@@ -274,14 +284,25 @@ function name(config: RestaurantConfig, id: string) {
   return config.staff.find((s) => s.id === id)?.name ?? 'a teammate'
 }
 
-function award(game: GameState, staffId: string, at: number, xp: number, kind: Award['kind'], title: string, detail: string | undefined, config: RestaurantConfig) {
+function award(
+  game: GameState,
+  staffId: string,
+  at: number,
+  xp: number,
+  kind: Award['kind'],
+  title: string,
+  detail: string | undefined,
+  config: RestaurantConfig,
+  i18n: Pick<Award, 'k' | 'p' | 'dk' | 'dp'> = {},
+) {
   const p = game.players[staffId]
   if (!p) return
   const before = levelFor(p.xp).level
   p.xp += xp
-  push(game, { id: `a${++game.seq}`, staffId, at, kind, xp, title, detail })
+  push(game, { id: `a${++game.seq}`, staffId, at, kind, xp, title, detail, ...i18n })
   const after = levelFor(p.xp)
-  if (after.level > before) push(game, { id: `a${++game.seq}`, staffId, at, kind: 'level', xp: 0, title: `Level ${after.level}: ${after.title}`, detail: 'New rank unlocked' })
+  if (after.level > before)
+    push(game, { id: `a${++game.seq}`, staffId, at, kind: 'level', xp: 0, title: `Level ${after.level}: ${after.title}`, detail: 'New rank unlocked', k: 'a.level', p: { n: after.level, rank: `@rank.${after.index}` }, dk: 'd.newRank' })
   void config
 }
 
@@ -302,12 +323,12 @@ function setCounter(game: GameState, staffId: string, counter: string, value: nu
   for (const b of BADGES)
     if (b.counter === counter && !p.badges[b.id] && value >= b.target) {
       p.badges[b.id] = at
-      award(game, staffId, at, 30, 'badge', b.title, b.description, config)
+      award(game, staffId, at, 30, 'badge', b.title, b.description, config, { k: `badge.${b.id}.t`, dk: `badge.${b.id}.d` })
     }
   for (const q of QUESTS)
     if (q.counter === counter && !p.quests[q.id] && value >= q.target) {
       p.quests[q.id] = at
-      award(game, staffId, at, q.xp, 'quest', 'Quest complete', q.title, config)
+      award(game, staffId, at, q.xp, 'quest', 'Quest complete', q.title, config, { k: 'a.quest', dk: `quest.${q.id}` })
     }
 }
 

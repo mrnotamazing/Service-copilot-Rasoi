@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { AiAnswer, AiKind } from '../../server/ai.ts'
 import { post } from './live.ts'
+import { getPrefs } from './prefs.ts'
 
 export type { AiAnswer }
 
@@ -10,11 +11,11 @@ export function useAi() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function ask(kind: AiKind, body: { staffId?: string; taskId?: string; question?: string } = {}) {
+  async function ask(kind: AiKind, body: { staffId?: string; taskId?: string; question?: string; lang?: string } = {}) {
     setLoading(true)
     setError(null)
     try {
-      setAnswer(await post<AiAnswer>('/api/ai', { kind, ...body }))
+      setAnswer(await post<AiAnswer>('/api/ai', { kind, lang: getPrefs().lang, ...body }))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {

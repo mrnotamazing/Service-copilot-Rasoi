@@ -1,13 +1,15 @@
-import { BookOpen, CakeSlice, ChefHat, HeartPulse, LayoutDashboard, Monitor, Moon, Settings, Star, Sun, Users } from 'lucide-react'
+import { Accessibility, BookOpen, CakeSlice, ChefHat, HeartPulse, LayoutDashboard, Monitor, Moon, Settings, Star, Sun, Users } from 'lucide-react'
 import { Mark, Wordmark } from '../brand/marks.tsx'
 import type { ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { STATUS_LABEL, STATUS_PROGRESS, mins } from '../lib/format.ts'
+import { STATUS_LABEL, STATUS_PROGRESS } from '../lib/format.ts'
 import { useTheme, type ThemeChoice } from '../lib/theme.ts'
 import { cn } from '@/lib/utils'
+import { useT, type Key } from '../i18n/index.ts'
+import { AccessButton } from './AccessPanel.tsx'
 
 export function Brand() {
   return (
@@ -69,6 +71,7 @@ export function tableProgress(t: TableState): number {
 }
 
 export function TableTile({ t, now, color, onClick, active }: { t: TableState; now: number; color?: string; onClick?: () => void; active?: boolean }) {
+  const tr = useT()
   const p = tableProgress(t)
   const r = 22
   const c = 2 * Math.PI * r
@@ -106,12 +109,13 @@ export function TableTile({ t, now, color, onClick, active }: { t: TableState; n
           {t.name}
         </text>
       </svg>
-      <div className={cn('text-[11px] font-medium', free && 'text-muted-foreground')}>{STATUS_LABEL[t.status]}</div>
-      <div className="h-4 text-[10px] tabular text-muted-foreground">{t.seatedAt && !free ? mins(now - t.seatedAt) : `${t.seats} seats`}</div>
+      <div className={cn('text-[11px] font-medium', free && 'text-muted-foreground')}>{tr.any(`status.${t.status}`) || STATUS_LABEL[t.status]}</div>
+      <div className="h-4 text-[10px] tabular text-muted-foreground">{t.seatedAt && !free ? tr('tile.min', { n: Math.max(1, Math.round((now - t.seatedAt) / 60_000)) }) : tr('tile.seats', { n: t.seats })}</div>
       <div className="absolute right-1.5 top-1.5 flex gap-0.5">
-        {t.party?.allergies.length ? <HeartPulse className="size-3.5 text-warn" aria-label={`Allergy: ${t.party.allergies.join(', ')}`} /> : null}
-        {t.party?.occasion ? <CakeSlice className="size-3.5 text-primary" aria-label={t.party.occasion} /> : null}
-        {t.party?.vip ? <Star className="size-3.5 text-primary" aria-label="Regular guest" /> : null}
+        {t.party?.allergies.length ? <HeartPulse className="size-3.5 text-warn" aria-label={tr('party.allergy', { list: t.party.allergies.join(', ') })} /> : null}
+        {t.party?.occasion ? <CakeSlice className="size-3.5 text-primary" aria-label={tr.any(`occ.${t.party.occasion}`)} /> : null}
+        {t.party?.needs?.length ? <Accessibility className="size-3.5 text-primary" aria-label={t.party.needs.map((n) => tr.any(`need.${n}`)).join('; ')} /> : null}
+        {t.party?.vip ? <Star className="size-3.5 text-primary" aria-label={tr('tables.regular')} /> : null}
       </div>
       {late && <span className="absolute left-1.5 top-1.5 size-2 rounded-full bg-kitchen pulse-soft" title="Kitchen running late" />}
     </Comp>
@@ -135,18 +139,19 @@ export function PanelTitle({ children, className }: { children: ReactNode; class
 }
 
 const SHELL_NAV = [
-  { to: '/', label: 'Floor staff', Icon: Users, end: true },
-  { to: '/manager', label: 'Overview', Icon: LayoutDashboard },
-  { to: '/kitchen', label: 'Kitchen', Icon: ChefHat },
-  { to: '/setup', label: 'Setup', Icon: Settings },
-  { to: '/about', label: 'How it works', Icon: BookOpen },
-]
+  { to: '/', label: 'nav.floorStaff', Icon: Users, end: true },
+  { to: '/manager', label: 'nav.overview', Icon: LayoutDashboard },
+  { to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat },
+  { to: '/setup', label: 'nav.setup', Icon: Settings },
+  { to: '/about', label: 'nav.how', Icon: BookOpen },
+] satisfies { to: string; label: Key; Icon: typeof Users; end?: boolean }[] as { to: string; label: Key; Icon: typeof Users; end?: boolean }[]
 
 /**
  * The frame every non-phone screen lives in: a sidebar on desktop, a top bar and
  * bottom tabs on phones, so it navigates like an installed app rather than a website.
  */
 export function AppShell({ title, sub, right, children, wide = true, bare = false }: { title?: ReactNode; sub?: ReactNode; right?: ReactNode; children: ReactNode; wide?: boolean; bare?: boolean }) {
+  const t = useT()
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[232px_1fr]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
@@ -172,13 +177,16 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
               }
             >
               <Icon className="size-4" />
-              {label}
+              {t(label)}
             </NavLink>
           ))}
         </nav>
         <div className="mt-auto flex items-center justify-between rounded-xl border bg-background/60 px-3 py-2">
           <span className="text-xs text-muted-foreground">Saffron House</span>
-          <ThemeToggle />
+          <span className="flex items-center">
+            <AccessButton className="size-9" />
+            <ThemeToggle />
+          </span>
         </div>
       </aside>
       </div>
@@ -195,7 +203,8 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
             </div>
             <div className="ml-auto flex items-center gap-2">
               {right}
-              <span className="md:hidden">
+              <span className="flex items-center md:hidden">
+                <AccessButton className="size-9" />
                 <ThemeToggle />
               </span>
             </div>
@@ -221,7 +230,7 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
             className={({ isActive }) => cn('flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium', isActive ? 'text-primary' : 'text-muted-foreground')}
           >
             <Icon className="size-5" />
-            <span className="max-w-full truncate px-0.5">{label}</span>
+            <span className="max-w-full truncate px-0.5">{t(label)}</span>
           </NavLink>
         ))}
       </nav>

@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/outfit";
+@import "@fontsource/atkinson-hyperlegible/400.css";
+@import "@fontsource/atkinson-hyperlegible/700.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -185,3 +187,53 @@
 
 /* Brand tagline: the one place letter-spaced capitals are used, as on the brand sheet. */
 .tagline { text-transform: uppercase; letter-spacing: 0.28em; font-size: 0.72rem; font-weight: 500; }
+
+/* ---- Comfort & access (set from the settings panel via data attributes on <html>) ---- */
+
+/* Text size: everything is in rem, so the whole interface, tap targets included, scales. */
+html[data-text="large"] { font-size: 18px; }
+html[data-text="xlarge"] { font-size: 20px; }
+
+/* High-legibility font: Atkinson Hyperlegible, designed with the Braille Institute for low vision. */
+html[data-font="readable"] body,
+html[data-font="readable"] body * {
+  font-family: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+/* High contrast: darker ink, stronger borders and focus, no faded text. */
+html[data-contrast="high"] {
+  --foreground: #1a110c;
+  --muted-foreground: #3d2c22;
+  --border: #8a7464;
+  --input: #6f5a4b;
+  --primary: #a8351d;
+  --ring: #1a110c;
+  --card: #ffffff;
+  --background: #fffdf8;
+}
+html[data-contrast="high"].dark {
+  --foreground: #ffffff;
+  --muted-foreground: #f1e2d6;
+  --border: rgb(255 240 225 / 0.45);
+  --input: rgb(255 240 225 / 0.55);
+  --primary: #ff8a66;
+  --primary-foreground: #1a110c;
+  --ring: #ffffff;
+  --card: #1f1611;
+  --background: #140e0b;
+}
+html[data-contrast="high"] :focus-visible { outline: 3px solid var(--ring) !important; outline-offset: 2px; }
+
+/* Reduce motion chosen in the app, on top of the device setting. */
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Visual alert for Deaf and hard-of-hearing staff: the screen edge flashes on a new card. */
+@keyframes edge-flash { 0%, 100% { box-shadow: inset 0 0 0 0 transparent; } 30% { box-shadow: inset 0 0 0 6px var(--primary); } }
+.edge-flash { animation: edge-flash 0.9s ease-out 2; }

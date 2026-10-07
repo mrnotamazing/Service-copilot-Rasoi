@@ -6,7 +6,21 @@ import type { Award, PlayerView } from '../../shared/game.ts'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { cn } from '@/lib/utils'
+import { useT } from '../i18n/index.ts'
 import { haptic } from '../lib/haptics.ts'
+import { usePrefs } from '../lib/prefs.ts'
+
+/** Award words in the device's language (older awards without keys keep their English). */
+export function useAwardText() {
+  const t = useT()
+  return {
+    title: (a: Award) => (a.k ? t.any(a.k, a.p) : a.title),
+    detail: (a: Award) => (a.dk ? t.any(a.dk, a.dp) : a.detail),
+    badge: (b: { id: string; title: string; description: string }) => ({ title: t.any(`badge.${b.id}.t`), description: t.any(`badge.${b.id}.d`) }),
+    quest: (q: { id: string }) => t.any(`quest.${q.id}`),
+    rank: (index: number | null | undefined) => (index == null ? '' : t.any(`rank.${index}`)),
+  }
+}
 
 export const BADGE_ICONS: Record<string, typeof Hand> = { Hand, Sun, ShieldCheck, Megaphone, Flame, Timer, Sparkles, HeartHandshake, Crown }
 
@@ -42,8 +56,9 @@ export function LevelRing({ name, color, progress, level, size = 44 }: { name: s
 }
 
 export function StreakChip({ streak, shields }: { streak: number; shields: number }) {
+  const t = useT()
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary" title={`Streak: ${streak} tables to standard. Shields: ${shields}`}>
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-semibold text-primary" title={`${t('profile.streak')}: ${streak}. ${t('profile.shields')}: ${shields}`}>
       <Flame className={cn('size-3.5', streak > 0 && 'fill-primary/30')} />
       <span className="tabular">{streak}</span>
       {shields > 0 && (
@@ -59,14 +74,15 @@ export function StreakChip({ streak, shields }: { streak: number; shields: numbe
 export function BadgeTile({ b }: { b: PlayerView['badges'][number] }) {
   const Icon = BADGE_ICONS[b.icon] ?? Star
   const earned = b.earnedAt !== null
+  const words = useAwardText().badge(b)
   return (
     <div className={cn('flex flex-col items-center rounded-2xl border p-3 text-center', earned ? 'bg-card' : 'bg-muted/40')}>
       <span className={cn('relative grid size-12 place-items-center rounded-full', earned ? 'bg-gradient-to-br from-primary to-primary-2 text-primary-foreground shadow-md shadow-primary/20' : 'bg-muted text-muted-foreground')}>
         <Icon className="size-6" />
         {!earned && <Lock className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-background p-0.5" />}
       </span>
-      <span className={cn('mt-2 text-xs font-medium leading-tight', !earned && 'text-muted-foreground')}>{b.title}</span>
-      <span className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{earned ? b.description : `${b.progress}/${b.target}`}</span>
+      <span className={cn('mt-2 text-xs font-medium leading-tight', !earned && 'text-muted-foreground')}>{words.title}</span>
+      <span className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{earned ? words.description : `${b.progress}/${b.target}`}</span>
     </div>
   )
 }
@@ -80,6 +96,11 @@ export function Celebrations({ awards, muted = false }: { awards: Award[]; muted
   const seen = useRef<Set<string> | null>(null)
   const [pills, setPills] = useState<Award[]>([])
   const [big, setBig] = useState<Award[]>([])
+  const t = useT()
+  const words = useAwardText()
+  // Quiet celebrations: wins still count and show in Recent, without pop-ups, confetti or buzz.
+  const { quietCelebrations } = usePrefs()
+  const silent = muted || quietCelebrations
 
   useEffect(() => {
     if (!seen.current) {
@@ -90,7 +111,7 @@ export function Celebrations({ awards, muted = false }: { awards: Award[]; muted
     if (!fresh.length) return
     for (const a of fresh) seen.current.add(a.id)
     // Autopilot's wins are recorded but not celebrated: the person watching didn't earn them.
-    if (muted) return
+    if (silent) return
     const small = fresh.filter((a) => a.kind === 'xp' || a.kind === 'kudos' || a.kind === 'shield')
     const large = fresh.filter((a) => a.kind === 'badge' || a.kind === 'level' || a.kind === 'quest')
     if (small.length) {
@@ -99,13 +120,14 @@ export function Celebrations({ awards, muted = false }: { awards: Award[]; muted
       for (const a of small) setTimeout(() => setPills((p) => p.filter((x) => x.id !== a.id)), 2600)
     }
     if (large.length) setBig((b) => [...b, ...large])
-  }, [awards, muted])
+  }, [awards, silent])
 
   const current = big[0]
   useEffect(() => {
     if (!current) return
     haptic.celebrate()
-    void confetti({ particleCount: 90, spread: 70, origin: { y: 0.75 }, colors: ['#d34f2f', '#ec7a3a', '#f4c26b', '#34251d', '#2f8a5f'], disableForReducedMotion: true, zIndex: 60 })
+    if (!document.documentElement.dataset.motion?.startsWith('reduce'))
+      void confetti({ particleCount: 90, spread: 70, origin: { y: 0.75 }, colors: ['#d34f2f', '#ec7a3a', '#f4c26b', '#34251d', '#2f8a5f'], disableForReducedMotion: true, zIndex: 60 })
   }, [current])
 
   return (
@@ -123,7 +145,7 @@ export function Celebrations({ awards, muted = false }: { awards: Award[]; muted
             >
               {a.kind === 'shield' ? <Shield className="size-4 text-good" /> : a.kind === 'kudos' ? <HeartHandshake className="size-4 text-primary" /> : <Sparkles className="size-4 text-primary" />}
               {a.xp > 0 && <span className="font-semibold text-primary tabular">+{a.xp} XP</span>}
-              <span className="text-muted-foreground">{a.title}</span>
+              <span className="text-muted-foreground">{words.title(a)}</span>
             </motion.div>
           ))}
         </AnimatePresence>
@@ -142,13 +164,13 @@ export function Celebrations({ awards, muted = false }: { awards: Award[]; muted
                 >
                   {current.kind === 'level' ? <Crown className="size-10" /> : current.kind === 'quest' ? <Trophy className="size-10" /> : <Star className="size-10" />}
                 </motion.span>
-                <p className="text-sm text-muted-foreground">{current.kind === 'level' ? 'You ranked up' : current.kind === 'quest' ? 'Quest complete' : 'Badge unlocked'}</p>
-                <DrawerTitle className="font-display text-2xl">{current.kind === 'quest' ? current.detail : current.title}</DrawerTitle>
-                <DrawerDescription>{current.kind === 'quest' ? `+${current.xp} XP` : current.detail}</DrawerDescription>
+                <p className="text-sm text-muted-foreground">{current.kind === 'level' ? t('cel.rankedUp') : current.kind === 'quest' ? t('cel.quest') : t('cel.badge')}</p>
+                <DrawerTitle className="font-display text-2xl">{current.kind === 'quest' ? words.detail(current) : words.title(current)}</DrawerTitle>
+                <DrawerDescription>{current.kind === 'quest' ? `+${current.xp} XP` : words.detail(current)}</DrawerDescription>
               </DrawerHeader>
               <DrawerFooter>
                 <Button size="lg" className="h-11" onClick={() => setBig((b) => b.slice(1))}>
-                  Back to service
+                  {t('cel.back')}
                 </Button>
               </DrawerFooter>
             </div>

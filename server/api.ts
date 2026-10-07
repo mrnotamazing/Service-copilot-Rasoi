@@ -75,6 +75,14 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       hub.emit()
       return sim.status()
     },
+    // A staff member's own profile. Only pronouns for now; free text is trimmed and length-limited.
+    '/api/staff/profile': (body) => {
+      const id = typeof body.staffId === 'string' ? body.staffId : ''
+      if (!hub.config.staff.some((s) => s.id === id)) throw new Error('Unknown staff member.')
+      const pronouns = typeof body.pronouns === 'string' ? body.pronouns.trim().slice(0, 24) : ''
+      hub.updateConfig({ staff: hub.config.staff.map((s) => (s.id === id ? { ...s, pronouns: pronouns || undefined } : s)) })
+      return hub.config.staff.find((s) => s.id === id)
+    },
     '/api/config': (body) => {
       const patch: Partial<RestaurantConfig> = {}
       if (body.sop && typeof body.sop === 'object') {
@@ -98,7 +106,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       const kind = AI_KINDS.find((k) => k === body.kind)
       if (!kind) throw new AiError('Unknown kind of AI request.')
       const str = (v: unknown) => (typeof v === 'string' ? v.slice(0, 500) : undefined)
-      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question) })
+      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang) })
     },
     /** Returns undefined when the path isn't one of the app routes. */
     post(path: string, body: ApiBody): { result: unknown } | undefined {

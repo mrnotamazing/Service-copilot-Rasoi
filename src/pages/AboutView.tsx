@@ -1,4 +1,4 @@
-import { ArrowRight, ChefHat, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, Users } from 'lucide-react'
+import { Accessibility, ArrowRight, ChefHat, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, UserRound, Users, Volume2, Languages } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -170,6 +170,29 @@ export default function AboutView() {
           </div>
         </Section>
 
+        <Section title="Inclusive by design" lead="Kitchens and floors are multilingual, and not everyone reads, hears or moves the same way. Every server sets TableMate up for themselves.">
+          <div className="grid gap-8 md:grid-cols-3">
+            <Point icon={<Languages />} title="Their language">
+              English, हिन्दी, नेपाली, বাংলা, தமிழ் and Español, picked by each person on their own phone. Task cards, badges and the guide all switch; with Dify connected, the AI answers in that language too.
+            </Point>
+            <Point icon={<Volume2 />} title="Read aloud">
+              New tasks can be spoken in the chosen language with the device’s own voice, at an adjustable speed. Every card also has a speaker button.
+            </Point>
+            <Point icon={<Accessibility />} title="Comfort & access">
+              Larger text, an easy-to-read font for low vision, high contrast, a flashing screen edge for Deaf and hard-of-hearing staff, a chime, one-card focus, reduced motion, quiet celebrations and a left-handed layout.
+            </Point>
+            <Point icon={<UserRound />} title="Respectful wording">
+              The assistant uses gender-neutral language: no “sir/madam”, guests addressed by name or “you”, they/them when unknown. Staff can add their own pronouns, shown next to their name.
+            </Point>
+            <Point icon={<HeartPulse />} title="Guests’ needs, ready in advance">
+              Access and dietary needs from the booking (wheelchair, hearing, vision, high chair, Jain, halal, vegan) appear on the greeting card and in the briefing as what to do, so guests never have to ask twice.
+            </Point>
+            <Point icon={<ShieldCheck />} title="Nothing extra is collected">
+              Comfort settings stay on the device. Pronouns are optional and chosen by the person. Speech is made on the phone, so no audio leaves it.
+            </Point>
+          </div>
+        </Section>
+
         <Section title="Why it’s built this way" lead="Each design choice answers a specific idea from organisational behaviour.">
           <dl className="divide-y rounded-2xl border">
             {[
@@ -178,6 +201,7 @@ export default function AboutView() {
               ['Attribution Theory', 'Kelley, 1967', 'Timestamps separate what the server controlled from what the process controlled before anyone is held responsible.'],
               ['Equity and justice', 'Adams, 1963; Colquitt, 2001', 'Delay receipts make outcomes fair; consistent rules and visible evidence make the process fair.'],
               ['Feedback Intervention Theory', 'Kluger & DeNisi, 1996', 'Feedback is about the task (“T4 is waiting on the bill”), never the person (“you’re slow”).'],
+              ['Inclusion and universal design', 'Shore et al., 2011; CAST UDL', 'People feel included when they belong and can stay themselves. Options for language, reading, hearing and pace are built in for everyone, not added as special cases.'],
               ['Electronic monitoring research', 'Ravid et al., 2020', 'Monitoring raises stress unless its purpose is developmental and transparent, so there are no leaderboards and no manager view of individuals.'],
             ].map(([t, cite, d]) => (
               <div key={t} className="grid gap-1 p-5 md:grid-cols-[16rem_1fr] md:gap-6">

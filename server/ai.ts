@@ -13,7 +13,21 @@ export interface AiRequest {
   staffId?: string
   taskId?: string
   question?: string
+  /** Language code of the asking device (en, hi, ne, bn, ta, es). Dify replies in it. */
+  lang?: string
 }
+
+/** Language names for the prompt; unknown codes fall back to English. */
+export const AI_LANGUAGES: Record<string, string> = { en: 'English', hi: 'Hindi', ne: 'Nepali', bn: 'Bengali', ta: 'Tamil', es: 'Spanish' }
+
+/**
+ * House style for every answer: inclusive, respectful wording. Applied to all prompts so
+ * staff and guests are never assumed to be a gender, ability, age or background.
+ */
+export const INCLUSIVE_STYLE =
+  'Use gender-neutral language: address guests by the name given or as "you"; never assume gender ' +
+  '(no sir/madam, ladies/gentlemen, guys) and use they/them for anyone whose pronouns are unknown. ' +
+  'Be respectful of disability, age, faith, diet and background; describe needs, not people. Use plain, short sentences.'
 
 export interface AiAnswer {
   text: string
@@ -36,6 +50,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
   const doFetch = opts.fetchImpl ?? fetch
 
   const name = (id?: string) => hub.config.staff.find((s) => s.id === id)?.name ?? 'the team'
+  const pronouns = (id?: string) => hub.config.staff.find((s) => s.id === id)?.pronouns
 
   /** Facts + instruction for each kind. Kept short and concrete so any model phrases it well. */
   function build(req: AiRequest): { prompt: string; fallback: string } {
@@ -53,8 +68,8 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
         const facts = briefingFacts(mine, cfg, hub.state.unavailable, now)
         return {
           prompt:
-            `Write a pre-shift / mid-shift briefing for ${name(req.staffId)}, a server in a fine-dining restaurant. ` +
-            `Use 3-6 short bullet points, most important first (allergies, regulars and occasions, kitchen issues). ` +
+            `Write a pre-shift / mid-shift briefing for ${name(req.staffId)}${pronouns(req.staffId) ? ` (${pronouns(req.staffId)})` : ''}, a server in a fine-dining restaurant. ` +
+            `Use 3-6 short bullet points, most important first (allergies, guest access needs, regulars and occasions, kitchen issues). ` +
             `Be warm and practical; no performance judgement.\n\nFacts:\n${facts.join('\n')}`,
           fallback: facts.length ? facts.map((f) => `• ${f.replace(/^- /, '')}`).join('\n') : '• No tables yet. Section is clear.',
         }
@@ -111,7 +126,10 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
   return {
     provider: (dify ? 'dify' : 'built-in') as 'dify' | 'built-in',
     async ask(req: AiRequest): Promise<AiAnswer> {
-      const { prompt, fallback } = build(req)
+      const built = build(req)
+      const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
+      const prompt = `${built.prompt}\n\nStyle: ${INCLUSIVE_STYLE}\nReply in ${language}.`
+      const fallback = built.fallback
       if (!dify) return { text: fallback, source: 'built-in' }
       try {
         return { text: await callDify(prompt, req), source: 'dify' }
@@ -135,6 +153,7 @@ function guestName(t?: TableState) {
 function guestScriptPrompt(task: Task, t: TableState | undefined, cfg: RestaurantConfig, now: number) {
   const facts = [
     `Table ${task.tableName}, party of ${t?.party?.size ?? '?'}${guestName(t) ? `, guest ${guestName(t)}` : ''}${t?.party?.occasion ? `, celebrating a ${t.party.occasion}` : ''}${t?.party?.vip ? ', a regular' : ''}`,
+    ...(t?.party?.needs?.length ? [`Guest needs: ${t.party.needs.join(', ')} (accommodate naturally, never draw attention to them)`] : []),
     `Situation: ${task.title}`,
     `Detail: ${task.hint}`,
   ]
@@ -177,6 +196,7 @@ function briefingFacts(tables: TableState[], cfg: RestaurantConfig, unavailable:
     if (t.party?.vip) bits.push('regular guest')
     if (t.party?.occasion) bits.push(t.party.occasion)
     if (t.party?.allergies.length) bits.push(`ALLERGY ${t.party.allergies.join(', ')}`)
+    for (const n of t.party?.needs ?? []) bits.push(NEED_BRIEF[n] ?? n)
     const late = t.lines.filter((l) => l.status === 'fired' && now > l.expectedReadyAt)
     if (late.length) bits.push(`kitchen running late on ${late.map((l) => l.name).join(', ')}`)
     out.push(`- ${bits.join(', ')}`)
@@ -184,6 +204,17 @@ function briefingFacts(tables: TableState[], cfg: RestaurantConfig, unavailable:
   const off = Object.keys(unavailable).map((id) => cfg.menu.find((m) => m.id === id)?.name ?? id)
   if (off.length) out.push(`- Off the menu tonight: ${off.join(', ')}`)
   return out
+}
+
+/** How a guest need reads in a briefing: what to do, not a label for the person. */
+const NEED_BRIEF: Record<string, string> = {
+  wheelchair: 'uses a wheelchair: keep a step-free route and space at the table',
+  hearing: 'hard of hearing: face them, speak clearly, offer to write',
+  vision: 'low vision: read out the specials, offer the large-print menu',
+  highchair: 'needs a high chair',
+  jain: 'Jain: no root vegetables, onion or garlic',
+  halal: 'halal',
+  vegan: 'vegan',
 }
 
 function shiftSummaryFallback(a: ReturnType<typeof analytics>): string {

@@ -63,4 +63,36 @@ describe('AI assistance', () => {
     const a = await createAi(hub).ask({ kind: 'ask_sop', question: 'How fast should I reset a table?' })
     expect(a.text).toMatch(/Reset a table within 5 min/)
   })
+
+  it('asks Dify for inclusive, gender-neutral wording in the device language', async () => {
+    const { hub, task } = hubWithLateTable()
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ answer: 'ok' }), { status: 200 }))
+    const ai = createAi(hub, { url: 'http://dify.local/v1', key: 'k', fetchImpl: fetchImpl as unknown as typeof fetch })
+    await ai.ask({ kind: 'guest_script', taskId: task.id, lang: 'hi' })
+    const body = JSON.parse((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body.query).toMatch(/gender-neutral/)
+    expect(body.query).toMatch(/no sir\/madam/)
+    expect(body.query).toMatch(/Reply in Hindi\.$/)
+  })
+
+  it('puts guest access needs in the briefing as what to do', async () => {
+    const hub = new Hub(memoryStore())
+    hub.ingest({ type: 'table.seated', payload: { tableId: 'T2', partySize: 2, needs: ['wheelchair'] } })
+    const a = await createAi(hub).ask({ kind: 'briefing', staffId: 's_aisha' })
+    expect(a.text).toContain('step-free route')
+  })
+})
+
+describe('staff profile', () => {
+  it('lets a person set their own pronouns, trimmed and length-limited', async () => {
+    const { createApi } = await import('./api.ts')
+    const { Simulator } = await import('./simulator.ts')
+    const hub = new Hub(memoryStore())
+    const api = createApi(hub, new Simulator(hub))
+    api.post('/api/staff/profile', { staffId: 's_aisha', pronouns: '  they/them  ' })
+    expect(hub.config.staff.find((s) => s.id === 's_aisha')?.pronouns).toBe('they/them')
+    api.post('/api/staff/profile', { staffId: 's_aisha', pronouns: '' })
+    expect(hub.config.staff.find((s) => s.id === 's_aisha')?.pronouns).toBeUndefined()
+    expect(() => api.post('/api/staff/profile', { staffId: 'nobody', pronouns: 'x' })).toThrow()
+  })
 })

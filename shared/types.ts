@@ -18,6 +18,8 @@ export interface Staff {
   name: string
   role: 'server' | 'kitchen' | 'manager'
   color: string
+  /** Optional, chosen by the person (e.g. "they/them"). Shown next to their name to teammates. */
+  pronouns?: string
 }
 
 export interface TableDef {
@@ -85,6 +87,8 @@ export interface Party {
   size: number
   guestName?: string
   allergies: string[]
+  /** Accessibility needs and dietary practices, e.g. wheelchair, hearing, vision, highchair, jain, halal, vegan. */
+  needs?: string[]
   occasion?: string
   vip?: boolean
 }
@@ -169,6 +173,8 @@ export interface Task {
   title: string
   hint: string
   checklist?: string[]
+  /** The same text as translation keys, so each device renders it in its own language. */
+  text?: { title: TaskText; hint: TaskText; checklist?: string[] }
   impact: number
   dueAt: number
   createdAt: number
@@ -195,3 +201,10 @@ export interface StaffStats {
   bestStreak: number
   avgGreetSec: number | null
 }
+
+/**
+ * Language-neutral task text. `k` is a translation key with params; a param value that
+ * starts with "@" is itself a key (e.g. "@course.main"). `parts` are joined in order;
+ * `raw` is shown as-is (dish names, guest names, kitchen messages).
+ */
+export type TaskText = { k: string; p?: Record<string, string | number> } | { parts: TaskText[]; sep?: string } | { raw: string }

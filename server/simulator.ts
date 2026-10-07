@@ -9,7 +9,9 @@ import type { Course, TableState } from '../shared/types.ts'
 import type { Hub } from './hub.ts'
 
 const MIN = 60_000
-const GUEST_NAMES = ['Mr. Kapoor', 'Ms. Iyer', 'the Sharmas', 'Dr. Menon', 'Mrs. D’Souza', 'Mr. Banerjee', 'Ms. Reddy']
+// Names as a guest gives them when booking; no honorific is assumed.
+const GUEST_NAMES = ['Aarav Kapoor', 'Mx. Iyer', 'the Sharmas', 'Dr. Menon', 'Ria D’Souza', 'Sam Banerjee', 'Ms. Reddy']
+const NEEDS = ['wheelchair', 'hearing', 'vision', 'highchair', 'jain', 'halal', 'vegan']
 const OCCASIONS = ['anniversary', 'birthday', 'business dinner']
 const ALLERGIES = ['nuts', 'shellfish', 'gluten', 'dairy']
 
@@ -174,6 +176,7 @@ export class Simulator {
           occasion: chance(0.18) ? pick(OCCASIONS) : undefined,
           allergies: chance(0.2) ? [pick(ALLERGIES)] : [],
           vip: chance(0.12),
+          needs: chance(0.22) ? [pick(NEEDS)] : [],
         },
       })
     }

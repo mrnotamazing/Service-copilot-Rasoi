@@ -1,4 +1,4 @@
-import { BellRing, Check, ChefHat, CircleDollarSign, Clock, Hand, HandPlatter, HeartPulse, Loader2, MessageCircle, Sparkles, TimerReset, Utensils, UtensilsCrossed, Wand2 } from 'lucide-react'
+import { BellRing, Check, ChefHat, CircleDollarSign, Clock, Hand, HandPlatter, HeartPulse, Loader2, MessageCircle, Sparkles, TimerReset, Utensils, UtensilsCrossed, Volume2, Wand2 } from 'lucide-react'
 import { motion, useMotionValue, useTransform } from 'motion/react'
 import { forwardRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -7,10 +7,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
+import { useT, type Key } from '../i18n/index.ts'
 import { useAi } from '../lib/ai.ts'
 import { mmss } from '../lib/format.ts'
 import { haptic } from '../lib/haptics.ts'
 import { act } from '../lib/live.ts'
+import { usePrefs } from '../lib/prefs.ts'
+import { speak } from '../lib/speech.ts'
 import { AiAnswerBox } from './AiAnswer.tsx'
 
 const ICON: Record<TaskKind, typeof Hand> = {
@@ -31,16 +34,30 @@ const ICON: Record<TaskKind, typeof Hand> = {
 /** Cards where the server talks to a guest: offer a suggested line. */
 const GUEST_FACING: TaskKind[] = ['greet', 'kitchen_delay', 'unavailable', 'farewell']
 
-const DONE_TOAST: Partial<Record<string, string>> = {
-  'allergy.confirmed': 'Allergy sent to the kitchen',
-  'note.acked': 'Marked as seen',
-  'task.snoozed': 'Moved to later',
+const DONE_TOAST: Partial<Record<string, Key>> = {
+  'allergy.confirmed': 'toast.allergy',
+  'note.acked': 'toast.acked',
+  'task.snoozed': 'toast.snoozed',
+}
+
+/** A card's words in the device's language. Older events without text keys fall back to the English the engine wrote. */
+export function useTaskWords(task: Task) {
+  const t = useT()
+  return {
+    title: task.text ? t.text(task.text.title) : task.title,
+    hint: task.text ? t.text(task.text.hint) : task.hint,
+    checklist: task.text?.checklist ? task.text.checklist.map((c) => t.any(c)) : task.checklist,
+    action: (kind: string, fallback: string) => (task.text ? t.any(`action.${kind}`) : fallback),
+  }
 }
 
 export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; lead?: boolean; staffId: string }>(function TaskCard({ task, now, lead, staffId }, ref) {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<Record<number, boolean>>({})
   const ai = useAi()
+  const t = useT()
+  const prefs = usePrefs()
+  const words = useTaskWords(task)
   const Icon = ICON[task.kind]
   const left = task.dueAt - now
   const over = left < 0
@@ -60,9 +77,9 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
       if (event !== 'task.snoozed') haptic.done()
       await act(event, event === 'task.snoozed' ? { ...payload, taskId: task.id, staffId } : payload)
       const msg = DONE_TOAST[event]
-      if (msg) toast.success(msg)
+      if (msg) toast.success(t(msg))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not save that. Check the connection and try again.')
+      toast.error(e instanceof Error ? e.message : t('toast.error'))
     } finally {
       setBusy(false)
     }
@@ -80,10 +97,10 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
     >
       {/* What a swipe will do, revealed under the card. */}
       <motion.div style={{ opacity: doneOpacity }} className="absolute inset-0 flex items-center rounded-2xl bg-good/90 pl-6 text-sm font-semibold text-background" aria-hidden>
-        <Check className="mr-2 size-5" /> {primary?.label}
+        <Check className="mr-2 size-5" /> {primary && words.action(task.kind, primary.label)}
       </motion.div>
       <motion.div style={{ opacity: laterOpacity }} className="absolute inset-0 flex items-center justify-end rounded-2xl bg-muted pr-6 text-sm font-semibold text-muted-foreground" aria-hidden>
-        Later <TimerReset className="ml-2 size-5" />
+        {t('card.later')} <TimerReset className="ml-2 size-5" />
       </motion.div>
     <motion.article
       drag={busy ? false : 'x'}
@@ -113,15 +130,24 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
             {task.tableName !== 'All' && <Badge variant="secondary" className="font-semibold">{task.tableName}</Badge>}
             <span className={cn('inline-flex items-center gap-1 text-xs tabular', over ? 'text-warn' : 'text-muted-foreground')}>
               <Clock className="size-3" />
-              {over ? `${mmss(left)} past standard` : `within ${mmss(left)}`}
+              {over ? t('card.past', { t: mmss(left) }) : t('card.within', { t: mmss(left) })}
             </span>
+            <button
+              type="button"
+              onClick={() => speak(`${task.tableName !== 'All' ? task.tableName + '. ' : ''}${words.title}. ${words.hint}`)}
+              className="-my-1 ml-auto grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label={t('card.read')}
+              title={t('card.read')}
+            >
+              <Volume2 className="size-4" />
+            </button>
           </div>
-          <h3 className={cn('mt-1.5 font-semibold leading-snug', lead ? 'text-lg' : 'text-base')}>{task.title}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">{task.hint}</p>
-          {task.checklist && (
+          <h3 className={cn('mt-1.5 font-semibold leading-snug', lead ? 'text-lg' : 'text-base')}>{words.title}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{words.hint}</p>
+          {words.checklist && (
             <ul className="mt-3 grid gap-2">
-              {task.checklist.map((c, i) => (
-                <li key={c} className="flex items-center gap-2.5 text-sm">
+              {words.checklist.map((c, i) => (
+                <li key={i} className="flex items-center gap-2.5 text-sm">
                   <Checkbox id={`${task.id}-${i}`} checked={!!done[i]} onCheckedChange={(v) => setDone({ ...done, [i]: v === true })} />
                   <label htmlFor={`${task.id}-${i}`} className={cn('cursor-pointer', done[i] && 'text-muted-foreground line-through')}>
                     {c}
@@ -134,21 +160,22 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
         </div>
       </div>
 
+      {/* Main button sits under the thumb: right by default, left in the left-handed layout. */}
       <div className="mt-4 flex flex-wrap gap-2">
         {task.actions.map((a) => (
-          <Button key={a.label} size="lg" disabled={busy} variant={a.primary ? 'default' : 'secondary'} className="h-11 flex-1 text-sm font-semibold" onClick={() => run(a.event, a.payload)}>
-            {a.label}
+          <Button key={a.label} size="lg" disabled={busy} variant={a.primary ? 'default' : 'secondary'} className={cn('h-11 flex-1 text-sm font-semibold', a.primary && (prefs.leftHanded ? 'order-first' : 'order-last'))} onClick={() => run(a.event, a.payload)}>
+            {words.action(task.kind, a.label)}
           </Button>
         ))}
         {GUEST_FACING.includes(task.kind) && ai.answer?.source !== 'built-in' && (
           <Button size="lg" variant="outline" className="h-11" disabled={ai.loading} onClick={() => ai.ask('guest_script', { taskId: task.id, staffId })}>
             {ai.loading ? <Loader2 className="animate-spin" /> : <Wand2 />}
-            {ai.answer ? 'Another line' : 'What do I say?'}
+            {ai.answer ? t('card.another') : t('card.whatSay')}
           </Button>
         )}
         {task.actions.every((a) => a.event !== 'task.snoozed') && (
           <Button size="lg" variant="ghost" className="h-11 text-muted-foreground" disabled={busy} onClick={() => run('task.snoozed', { minutes: 2 })}>
-            Later
+            {t('card.later')}
           </Button>
         )}
       </div>
