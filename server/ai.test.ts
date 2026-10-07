@@ -195,4 +195,18 @@ describe('assistant chat', () => {
     expect(a.notice).toMatch(/busy/)
     expect(a.text).toMatch(/Jain diners avoid/)
   })
+
+  it('skips a model that is not available yet and says when a question needs it', async () => {
+    let ready = false
+    const chat = { name: 'claude' as const, available: () => ready, reply: async () => 'From the model' }
+    const ai = createAi(new Hub(memoryStore()), { chat })
+    expect(ai.provider).toBe('built-in')
+    const off = await ai.ask({ kind: 'chat', mode: 'ask', messages: [{ role: 'user', text: 'What is the capital of Peru?' }] })
+    expect(off.source).toBe('built-in')
+    expect(off.text).toMatch(/isn’t connected/)
+    ready = true
+    expect(ai.provider).toBe('claude')
+    const on = await ai.ask({ kind: 'chat', mode: 'ask', messages: [{ role: 'user', text: 'What is the capital of Peru?' }] })
+    expect(on).toMatchObject({ source: 'claude', text: 'From the model' })
+  })
 })

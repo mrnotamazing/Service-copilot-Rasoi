@@ -21,6 +21,8 @@ export interface ChatTurn {
 /** A conversational language model (Claude). `stable` is cacheable; `live` changes every message. */
 export interface ChatModel {
   name: 'claude'
+  /** False while the model can't be used (e.g. the demo page hasn't been granted Claude); the next provider answers. */
+  available?(): boolean
   reply(system: { stable: string; live: string }, turns: ChatTurn[]): Promise<string>
 }
 
@@ -273,7 +275,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     const sop = sopFallback(question, cfg)
     if (!sop.startsWith('I can only')) return { text: sop, suggestions: STARTERS.slice(1, 3) }
     return {
-      text: 'I can help with service standards, tonight’s menu and what’s in each dish, allergies and diets, handling complaints, access needs, and your section right now. Try one of these.',
+      text: 'That one needs the AI trainer, which isn’t connected right now, so I can only answer from the built-in notes: service standards, tonight’s menu and what’s in each dish, allergies and diets, complaints, access needs and your section. Try one of these, or ask your manager to connect Claude in Setup.',
       suggestions: STARTERS,
     }
   }
@@ -297,15 +299,19 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     }
   }
 
+  const modelReady = () => !!model && (model.available?.() ?? true)
+
   return {
-    provider: (model ? 'claude' : dify ? 'dify' : 'built-in') as 'claude' | 'dify' | 'built-in',
+    get provider(): 'claude' | 'dify' | 'built-in' {
+      return modelReady() ? 'claude' : dify ? 'dify' : 'built-in'
+    },
     async ask(req: AiRequest): Promise<AiAnswer> {
       const built = build(req)
       const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
       const prompt = `${built.prompt}\n\nStyle: ${INCLUSIVE_STYLE}\nReply in ${language}.`
       const fallback = built.fallback
       let notice: string | undefined
-      if (model) {
+      if (model && modelReady()) {
         try {
           const system = built.system ?? { stable: stableSystem(hub.config), live: `Reply in ${language}.` }
           const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }])
@@ -565,10 +571,16 @@ function sopFacts(cfg: RestaurantConfig): string[] {
   ]
 }
 
+const STOP = new Set('the and are was were what when where which who whom why how can could should would will does did has have had for from with into about this that these those then than there their they them you your yours our out not but all any some its it’s just also very more most much many one two get got make made after before over under min mins minute minutes'.split(' '))
+
 function sopFallback(q: string, cfg: RestaurantConfig): string {
-  const words = q.toLowerCase().split(/\W+/).filter((w) => w.length > 2)
+  // Whole words only, minus filler, so an unrelated question doesn't "match" a standard via "the" or "what".
+  const words = [...new Set(q.toLowerCase().split(/\W+/).filter((w) => w.length > 2 && !STOP.has(w)))].map((w) => w.replace(/s$/, ''))
   const ranked = sopFacts(cfg)
-    .map((f) => ({ f, hits: words.filter((w) => f.toLowerCase().includes(w.replace(/s$/, ''))).length }))
+    .map((f) => {
+      const have = new Set(f.toLowerCase().split(/\W+/).map((w) => w.replace(/s$/, '')))
+      return { f, hits: words.filter((w) => have.has(w)).length }
+    })
     .filter((x) => x.hits > 0)
     .sort((a, b) => b.hits - a.hits)
   if (!ranked.length) return 'I can only answer from the service standards set up here. Connect Dify with your SOP manual for full answers.'

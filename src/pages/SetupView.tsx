@@ -178,7 +178,7 @@ export default function SetupView() {
             ) : dify ? (
               <p className="text-muted-foreground">Requests go to your Dify app. If Dify is unreachable, the copilot falls back to the built-in trainer and says so on the answer.</p>
             ) : STANDALONE ? (
-              <p className="text-muted-foreground">This shareable demo runs entirely in the browser, so it uses the built-in trainer (English answers). Run the app on a computer with an Anthropic API key for full, multilingual AI answers.</p>
+              <p className="text-muted-foreground">This demo runs in the browser. Opened on claude.ai, it asks Claude on your own account (you’ll be asked to allow it the first time). Opened anywhere else, or if you decline, it uses the built-in trainer (English, set questions only). On your own computer, add an Anthropic API key for full answers.</p>
             ) : (
               <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
                 <li>

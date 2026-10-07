@@ -156,7 +156,7 @@ Each server sets these up for themselves from the **Comfort & access** button (t
 | Server → Profile | Practice tough moments | A role-play guest, coaching per reply and a debrief |
 | Manager | Summarise | The night's bottlenecks in plain English |
 
-The copilot builds the facts; a language model phrases them (`server/ai.ts`). Order of preference: **Claude** (`server/claude.ts`, official Anthropic SDK, set `ANTHROPIC_API_KEY`; the long standards-and-menu prompt is cached), then **Dify**, then a **built-in** writer and trainer (English), so every button always works. If the model declines a request, the API retries on a fallback model automatically.
+The copilot builds the facts; a language model phrases them (`server/ai.ts`). Order of preference: **Claude** (`server/claude.ts`, official Anthropic SDK, set `ANTHROPIC_API_KEY`; the long standards-and-menu prompt is cached), then **Dify**, then a **built-in** writer and trainer (English, set topics only), so every button always works. The shareable demo has no server: opened on claude.ai, it asks Claude on the viewer's own account through the artifact's `sample` capability (`src/lib/standalone.ts`), so custom questions work there without a key. If the model declines a request, the API retries on a fallback model automatically.
 
 ## Front end
 
