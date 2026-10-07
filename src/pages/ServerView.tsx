@@ -1,4 +1,4 @@
-import { Accessibility, Armchair, Bot, CakeSlice, ChevronLeft, Flame, HeartHandshake, HeartPulse, Loader2, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { Accessibility, Armchair, Bot, CakeSlice, Clock3, Drama, ShieldAlert, ChevronLeft, Flame, HeartHandshake, HeartPulse, Loader2, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -6,6 +6,9 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { Snapshot } from '../../shared/snapshot.ts'
 import { AccessButton } from '../components/AccessPanel.tsx'
+import { CoachCard } from '../components/Coach.tsx'
+import { PracticeCard, PracticeDrawer } from '../components/Practice.tsx'
+import { safetyIssues } from '../../shared/safety.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
 import { BadgeTile, Celebrations, LevelRing, StreakChip, useAwardText } from '../components/game.tsx'
 import { TableTile, ThemeToggle } from '../components/kit.tsx'
@@ -22,10 +25,10 @@ import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { useAi } from '../lib/ai.ts'
 import { chime, haptic } from '../lib/haptics.ts'
 import { setPrefs, usePrefs } from '../lib/prefs.ts'
-import { speak } from '../lib/speech.ts'
+import { speakTask } from '../lib/speech.ts'
 import { clock, mmss } from '../lib/format.ts'
 import { act, noteId, post, useSnapshot } from '../lib/live.ts'
-import type { Task } from '../../shared/types.ts'
+import type { Task, Upcoming } from '../../shared/types.ts'
 
 // Tabs follow the brand's usage example: Home (the chef-hat mark), Tables, Kitchen, Profile.
 type Tab = 'home' | 'tables' | 'kitchen' | 'profile'
@@ -157,7 +160,7 @@ export default function ServerView() {
                 <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-1 h-1.5" aria-label={t('hdr.teamGoal')} />
               </div>
             </div>
-            <span className="ml-auto rounded-full border px-2.5 py-1 text-xs text-muted-foreground tabular lg:ml-0">{clock(snap.now)}</span>
+            <span className="ml-auto rounded-full border px-2.5 py-1 text-xs text-muted-foreground tabular lg:ml-0">{clock(snap.now)} IST</span>
             <Link to="?device=phone" className="hidden text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline xl:inline">
               {t('hdr.phoneView')}
             </Link>
@@ -365,7 +368,7 @@ function NextUp({ snap, staffId }: { snap: Snapshot; staffId: string }) {
       <p className="sr-only" aria-live="polite">
         {all[0] ? t('floor.next', { title: lead.title }) : t('floor.caughtUp')}
       </p>
-      <div className="grid gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
         <AnimatePresence mode="popLayout" initial={false}>
           {top.map((t, i) => (
             <TaskCard key={t.id} task={t} now={snap.now} lead={i === 0} staffId={staffId} />
@@ -380,6 +383,7 @@ function NextUp({ snap, staffId }: { snap: Snapshot; staffId: string }) {
         )}
       </div>
       {top.length > 0 && <p className="mt-2 text-center text-[11px] text-muted-foreground">{t('floor.swipeHint')}</p>}
+      <ComingUp items={snap.me!.upcoming ?? []} />
     </section>
   )
 }
@@ -422,6 +426,11 @@ function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tab
             )}
           </div>
           <div className="text-xs text-muted-foreground">
+            {t.mood && (
+              <span className="mr-1" title={tr.any(`mood.${t.mood.value}`)} aria-label={tr.any(`mood.${t.mood.value}`)}>
+                {MOOD_FACE[t.mood.value]}
+              </span>
+            )}
             {tr.any(`status.${t.status}`)} · {t.visitId && seatedMin ? tr('tables.detail', { n: t.party?.size ?? '?', min: seatedMin }) : tr('tile.seats', { n: t.seats })}
           </div>
         </div>
@@ -453,15 +462,34 @@ function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tab
                 .flatMap((c) => t.lines.filter((l) => l.course === c))
                 .map((l) => {
                   const late = l.status === 'fired' && snap.now > l.expectedReadyAt ? Math.round((snap.now - l.expectedReadyAt) / 60_000) : 0
+                  const eta = l.status === 'fired' && l.etaAt ? Math.max(1, Math.round((l.etaAt - snap.now) / 60_000)) : null
+                  const issues = l.safetyResolution === 'guest_ok' ? [] : safetyIssues(snap.config.menu.find((m) => m.id === l.menuItemId), t.party)
                   return (
-                    <li key={l.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-                      <span className="min-w-0 truncate">
-                        <span className="text-muted-foreground tabular">{l.qty}×</span> {l.name}
-                        <span className="ml-1.5 text-xs text-muted-foreground">{tr.any(`course.${l.course}`)}</span>
-                      </span>
-                      <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-xs font-medium', LINE_TONE[l.status])}>
-                        {late > 0 ? tr('line.late', { n: late }) : tr.any(`line.${l.status}`)}
-                      </span>
+                    <li key={l.id} className="px-3 py-2 text-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate">
+                          <span className="text-muted-foreground tabular">{l.qty}×</span> {l.name}
+                          <span className="ml-1.5 text-xs text-muted-foreground">{tr.any(`course.${l.course}`)}</span>
+                        </span>
+                        <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-xs font-medium', LINE_TONE[l.status])}>
+                          {late > 0 ? tr('line.late', { n: late }) : tr.any(`line.${l.status}`)}
+                        </span>
+                      </div>
+                      {(eta || issues.length > 0) && (
+                        <div className="mt-1 flex flex-wrap gap-1.5 text-xs">
+                          {eta && (
+                            <span className="inline-flex items-center gap-1 text-muted-foreground">
+                              <Clock3 className="size-3" /> {tr('line.eta', { n: eta })}
+                            </span>
+                          )}
+                          {issues.map((i) => (
+                            <span key={i.tag} className="inline-flex items-center gap-1 rounded-md bg-warn/12 px-1.5 py-0.5 font-medium text-warn">
+                              <ShieldAlert className="size-3" /> {tr.any(`tag.${i.tag}`)} · {tr.any(`diet.${i.because}`)}
+                              {l.safetyResolution === 'kitchen' && <span className="font-normal"> · {tr('line.kitchenTold')}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </li>
                   )
                 })}
@@ -715,6 +743,9 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
         </div>
       </section>
 
+      <CoachCard staffId={staffId} />
+      <PracticeCard />
+
       {/* Quests */}
       <section>
         <h2 className="mb-2 flex items-center gap-2 font-display text-xl">
@@ -901,6 +932,7 @@ function AssistTab({ staffId }: { staffId: string }) {
   const briefing = useAi()
   const sop = useAi()
   const [question, setQuestion] = useState('')
+  const [practice, setPractice] = useState(false)
   const t = useT()
   const ask = (q: string) => {
     setQuestion(q)
@@ -940,6 +972,12 @@ function AssistTab({ staffId }: { staffId: string }) {
           </Button>
         </form>
         <AiAnswerBox answer={sop.answer} error={sop.error} className="mt-3" />
+      </section>
+      <section>
+        <Button variant="secondary" className="h-11 w-full rounded-xl" onClick={() => setPractice(true)}>
+          <Drama /> {t('practice.title')}
+        </Button>
+        <PracticeDrawer open={practice} onOpenChange={setPractice} />
       </section>
     </div>
   )
@@ -1158,7 +1196,7 @@ function NewTaskAlerts({ top }: { top: Task[] }) {
       return
     }
     seen.current = id
-    if (prefs.readAloud) speak(`${lead.tableName !== 'All' ? `${lead.tableName}. ` : ''}${words.title}. ${words.hint}`)
+    if (prefs.readAloud) speakTask(words.title, words.hint, { title: lead.title, hint: lead.hint })
     if (prefs.chime) chime()
     if (prefs.flash) setFlash((n) => n + 1)
     if (prefs.flash || prefs.chime) haptic.alert()
@@ -1167,4 +1205,32 @@ function NewTaskAlerts({ top }: { top: Task[] }) {
   }, [lead?.id])
   if (!flash) return null
   return <div key={flash} className="edge-flash pointer-events-none fixed inset-0 z-50" aria-hidden />
+}
+
+const MOOD_FACE: Record<string, string> = { happy: '😊', ok: '😐', unhappy: '😟' }
+
+const UP_ICON: Record<Upcoming['kind'], string> = { food_ready: '🍽️', course_end: '⏳', bill_soon: '🧾' }
+
+/**
+ * What's likely to need the server in the next few minutes, from tonight's real timings.
+ * Quiet on purpose: a heads-up to get ahead, not another task.
+ */
+function ComingUp({ items }: { items: Upcoming[] }) {
+  const t = useT()
+  if (!items.length) return null
+  return (
+    <div className="mt-4">
+      <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <Clock3 className="size-3.5" /> {t('up.title')}
+      </h3>
+      <ul className="divide-y rounded-2xl border border-dashed">
+        {items.map((u) => (
+          <li key={u.id} className="flex items-center gap-2.5 px-3 py-2 text-sm">
+            <span aria-hidden>{UP_ICON[u.kind]}</span>
+            <span className="min-w-0 flex-1">{t.text(u.text)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }

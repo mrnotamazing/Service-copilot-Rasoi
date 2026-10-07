@@ -36,7 +36,7 @@ export class Hub {
 
   constructor(private store: HubStore) {
     const saved = store.loadConfig()
-    this.config = saved ? { ...DEMO_CONFIG, ...saved } : structuredClone(DEMO_CONFIG)
+    this.config = saved ? withDefaults({ ...DEMO_CONFIG, ...saved }) : structuredClone(DEMO_CONFIG)
     this.state = initialState(this.config)
     this.game = initialGame(this.config)
     for (const ev of store.loadEvents()) this.ingestStored(ev)
@@ -120,5 +120,19 @@ export class Hub {
 
   emit() {
     for (const fn of this.listeners) fn()
+  }
+}
+
+/**
+ * Configs saved by an older version miss newer fields. Fill them from the built-in menu by id
+ * (e.g. ingredient tags for the safety check) without touching anything the restaurant set.
+ */
+export function withDefaults(config: RestaurantConfig): RestaurantConfig {
+  return {
+    ...config,
+    menu: config.menu.map((m) => {
+      const base = DEMO_CONFIG.menu.find((d) => d.id === m.id)
+      return m.contains || !base?.contains ? m : { ...m, contains: base.contains }
+    }),
   }
 }

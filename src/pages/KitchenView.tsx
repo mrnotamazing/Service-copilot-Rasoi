@@ -1,4 +1,5 @@
-import { Bot, Check, HeartPulse, Send } from 'lucide-react'
+import { Bot, Check, HeartPulse, Send, ShieldAlert } from 'lucide-react'
+import { safetyIssues } from '../../shared/safety.ts'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -23,11 +24,11 @@ export default function KitchenView() {
 
   const tickets = useMemo(() => {
     if (!snap) return []
-    const map = new Map<string, { ticketId: string; table: string; lines: OrderLine[] }>()
+    const map = new Map<string, { ticketId: string; table: string; lines: OrderLine[]; party?: (typeof snap.tables)[number]['party'] }>()
     for (const t of snap.tables)
       for (const l of t.lines) {
         if (l.status !== 'fired' && l.status !== 'ready') continue
-        const e = map.get(l.ticketId) ?? { ticketId: l.ticketId, table: t.name, lines: [] }
+        const e = map.get(l.ticketId) ?? { ticketId: l.ticketId, table: t.name, lines: [], party: t.party }
         e.lines.push(l)
         map.set(l.ticketId, e)
       }
@@ -70,7 +71,7 @@ export default function KitchenView() {
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-display text-2xl">{k.table}</span>
-                    <span className={cn('text-sm tabular', late ? 'font-semibold text-kitchen' : 'text-muted-foreground')}>
+                    <span className={cn('text-sm tabular', late ? 'font-semibold text-kitchen' : 'text-muted-foreground')} title="Time on the ticket / standard prep time">
                       {mmss(snap.now - fired)} / {mmss(expected - fired)}
                     </span>
                   </div>
@@ -84,14 +85,25 @@ export default function KitchenView() {
                     </Badge>
                   )}
                   <ul className="mt-2 flex-1 space-y-1 text-sm">
-                    {k.lines.map((l) => (
-                      <li key={l.id} className="flex justify-between gap-2">
-                        <span>
-                          {l.qty}× {l.name}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">{l.station}</span>
-                      </li>
-                    ))}
+                    {k.lines.map((l) => {
+                      // Same rule-based check the server sees: the pass gets the clash on the ticket itself.
+                      const issues = l.safetyResolution === 'guest_ok' ? [] : safetyIssues(snap.config.menu.find((m) => m.id === l.menuItemId), k.party)
+                      return (
+                        <li key={l.id}>
+                          <div className="flex justify-between gap-2">
+                            <span>
+                              {l.qty}× {l.name}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">{l.station}</span>
+                          </div>
+                          {issues.length > 0 && (
+                            <div className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-warn/12 px-1.5 py-0.5 text-xs font-medium text-warn">
+                              <ShieldAlert className="size-3" /> {issues.map((i) => `${i.tag} (${i.because === 'allergy' ? 'allergy' : `${i.because} guest`})`).join(', ')}
+                            </div>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                   <Button
                     className={cn('mt-3 h-10 w-full', ready && 'bg-good/15 text-good hover:bg-good/15')}

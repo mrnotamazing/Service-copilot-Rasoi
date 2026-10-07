@@ -1,4 +1,4 @@
-import { Accessibility, ArrowRight, ChefHat, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, UserRound, Users, Volume2, Languages } from 'lucide-react'
+import { Accessibility, ArrowRight, ChefHat, Clock3, Route, ShieldAlert, Smile, Sprout, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, UserRound, Users, Volume2, Languages } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -168,6 +168,32 @@ export default function AboutView() {
             </div>
             <SampleReceipt />
           </div>
+        </Section>
+
+        <Section title="AI that works the floor with you" lead="Every feature takes something off the server’s mind. Safety stays rule-based; AI is used where judgement and wording help.">
+          <div className="grid gap-8 md:grid-cols-3">
+            <Point icon={<ShieldAlert />} title="Allergy and diet safety check">
+              Each dish carries its ingredients. The moment an order is fired, anything that clashes with a guest’s allergy or diet (vegan, Jain, halal) becomes the top card, and the pass sees the flag on the ticket. Rules, not guesses.
+            </Point>
+            <Point icon={<Clock3 />} title="Honest kitchen times">
+              Ready times come from tonight’s real prep times and how busy each station is. A dish that will run late raises a heads-up before it is late, with “ready in about 6 minutes” the guest can trust.
+            </Point>
+            <Point icon={<Route />} title="One trip, several jobs">
+              Food for two tables at the pass, a check-in at the same table, the table next door: they ride on one card, so the server walks once.
+            </Point>
+            <Point icon={<Sparkles />} title="Coming up">
+              From how long tables take to eat each course tonight, TableMate shows what will need the server next: food about to be ready, a course about to finish, a bill about to be asked for.
+            </Point>
+            <Point icon={<Smile />} title="Guest mood, then recovery">
+              A check-in is one tap: happy, okay or not happy. Not happy opens a recovery card with what to say, or calls the manager, who sees the request and tonight’s mood by table, never by person.
+            </Point>
+            <Point icon={<Sprout />} title="Private coach and practice">
+              A short tip from the server’s own shift, seen only by them. And a practice room where TableMate plays a cold-food complaint or a rude guest, and coaches each reply.
+            </Point>
+          </div>
+          <p className="mt-6 max-w-[65ch] leading-relaxed text-muted-foreground">
+            Read-aloud now says dishes properly (“puh-neer tick-ah”, or पनीर टिक्का on a Hindi voice), reads “T3” as “Table 3”, and picks the most natural voice on the device.
+          </p>
         </Section>
 
         <Section title="Inclusive by design" lead="Kitchens and floors are multilingual, and not everyone reads, hears or moves the same way. Every server sets TableMate up for themselves.">

@@ -35,7 +35,10 @@ export type CopilotEvent =
   | Base<'server.greeted', { tableId: string }>
   | Base<'item.served', { lineIds: string[] }>
   | Base<'guest.informed', { lineIds: string[]; reason: 'delay' | 'unavailable' }>
-  | Base<'server.checkback', { tableId: string; course: string }>
+  | Base<'server.checkback', { tableId: string; course: string; mood?: 'happy' | 'ok' | 'unhappy' }>
+  | Base<'safety.resolved', { tableId: string; lineIds: string[]; resolution: 'kitchen' | 'guest_ok' }>
+  | Base<'guest.recovered', { tableId: string; how: 'fixed' | 'manager' }>
+  | Base<'manager.visited', { tableId: string }>
   | Base<'course.cleared', { tableId: string; course: string }>
   | Base<'bill.presented', { tableId: string }>
   | Base<'guest.farewelled', { tableId: string }>
@@ -59,7 +62,7 @@ export const EVENT_TYPES: EventType[] = [
   'table.seated', 'order.fired', 'item.ready', 'item.stock', 'bill.requested', 'bill.settled',
   'table.reset', 'table.assigned', 'server.greeted', 'item.served', 'guest.informed',
   'server.checkback', 'course.cleared', 'bill.presented', 'guest.farewelled', 'allergy.confirmed',
-  'task.snoozed', 'note.sent', 'note.acked', 'kudos.sent',
+  'task.snoozed', 'note.sent', 'note.acked', 'kudos.sent', 'safety.resolved', 'guest.recovered', 'manager.visited',
 ]
 
 let counter = 0

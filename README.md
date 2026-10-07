@@ -105,6 +105,18 @@ Built on the research about motivating without controlling (see `shared/game.ts`
 - **Private**: XP, streaks and badges only reach the server’s own phone. Managers see the team goal and kudos.
 - **Feels like an app**: swipe cards right/left, haptics on wins, confetti for badges and ranks, onboarding, shift recap, bottom tabs, installable to the home screen.
 
+## AI that works the floor with you
+
+- **Allergy and diet safety check** (`shared/safety.ts`): menu items list what they contain; any dish that clashes with a guest's allergy or diet (vegan, Jain, halal) becomes the top card the moment it's fired. "Tell the kitchen" posts a safety note to the pass, and tickets show the flag. Deliberately rule-based, never an AI guess.
+- **Honest kitchen times** (`shared/predict.ts`): ready times learned from tonight's real prep times plus each station's queue. Late dishes are flagged *before* they're late, with "ready in about N min" for the guest.
+- **One trip, several jobs**: food for two tables at the pass, a second job at the same table, or the table next door ride on one card.
+- **Coming up**: food about to be ready, a course about to finish (from tonight's eating times), a bill about to be asked for.
+- **Guest mood and recovery**: check-ins are one tap (happy / okay / not happy). Not happy opens a recovery card with a suggested line or a manager call; the manager sees requests and tonight's mood by table, never by server.
+- **Private coach**: one tip from the server's own shift, visible only to them (`coach` AI kind; built-in fallback from their own visits).
+- **Practice tough moments**: role-play six situations (cold food, long wait, sold out, allergy question, rude guest, wrong bill). Type or speak replies; each gets stars and coaching (`shared/practice.ts`, `practice` AI kind).
+- **Voice**: a pronunciation guide for dishes (`src/lib/pronounce.ts`), speech-friendly text ("T3" → "Table 3", "2×" → "2"), the most natural voice on the device (choose one in Language & accessibility), read sentence by sentence.
+- **IST everywhere**: service starts at 7:00 pm IST and every clock shows IST, whatever timezone the server or device is in (`shared/time.ts`).
+
 ## Inclusive by design
 
 Each server sets these up for themselves from the **Comfort & access** button (the accessibility icon in the header). Settings are saved on the device (`src/lib/prefs.ts`).

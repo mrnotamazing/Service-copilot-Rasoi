@@ -1,6 +1,6 @@
 import type { Analytics } from './engine.ts'
 import type { PlayerView, teamView } from './game.ts'
-import type { Note, RestaurantConfig, StaffStats, TableState, Task, VisitRecord } from './types.ts'
+import type { Note, RestaurantConfig, StaffStats, TableState, Task, Upcoming, VisitRecord } from './types.ts'
 
 export type Role = 'server' | 'kitchen' | 'manager'
 
@@ -41,7 +41,7 @@ export interface Snapshot {
   /** Shared with everyone: the team goal and kudos. Never individual scores. */
   team: ReturnType<typeof teamView>
   /** server role: own top tasks and private stats */
-  me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[]; game: PlayerView | null }
+  me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[]; game: PlayerView | null; upcoming: Upcoming[] }
   /** manager role: process analytics, no per-person stats */
   analytics?: Analytics
   integrations?: IntegrationStatus[]

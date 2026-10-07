@@ -2,11 +2,18 @@
 // Dify's chat-messages API; otherwise a built-in writer produces a useful, plain answer so the
 // copilot always works. The copilot builds the facts; Dify only phrases them.
 
-import type { RestaurantConfig, TableState, Task } from '../shared/types.ts'
+import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
 import { analytics } from '../shared/engine.ts'
+import { SCENARIOS, scoreReply } from '../shared/practice.ts'
+import { predictReady } from '../shared/predict.ts'
 import type { Hub } from './hub.ts'
 
-export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop'
+export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice'
+
+export interface PracticeTurn {
+  role: 'guest' | 'server'
+  text: string
+}
 
 export interface AiRequest {
   kind: AiKind
@@ -15,6 +22,9 @@ export interface AiRequest {
   question?: string
   /** Language code of the asking device (en, hi, ne, bn, ta, es). Dify replies in it. */
   lang?: string
+  /** Practice: which tough moment, and the conversation so far. */
+  scenario?: string
+  history?: PracticeTurn[]
 }
 
 /** Language names for the prompt; unknown codes fall back to English. */
@@ -34,6 +44,10 @@ export interface AiAnswer {
   source: 'dify' | 'built-in'
   /** Set when Dify was configured but the call failed and the built-in answer was used instead. */
   notice?: string
+  /** Practice only: coaching on the server's last reply, 1–3 stars, and whether the role-play is over. */
+  feedback?: string
+  stars?: number
+  done?: boolean
 }
 
 export interface DifyOptions {
@@ -53,7 +67,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
   const pronouns = (id?: string) => hub.config.staff.find((s) => s.id === id)?.pronouns
 
   /** Facts + instruction for each kind. Kept short and concrete so any model phrases it well. */
-  function build(req: AiRequest): { prompt: string; fallback: string } {
+  function build(req: AiRequest): Built {
     const now = hub.clock.now()
     const cfg = hub.config
     switch (req.kind) {
@@ -61,7 +75,8 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
         const task = req.taskId ? hub.tasks(now).find((t) => t.id === req.taskId) : undefined
         if (!task) throw new AiError('That card is no longer open.')
         const table = hub.state.tables[task.tableId]
-        return { prompt: guestScriptPrompt(task, table, cfg, now), fallback: guestScriptFallback(task, table, cfg) }
+        const etaMin = table ? etaMinutes(hub, table, now) : undefined
+        return { prompt: guestScriptPrompt(task, table, cfg, now, etaMin), fallback: guestScriptFallback(task, table, cfg, etaMin) }
       }
       case 'briefing': {
         const mine = Object.values(hub.state.tables).filter((t) => t.serverId === req.staffId)
@@ -91,6 +106,20 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
           fallback: shiftSummaryFallback(a),
         }
       }
+      case 'coach': {
+        const mine = hub.state.visits.filter((v) => v.serverId === req.staffId)
+        const facts = coachFacts(mine, cfg)
+        return {
+          prompt:
+            `You are a warm, private coach for ${name(req.staffId)}, a fine-dining server. Using only their own data below, ` +
+            `write 3 short lines: one thing that went well (be specific), one thing to try next shift (practical, ` +
+            `one habit), and one sentence of encouragement. Never compare them with colleagues. Kitchen delays are not ` +
+            `their fault and must not be mentioned as their weakness.\n\nTheir data:\n${facts.join('\n')}`,
+          fallback: coachFallback(mine, cfg),
+        }
+      }
+      case 'practice':
+        return practiceTurn(req)
       case 'ask_sop': {
         const q = (req.question ?? '').trim()
         if (!q) throw new AiError('Type a question first.')
@@ -101,6 +130,36 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
           fallback: sopFallback(q, cfg),
         }
       }
+    }
+  }
+
+  /** Practice role-play: the guest's next line plus coaching on the server's last reply. */
+  function practiceTurn(req: AiRequest): Built {
+    const sc = SCENARIOS.find((x) => x.id === req.scenario)
+    if (!sc) throw new AiError('Pick a situation to practise.')
+    const history = req.history ?? []
+    const replies = history.filter((h) => h.role === 'server')
+    const last = replies.at(-1)?.text ?? ''
+    const done = replies.length >= 2
+    const score = last ? scoreReply(sc.id, last) : null
+    const builtFeedback = score ? [...score.good.map((g) => `✓ ${g}`), ...score.tips.slice(0, 2).map((t) => `→ ${t}`)].join('\n') : undefined
+    const nextGuest = done ? 'Thank you. That helped.' : sc.guest[replies.length]
+    return {
+      prompt:
+        `Role-play to train a fine-dining server. You play a guest in this situation: "${sc.guest[0]}". ` +
+        `Conversation so far:\n${history.map((h) => `${h.role === 'guest' ? 'GUEST' : 'SERVER'}: ${h.text}`).join('\n') || '(none yet)'}\n\n` +
+        (last
+          ? `First, coach the server's last reply in 2 short lines starting with ✓ for what worked and → for one improvement (apology, empathy, a clear next step, a time, no blaming the kitchen, never guessing about allergens). `
+          : '') +
+        (done ? 'Then end the role-play kindly as the guest.' : 'Then reply as the guest, in one or two natural sentences, staying in character.') +
+        `\nFormat exactly:\nCOACH: <coaching or "-">\nGUEST: <guest line>`,
+      fallback: nextGuest,
+      extra: { feedback: builtFeedback, stars: score?.stars, done },
+      parse: (answer: string) => {
+        const coach = answer.match(/COACH:\s*([\s\S]*?)(?:\n\s*GUEST:|$)/i)?.[1]?.trim()
+        const guest = answer.match(/GUEST:\s*([\s\S]*)$/i)?.[1]?.trim()
+        return { text: guest || answer.trim(), feedback: coach && coach !== '-' ? coach : builtFeedback }
+      },
     }
   }
 
@@ -130,18 +189,84 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
       const prompt = `${built.prompt}\n\nStyle: ${INCLUSIVE_STYLE}\nReply in ${language}.`
       const fallback = built.fallback
-      if (!dify) return { text: fallback, source: 'built-in' }
+      if (!dify) return { text: fallback, source: 'built-in', ...built.extra }
       try {
-        return { text: await callDify(prompt, req), source: 'dify' }
+        const answer = await callDify(prompt, req)
+        return { ...built.extra, ...(built.parse ? built.parse(answer) : { text: answer }), source: 'dify' }
       } catch (e) {
         const reason = e instanceof Error ? (e.name === 'AbortError' ? 'Dify took too long to answer' : e.message) : String(e)
-        return { text: fallback, source: 'built-in', notice: `${reason}. Showing the built-in answer.` }
+        return { text: fallback, source: 'built-in', notice: `${reason}. Showing the built-in answer.`, ...built.extra }
       }
     },
   }
 }
 
 export class AiError extends Error {}
+
+interface Built {
+  prompt: string
+  fallback: string
+  /** Fields returned alongside the text (practice feedback, stars, done). */
+  extra?: Partial<AiAnswer>
+  /** Splits a structured Dify answer into fields. */
+  parse?: (answer: string) => Partial<AiAnswer> & { text: string }
+}
+
+/** Minutes until the table's late dishes are most likely ready, using tonight's station load. */
+function etaMinutes(hub: Hub, t: TableState, now: number): number | undefined {
+  const fired = t.lines.filter((l) => l.status === 'fired')
+  if (!fired.length) return undefined
+  const eta = Math.max(...fired.map((l) => predictReady(hub.state, hub.config, l, now)))
+  return Math.max(1, Math.round((eta - now) / MIN))
+}
+
+// ---------------------------------------------------------------------------
+// Private coach: built only from the server's own visits.
+
+const FLOOR_STAGES: Segment['stage'][] = ['greet', 'pickup', 'bill', 'reset']
+const STAGE_WORDS: Record<string, { name: string; tip: string }> = {
+  greet: { name: 'greetings', tip: 'As soon as a table is seated, drop water and menus first, then come back for the chat.' },
+  pickup: { name: 'pass-to-table times', tip: 'When a card says food is coming up soon, stay near the pass for that minute.' },
+  bill: { name: 'bill presentation', tip: 'Once desserts are cleared, print the bill in advance so it’s ready the moment they ask.' },
+  reset: { name: 'table resets', tip: 'Reset in one pass with the checklist: clear, linen, cutlery, condiments, candle.' },
+}
+
+function stageStats(visits: VisitRecord[]) {
+  return FLOOR_STAGES.map((stage) => {
+    const segs = visits.flatMap((v) => v.segments).filter((x) => x.stage === stage && x.owner === 'floor')
+    const avg = segs.length ? segs.reduce((a, x) => a + (x.end - x.start) / MIN, 0) / segs.length : 0
+    const target = segs.length ? segs.reduce((a, x) => a + x.targetMin, 0) / segs.length : 0
+    return { stage, n: segs.length, lapses: segs.filter((x) => x.lapse).length, avg, target }
+  }).filter((x) => x.n > 0)
+}
+
+const mmss = (min: number) => `${Math.floor(min)}:${String(Math.round((min % 1) * 60)).padStart(2, '0')}`
+
+function coachFacts(visits: VisitRecord[], cfg: RestaurantConfig): string[] {
+  void cfg
+  const moods = visits.filter((v) => v.mood)
+  return [
+    `- Tables served tonight: ${visits.length}; fully to standard: ${visits.filter((v) => v.smooth).length}`,
+    ...stageStats(visits).map((s) => `- ${STAGE_WORDS[s.stage].name}: average ${mmss(s.avg)} vs standard ${mmss(s.target)}, ${s.lapses} of ${s.n} past standard`),
+    moods.length ? `- Guest mood at check-ins: ${moods.filter((v) => v.mood === 'happy').length} happy of ${moods.length}; unhappy tables won back: ${visits.filter((v) => v.recovered).length}` : '',
+  ].filter(Boolean)
+}
+
+function coachFallback(visits: VisitRecord[], cfg: RestaurantConfig): string {
+  void cfg
+  if (!visits.length) return 'Finish a table or two and I’ll have a tip for you. Kitchen delays never count against you here.'
+  const stats = stageStats(visits)
+  const best = [...stats].sort((a, b) => a.lapses / a.n - b.lapses / b.n || a.avg / a.target - b.avg / b.target)[0]
+  const focus = [...stats].filter((s) => s.lapses > 0).sort((a, b) => b.lapses / b.n - a.lapses / a.n)[0]
+  const lines = [
+    best ? `What went well: your ${STAGE_WORDS[best.stage].name} averaged ${mmss(best.avg)} against a ${mmss(best.target)} standard.` : '',
+    focus && focus !== best
+      ? `One thing to try: ${STAGE_WORDS[focus.stage].name} ran past standard on ${focus.lapses} of ${focus.n} tables. ${STAGE_WORDS[focus.stage].tip}`
+      : 'One thing to try: keep doing exactly this, and use the “Coming up” list to get one step ahead.',
+    `${visits.filter((v) => v.smooth).length} of ${visits.length} tables went fully to standard. Kitchen delays aren’t counted against you.`,
+  ]
+  return lines.filter(Boolean).join('\n')
+}
 
 // ---------------------------------------------------------------------------
 // Prompts and built-in answers
@@ -150,7 +275,7 @@ function guestName(t?: TableState) {
   return t?.party?.guestName ?? ''
 }
 
-function guestScriptPrompt(task: Task, t: TableState | undefined, cfg: RestaurantConfig, now: number) {
+function guestScriptPrompt(task: Task, t: TableState | undefined, cfg: RestaurantConfig, now: number, etaMin?: number) {
   const facts = [
     `Table ${task.tableName}, party of ${t?.party?.size ?? '?'}${guestName(t) ? `, guest ${guestName(t)}` : ''}${t?.party?.occasion ? `, celebrating a ${t.party.occasion}` : ''}${t?.party?.vip ? ', a regular' : ''}`,
     ...(t?.party?.needs?.length ? [`Guest needs: ${t.party.needs.join(', ')} (accommodate naturally, never draw attention to them)`] : []),
@@ -160,7 +285,9 @@ function guestScriptPrompt(task: Task, t: TableState | undefined, cfg: Restauran
   if (task.kind === 'kitchen_delay') {
     const late = t?.lines.filter((l) => l.status === 'fired') ?? []
     if (late.length) facts.push(`Dishes: ${late.map((l) => l.name).join(', ')}; about ${Math.max(1, Math.round((now - Math.min(...late.map((l) => l.expectedReadyAt))) / MIN))} min past the usual time`)
+    if (etaMin) facts.push(`Kitchen forecast: ready in about ${etaMin} minutes`)
   }
+  if (task.kind === 'recovery') facts.push('The table seemed unhappy at the last check-in. Ask what went wrong, apologise sincerely and offer to put it right.')
   return (
     `You help a fine-dining server speak to guests. Write exactly what the server can say at the table, ` +
     `in 1-2 natural, gracious sentences. Be honest about the wait or the change, offer a small gesture or ` +
@@ -168,7 +295,7 @@ function guestScriptPrompt(task: Task, t: TableState | undefined, cfg: Restauran
   )
 }
 
-function guestScriptFallback(task: Task, t: TableState | undefined, cfg: RestaurantConfig): string {
+function guestScriptFallback(task: Task, t: TableState | undefined, cfg: RestaurantConfig, etaMin?: number): string {
   const who = guestName(t) ? `${guestName(t)}, ` : ''
   if (task.kind === 'unavailable') {
     const off = t?.lines.find((l) => l.status === 'unavailable' && !l.unavailableInformedAt)
@@ -179,8 +306,11 @@ function guestScriptFallback(task: Task, t: TableState | undefined, cfg: Restaur
     const late = t?.lines.filter((l) => l.status === 'fired') ?? []
     const dish = late.length === 1 ? `your ${late[0].name.toLowerCase()}` : `your ${late[0]?.course ?? 'dishes'}s`
     const occasion = t?.party?.occasion ? ` We want everything perfect for your ${t.party.occasion}.` : ''
-    return `${who}I just checked with the kitchen: ${dish} will be with you in a few more minutes.${occasion} Can I bring you some bread or top up your drinks while you wait?`
+    const when = etaMin ? `in about ${etaMin} minute${etaMin === 1 ? '' : 's'}` : 'in a few more minutes'
+    return `${who}I just checked with the kitchen: ${dish} will be with you ${when}.${occasion} Can I bring you some bread or top up your drinks while you wait?`
   }
+  if (task.kind === 'recovery')
+    return `${who}I’m sorry tonight hasn’t been quite right. Could you tell me what we can do better? I’d like to fix it for you straight away.`
   if (task.kind === 'farewell') return `${who}thank you so much for joining us tonight.${t?.party?.occasion ? ` Happy ${t.party.occasion}!` : ''} We hope to see you again soon.`
   if (task.kind === 'greet') return `Good evening${guestName(t) ? ` ${guestName(t)}` : ''}, welcome to ${cfg.name}.${t?.party?.occasion ? ` I hear it’s a special ${t.party.occasion}; congratulations!` : ''} May I start you with some water while you look at the menu?`
   return `${task.title}. ${task.hint}`

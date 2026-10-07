@@ -11,6 +11,11 @@ export interface MenuItem {
   prepMin: number
   /** Item id in the restaurant's POS (e.g. Petpooja itemid), used by adapters. */
   posItemId?: string
+  /**
+   * What the dish contains, for the safety check: allergens (nuts, shellfish, gluten, dairy,
+   * fish, egg, soy, sesame) and diet tags (meat, root, alcohol, pork, nonhalal).
+   */
+  contains?: string[]
 }
 
 export interface Staff {
@@ -81,6 +86,11 @@ export interface OrderLine {
   delayInformedAt?: number
   unavailableAt?: number
   unavailableInformedAt?: number
+  /** Safety check on this line was handled: kitchen told, or the guest confirmed it is fine. */
+  safetyResolvedAt?: number
+  safetyResolution?: 'kitchen' | 'guest_ok'
+  /** Forecast ready time (station load and tonight's real prep times), filled in snapshots. */
+  etaAt?: number
 }
 
 export interface Party {
@@ -113,6 +123,11 @@ export interface TableState {
   settledAt?: number
   farewelledAt?: number
   allergyConfirmedAt?: number
+  /** Latest mood the server noted at a check-in, and whether an unhappy table was won back. */
+  mood?: { value: Mood; at: number }
+  recoveredAt?: number
+  managerRequestedAt?: number
+  managerVisitedAt?: number
   lines: OrderLine[]
 }
 
@@ -140,6 +155,8 @@ export interface VisitRecord {
   endedAt: number
   segments: Segment[]
   smooth: boolean
+  mood?: Mood
+  recovered?: boolean
 }
 
 export type TaskKind =
@@ -155,6 +172,8 @@ export type TaskKind =
   | 'farewell'
   | 'reset'
   | 'kitchen_message'
+  | 'safety_check'
+  | 'recovery'
 
 export interface TaskAction {
   label: string
@@ -162,7 +181,32 @@ export interface TaskAction {
   event: string
   payload: Record<string, unknown>
   primary?: boolean
+  /** Translation key for the label when a card has more than one action. */
+  k?: string
 }
+
+/** Another open task that can be done on the same trip: same table, next door, or also at the pass. */
+export interface RelatedTask {
+  id: string
+  kind: TaskKind
+  tableName: string
+  where: 'same' | 'near' | 'pass'
+  title: string
+  text?: TaskText
+  action: TaskAction
+}
+
+/** Something the copilot expects soon, shown quietly so the server can get ahead of it. */
+export interface Upcoming {
+  id: string
+  kind: 'food_ready' | 'course_end' | 'bill_soon'
+  tableId: string
+  tableName: string
+  at: number
+  text: TaskText
+}
+
+export type Mood = 'happy' | 'ok' | 'unhappy'
 
 export interface Task {
   id: string
@@ -180,6 +224,8 @@ export interface Task {
   createdAt: number
   score: number
   actions: TaskAction[]
+  /** Filled for the top cards: tasks worth doing on the same trip. */
+  related?: RelatedTask[]
 }
 
 export interface Note {

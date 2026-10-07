@@ -1,4 +1,4 @@
-import { AlertTriangle, ChefHat, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { AlertTriangle, ChefHat, HandHelping, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
 import { AppShell, LiveClock, ShellSkeleton, PanelTitle, Stat, TableTile } from '../components/kit.tsx'
@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils'
 import { useAi } from '../lib/ai.ts'
 import { clock } from '../lib/format.ts'
-import { useSnapshot } from '../lib/live.ts'
+import { act, useSnapshot } from '../lib/live.ts'
 
 const OWNER_COLOR: Record<Owner, string> = {
   floor: 'var(--floor-mark)',
@@ -46,12 +46,28 @@ export default function ManagerView() {
           </AlertDescription>
         </Alert>
 
+        {a.managerRequests.length > 0 && (
+          <Alert className="border-primary/50">
+            <HandHelping className="text-primary" />
+            <AlertDescription className="flex flex-wrap items-center gap-2">
+              <span className="font-medium text-foreground">A server asked you to visit:</span>
+              {a.managerRequests.map((r) => (
+                <Button key={r.tableId} size="sm" variant="outline" className="h-8 rounded-full" onClick={() => void act('manager.visited', { tableId: r.tableId }, 'manager')}>
+                  {r.tableName} · since {clock(r.at)} · mark visited
+                </Button>
+              ))}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <Stat label="Tables served" value={a.visits} sub={`${snap.tables.filter((t) => t.visitId).length} seated now`} />
           <Stat label="Served to standard" value={a.smoothRate == null ? '—' : `${Math.round(a.smoothRate * 100)}%`} sub="no floor-controlled lapse" />
           <Stat label="Floor lapses" value={a.lapsesByOwner.floor} sub={lapses ? `${Math.round((a.lapsesByOwner.floor / lapses) * 100)}% of all lapses` : 'none yet'} />
           <Stat label="Kitchen lapses" value={a.lapsesByOwner.kitchen} sub={lapses ? `${Math.round((a.lapsesByOwner.kitchen / lapses) * 100)}% of all lapses` : 'none yet'} />
         </div>
+
+        <GuestMood moods={a.moods} safety={a.safetyCatches} />
 
         <Card>
           <CardHeader>
@@ -298,5 +314,59 @@ function Receipt({ v, server }: { v: VisitRecord; server: string }) {
           : lapses.map((s) => `${s.label} +${((s.end - s.start) / 60_000 - s.targetMin).toFixed(1)} min (${s.owner}${s.station ? `, ${s.station}` : ''})`).join(' · ')}
       </p>
     </div>
+  )
+}
+
+/** How guests felt at check-ins tonight, by table. Never broken down by server. */
+function GuestMood({ moods, safety }: { moods: { happy: number; ok: number; unhappy: number; recovered: number }; safety: number }) {
+  const total = moods.happy + moods.ok + moods.unhappy
+  const rows = [
+    { label: 'Happy', n: moods.happy, color: 'var(--good)' },
+    { label: 'Okay', n: moods.ok, color: 'var(--muted-foreground)' },
+    { label: 'Not happy', n: moods.unhappy, color: 'var(--warn)' },
+  ]
+  return (
+    <Card>
+      <CardHeader>
+        <Heading>Guest mood and safety tonight</Heading>
+        <CardDescription>From servers’ one-tap check-ins, counted per table. Unhappy tables get a recovery card straight away.</CardDescription>
+        <CardAction>
+          <Smile className="size-4 text-muted-foreground" />
+        </CardAction>
+      </CardHeader>
+      <CardContent className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
+        <div>
+          {total === 0 ? (
+            <p className="text-sm text-muted-foreground">No check-ins yet.</p>
+          ) : (
+            <>
+              <div className="flex h-3 overflow-hidden rounded-full bg-muted" role="img" aria-label={rows.map((r) => `${r.label} ${r.n}`).join(', ')}>
+                {rows.map((r) => (r.n ? <div key={r.label} style={{ width: `${(r.n / total) * 100}%`, background: r.color }} /> : null))}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                {rows.map((r) => (
+                  <span key={r.label} className="inline-flex items-center gap-1.5">
+                    <span className="size-2.5 rounded-full" style={{ background: r.color }} />
+                    {r.label} <b className="tabular">{r.n}</b>
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-muted p-3">
+            <div className="text-2xl font-semibold tabular">{moods.unhappy ? `${moods.recovered}/${moods.unhappy}` : '—'}</div>
+            <div className="text-xs text-muted-foreground">unhappy tables won back</div>
+          </div>
+          <div className="rounded-xl bg-muted p-3">
+            <div className="flex items-center gap-1.5 text-2xl font-semibold tabular">
+              <ShieldAlert className="size-5 text-warn" /> {safety}
+            </div>
+            <div className="text-xs text-muted-foreground">allergy or diet clashes caught</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

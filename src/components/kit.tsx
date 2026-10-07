@@ -5,7 +5,7 @@ import { Link, NavLink } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { STATUS_LABEL, STATUS_PROGRESS } from '../lib/format.ts'
+import { STATUS_LABEL, STATUS_PROGRESS, clock } from '../lib/format.ts'
 import { useTheme, type ThemeChoice } from '../lib/theme.ts'
 import { cn } from '@/lib/utils'
 import { useT, type Key } from '../i18n/index.ts'
@@ -47,7 +47,7 @@ export function LiveClock({ now, ok }: { now: number; ok: boolean }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs tabular text-muted-foreground">
       <span className={cn('size-1.5 rounded-full', ok ? 'bg-good' : 'bg-warn pulse-soft')} aria-label={ok ? 'Live' : 'Reconnecting'} />
-      {new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      {clock(now)} IST
     </span>
   )
 }

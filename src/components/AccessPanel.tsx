@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { DEFAULT_PREFS, setPrefs, usePrefs, type Prefs } from '../lib/prefs.ts'
-import { canSpeak, hasVoice, speak } from '../lib/speech.ts'
+import { canSpeak, hasVoice, speakTask, voicesFor } from '../lib/speech.ts'
 
 /**
  * Opens language & accessibility settings. Shown in every staff header as a pill with the
@@ -55,6 +55,7 @@ export function AccessButton({ className, variant = 'pill' }: { className?: stri
 export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const t = useT()
   const p = usePrefs()
+  const voices = canSpeak() ? voicesFor(p.lang) : []
   // Voices load asynchronously in Chrome; re-check once they arrive.
   const [, bump] = useState(0)
   useEffect(() => {
@@ -125,7 +126,36 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
               <Slider value={[p.speechRate]} min={0.6} max={1.4} step={0.1} onValueChange={([v]) => setPrefs({ speechRate: Math.round(v * 10) / 10 })} aria-label={t('acc.rate')} className="flex-1" />
               <span className="w-10 text-right text-sm tabular text-muted-foreground">{p.speechRate.toFixed(1)}×</span>
             </div>
-            <Button variant="outline" className="h-11 w-full rounded-xl" disabled={!canSpeak()} onClick={() => speak(t('acc.testPhrase'))}>
+            {voices.length > 1 && (
+              <label className="flex items-center gap-3">
+                <span className="w-28 shrink-0 text-sm">{t('acc.voice')}</span>
+                <select
+                  className="h-10 min-w-0 flex-1 rounded-lg border bg-background px-2 text-sm"
+                  value={p.voices?.[p.lang] ?? ''}
+                  onChange={(e) => setPrefs({ voices: { ...p.voices, [p.lang]: e.target.value || undefined } })}
+                >
+                  <option value="">{t('acc.voiceAuto')}</option>
+                  {voices.map((v) => (
+                    <option key={v.voiceURI} value={v.voiceURI}>
+                      {v.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <Button
+              variant="outline"
+              className="h-11 w-full rounded-xl"
+              disabled={!canSpeak()}
+              onClick={() => {
+                // A real card, so people hear table numbers and dish names the way service will sound.
+                const title = t('t.pickup', { table: 'T3', course: '@course.starter' })
+                speakTask(`${t('acc.testPhrase')} ${title}`, '2× Galouti kebab, 1× Burrata & heirloom tomato', {
+                  title: `Hello, I’m TableMate. Your next task will be read like this. Pick up T3 starters from the pass`,
+                  hint: '2× Galouti kebab, 1× Burrata & heirloom tomato',
+                })
+              }}
+            >
               <Volume2 /> {t('acc.test')}
             </Button>
             {canSpeak() && p.lang !== 'en' && !hasVoice(p.lang) && <p className="text-xs text-warn">{t('acc.noVoice')}</p>}
@@ -162,7 +192,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-type BoolKey = { [K in keyof Prefs]: Prefs[K] extends boolean ? K : never }[keyof Prefs]
+type BoolKey = { [K in keyof Prefs]-?: Prefs[K] extends boolean ? K : never }[keyof Prefs]
 
 function Toggle({ k, label, hint }: { k: BoolKey; label: Key; hint?: Key }) {
   const t = useT()

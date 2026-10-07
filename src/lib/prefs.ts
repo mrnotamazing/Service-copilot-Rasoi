@@ -14,6 +14,8 @@ export interface Prefs {
   quietCelebrations: boolean
   readAloud: boolean
   speechRate: number
+  /** Chosen voice per language (voiceURI); unset means the most natural voice available. */
+  voices?: Partial<Record<Lang, string>>
   haptics: boolean
   chime: boolean
   flash: boolean

@@ -6,6 +6,7 @@
 import { newId, type FiredLine, type IncomingEvent } from '../shared/events.ts'
 import type { SimStatus } from '../shared/snapshot.ts'
 import type { Course, TableState } from '../shared/types.ts'
+import { istServiceStart } from '../shared/time.ts'
 import type { Hub } from './hub.ts'
 
 const MIN = 60_000
@@ -62,10 +63,8 @@ export class Simulator {
   start() {
     if (this.running) return
     if (this.startedAt === null) {
-      // Start the evening at 19:00 today (service time).
-      const d = new Date()
-      d.setHours(19, 0, 0, 0)
-      this.hub.clock.set(Math.max(d.getTime(), this.hub.events.at(-1)?.at ?? 0))
+      // Start the evening at 19:00 IST today (service time), whatever timezone the machine is in.
+      this.hub.clock.set(Math.max(istServiceStart(Date.now()), this.hub.events.at(-1)?.at ?? 0))
       this.startedAt = this.hub.clock.now()
       this.nextArrival = this.startedAt + 0.2 * MIN
     }
@@ -139,7 +138,10 @@ export class Simulator {
     const prep = Math.max(...lines.map((l) => this.hub.config.menu.find((m) => m.id === l.menuItemId)!.prepMin))
     const grill = lines.some((l) => this.hub.config.menu.find((m) => m.id === l.menuItemId)!.station === 'grill')
     const busy = Object.values(this.hub.state.tables).filter((x) => x.visitId).length >= 6
-    let cook = prep * rand(0.8, 1.15)
+    // Stations work on a couple of dishes at once; a queue at the station adds real time.
+    const station = (id: string) => this.hub.config.menu.find((m) => m.id === id)!.station
+    const queued = Object.values(this.hub.state.tables).flatMap((x) => x.lines).filter((l) => l.status === 'fired' && lines.some((n) => station(n.menuItemId) === l.station)).length
+    let cook = prep * rand(0.8, 1.15) + Math.max(0, queued - 1) * 0.75
     if (grill && busy && chance(0.45)) cook += rand(5, 10) // grill backs up at peak
     else if (chance(0.12)) cook += rand(4, 8)
     const doneAt = now + cook * MIN
@@ -253,7 +255,9 @@ export class Simulator {
         if (!task) continue
         if (!this.reaction.has(task.id)) this.reaction.set(task.id, (chance(0.08) ? rand(2.5, 5) : rand(0.2, 1.1)) * MIN)
         if (now < task.createdAt + this.reaction.get(task.id)!) continue
-        const action = task.actions.find((a) => a.primary) ?? task.actions[0]
+        let action = task.actions.find((a) => a.primary) ?? task.actions[0]
+        // Most tables are happy at a check-in; a few aren't, so recovery gets exercised.
+        if (task.kind === 'checkback') action = task.actions[chance(0.78) ? 0 : chance(0.6) ? 1 : 2] ?? action
         const payload = action.event === 'task.snoozed' ? { ...action.payload, taskId: task.id, staffId } : action.payload
         this.send({ type: action.event, source: 'app', payload } as IncomingEvent)
         this.busyUntil.set(staffId, now + rand(0.3, 0.7) * MIN)

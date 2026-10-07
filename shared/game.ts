@@ -105,6 +105,7 @@ export const BADGES: BadgeDef[] = [
   { id: 'quick_turn', title: 'Quick turn', description: 'Reset 3 tables within 3 minutes of payment', icon: 'Timer', counter: 'fastResets', target: 3 },
   { id: 'smooth_operator', title: 'Smooth operator', description: 'Serve 5 tables fully to standard', icon: 'Sparkles', counter: 'smooth', target: 5 },
   { id: 'team_player', title: 'Team player', description: 'Send 3 kudos to teammates', icon: 'HeartHandshake', counter: 'kudosSent', target: 3 },
+  { id: 'safety_first', title: 'Safety first', description: 'Catch 2 dishes that clash with an allergy or diet', icon: 'ShieldCheck', counter: 'safety', target: 2 },
   { id: 'perfect_evening', title: 'Perfect evening', description: 'Reach a streak of 8 tables to standard', icon: 'Crown', counter: 'bestStreak', target: 8 },
 ]
 
@@ -240,6 +241,21 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
       const g = grade(ev.at - t.settledAt, sop.resetWithinMin)
       if (ev.at - t.settledAt <= 3 * MIN) bump(game, t.serverId, 'fastResets', ev.at, config)
       credit(t.serverId, GRADE_XP[g], `${GRADE_WORD[g]}: table reset`, t.name, g, `a.reset.${g}`)
+      return
+    }
+    case 'safety.resolved': {
+      const t = tableOf(ev.payload.tableId)
+      const fresh = t?.lines.filter((l) => ev.payload.lineIds.includes(l.id) && !l.safetyResolvedAt) ?? []
+      if (!t || !fresh.length) return
+      bump(game, t.serverId, 'safety', ev.at, config)
+      credit(t.serverId, 20, 'Safety catch', t.name, 'on_time', 'a.safety')
+      return
+    }
+    case 'guest.recovered': {
+      const t = tableOf(ev.payload.tableId)
+      if (!t || t.recoveredAt || t.mood?.value !== 'unhappy') return
+      bump(game, t.serverId, 'recoveries', ev.at, config)
+      credit(t.serverId, 15, 'Guest won back', t.name, 'on_time', 'a.recovered')
       return
     }
     case 'server.checkback':

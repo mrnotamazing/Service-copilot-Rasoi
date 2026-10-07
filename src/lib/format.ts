@@ -1,5 +1,8 @@
+import { istClock } from '../../shared/time.ts'
+
+/** Wall-clock time in IST (the restaurant's time), e.g. "8:24 pm". */
 export function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return istClock(ms)
 }
 
 /** "1:05" style duration. */

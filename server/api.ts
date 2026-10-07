@@ -2,6 +2,7 @@
 // The Node server exposes it over HTTP/WebSocket; the browser demo calls it directly.
 
 import { analytics, staffStats, tasksFor } from '../shared/engine.ts'
+import { predictReady, upcomingFor } from '../shared/predict.ts'
 import { playerView, teamView } from '../shared/game.ts'
 import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
@@ -33,7 +34,10 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       role,
       now,
       config: hub.config,
-      tables: Object.values(hub.state.tables),
+      // Each dish still cooking carries its forecast ready time.
+      tables: Object.values(hub.state.tables).map((t) =>
+        t.lines.some((l) => l.status === 'fired') ? { ...t, lines: t.lines.map((l) => (l.status === 'fired' ? { ...l, etaAt: predictReady(hub.state, hub.config, l, now) } : l)) } : t,
+      ),
       unavailable: Object.keys(hub.state.unavailable),
       notes: hub.state.notes.slice(-40),
       sim: sim.status(),
@@ -41,7 +45,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       team: teamView(hub.game),
     }
     if (role === 'server' && staffId) {
-      const { top, queued } = tasksFor(tasks, staffId)
+      const { top, queued } = tasksFor(tasks, staffId, 3, hub.state.tables)
       return {
         ...base,
         me: {
@@ -51,6 +55,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
           stats: staffStats(hub.state, hub.config).find((s) => s.staffId === staffId) ?? null,
           myVisits: hub.state.visits.filter((v) => v.serverId === staffId).slice(-10).reverse(),
           game: playerView(hub.game, staffId),
+          upcoming: upcomingFor(hub.state, hub.config, staffId, now, tasks.filter((t) => t.staffId === staffId)),
         },
       }
     }
@@ -97,7 +102,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     },
   }
 
-  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop']
+  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice']
 
   return {
     snapshot,
@@ -106,7 +111,13 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       const kind = AI_KINDS.find((k) => k === body.kind)
       if (!kind) throw new AiError('Unknown kind of AI request.')
       const str = (v: unknown) => (typeof v === 'string' ? v.slice(0, 500) : undefined)
-      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang) })
+      const history = Array.isArray(body.history)
+        ? body.history
+            .slice(-8)
+            .filter((h): h is { role: 'guest' | 'server'; text: string } => !!h && typeof h === 'object' && (h.role === 'guest' || h.role === 'server') && typeof h.text === 'string')
+            .map((h) => ({ role: h.role, text: h.text.slice(0, 400) }))
+        : undefined
+      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history })
     },
     /** Returns undefined when the path isn't one of the app routes. */
     post(path: string, body: ApiBody): { result: unknown } | undefined {

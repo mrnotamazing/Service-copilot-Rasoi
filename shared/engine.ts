@@ -6,6 +6,8 @@
 // and lets the server rebuild state by replaying the event log.
 
 import type { CopilotEvent } from './events.ts'
+import { isNear, minutesUntil, predictReady, type Running } from './predict.ts'
+import { safetyIssues } from './safety.ts'
 import type {
   Course,
   TaskText,
@@ -35,12 +37,15 @@ export interface EngineState {
   snoozes: Record<string, number> // taskId -> snoozed until
   visits: VisitRecord[]
   eventCount: number
+  /** Tonight's real prep minutes per dish and eating minutes per course, for forecasts. */
+  prepStats: Record<string, Running>
+  eatStats: Record<string, Running>
 }
 
 export function initialState(config: RestaurantConfig): EngineState {
   const tables: Record<string, TableState> = {}
   for (const t of config.tables) tables[t.id] = emptyTable(t.id, config)
-  return { tables, unavailable: {}, notes: [], snoozes: {}, visits: [], eventCount: 0 }
+  return { tables, unavailable: {}, notes: [], snoozes: {}, visits: [], eventCount: 0, prepStats: {}, eatStats: {} }
 }
 
 function emptyTable(id: string, config: RestaurantConfig, keepServer?: string): TableState {
@@ -71,6 +76,13 @@ function findLine(state: EngineState, lineId: string): [TableState, OrderLine] |
 
 function touch(t: TableState, at: number) {
   t.lastAttentionAt = at
+}
+
+function addRun(stats: Record<string, Running>, key: string, minutes: number) {
+  if (!(minutes > 0) || minutes > 120) return
+  const r = (stats[key] ??= { n: 0, sumMin: 0 })
+  r.n++
+  r.sumMin += minutes
 }
 
 /** Applies one event to the state (mutates and returns it). Unknown tables/lines are ignored. */
@@ -142,6 +154,7 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
           if (l.status === 'fired' && (ids.has(l.id) || (ev.payload.ticketId && l.ticketId === ev.payload.ticketId))) {
             l.status = 'ready'
             l.readyAt = at
+            addRun(state.prepStats, l.menuItemId, (at - l.firedAt) / MIN)
           }
       break
     }
@@ -188,6 +201,11 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       const t = table(ev.payload.tableId)
       if (t) {
         t.checkbacks[ev.payload.course] = at
+        if (ev.payload.mood) {
+          t.mood = { value: ev.payload.mood, at }
+          // A new unhappy check-in reopens recovery even if an earlier issue was sorted.
+          if (ev.payload.mood === 'unhappy') t.recoveredAt = undefined
+        }
         touch(t, at)
       }
       break
@@ -195,9 +213,46 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
     case 'course.cleared': {
       const t = table(ev.payload.tableId)
       if (t) {
+        const served = t.lines.filter((l) => l.course === ev.payload.course && l.servedAt).map((l) => l.servedAt!)
+        if (served.length && !t.courseClearedAt[ev.payload.course]) addRun(state.eatStats, ev.payload.course, (at - Math.max(...served)) / MIN)
         t.courseClearedAt[ev.payload.course] = at
         touch(t, at)
       }
+      break
+    }
+    case 'safety.resolved': {
+      const t = table(ev.payload.tableId)
+      if (!t) break
+      const fixed = t.lines.filter((l) => ev.payload.lineIds.includes(l.id) && !l.safetyResolvedAt)
+      for (const l of fixed) {
+        l.safetyResolvedAt = at
+        l.safetyResolution = ev.payload.resolution
+      }
+      touch(t, at)
+      if (ev.payload.resolution === 'kitchen' && fixed.length)
+        state.notes.push({
+          id: `safety_${fixed[0].id}`,
+          at,
+          direction: 'to_kitchen',
+          tableId: t.id,
+          text: `SAFETY ${t.name}: ${fixed
+            .map((l) => `${l.name} (${safetyIssues(menuById(config, l.menuItemId), t.party).map((i) => `${i.tag}, ${i.because}`).join('; ')})`)
+            .join(', ')}. Please adapt or tell me.`,
+          from: t.serverId,
+        })
+      break
+    }
+    case 'guest.recovered': {
+      const t = table(ev.payload.tableId)
+      if (!t) break
+      t.recoveredAt = at
+      if (ev.payload.how === 'manager') t.managerRequestedAt = at
+      touch(t, at)
+      break
+    }
+    case 'manager.visited': {
+      const t = table(ev.payload.tableId)
+      if (t) t.managerVisitedAt = at
       break
     }
     case 'allergy.confirmed': {
@@ -288,6 +343,8 @@ function closeVisit(state: EngineState, t: TableState, config: RestaurantConfig,
     endedAt: at,
     segments,
     smooth: segments.every((s) => s.owner !== 'floor' || !s.lapse),
+    mood: t.mood?.value,
+    recovered: t.mood?.value === 'unhappy' ? !!t.recoveredAt : undefined,
   })
   if (state.visits.length > 500) state.visits.splice(0, state.visits.length - 500)
   state.tables[t.id] = emptyTable(t.id, config, t.serverId)
@@ -467,6 +524,50 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         actions: [{ label: 'Send to kitchen', event: 'allergy.confirmed', payload: { tableId: t.id }, primary: true }],
       })
 
+    // Safety: a dish on the order clashes with a declared allergy or diet. Highest priority.
+    const unsafe = lines
+      .filter((l) => l.status !== 'served' && l.status !== 'unavailable' && !l.safetyResolvedAt)
+      .map((l) => ({ l, issues: safetyIssues(menuById(config, l.menuItemId), t.party) }))
+      .filter((x) => x.issues.length)
+    if (unsafe.length) {
+      const since = Math.min(...unsafe.map((x) => x.l.firedAt))
+      const say = (x: (typeof unsafe)[number]) => `${x.l.name} has ${x.issues.map((i) => `${i.tag} (${i.because === 'allergy' ? 'allergy' : i.because})`).join(', ')}`
+      const lineIds = unsafe.map((x) => x.l.id)
+      add('safety_check', lineIds.join(','), {
+        title: `Check ${t.name}’s order before it’s cooked`,
+        hint: unsafe.map(say).join('; '),
+        text: {
+          title: k('t.safety', { table: t.name }),
+          hint: {
+            sep: '; ',
+            parts: unsafe.flatMap((x) => x.issues.map((i) => k('h.safety_line', { dish: x.l.name, tag: `@tag.${i.tag}`, who: `@diet.${i.because}` }))),
+          },
+        },
+        impact: 6,
+        createdAt: since,
+        dueAt: since + 1 * MIN,
+        actions: [
+          { label: 'Tell the kitchen', k: 'action.safety_kitchen', event: 'safety.resolved', payload: { tableId: t.id, lineIds, resolution: 'kitchen' }, primary: true },
+          { label: 'Guest says it’s fine', k: 'action.safety_ok', event: 'safety.resolved', payload: { tableId: t.id, lineIds, resolution: 'guest_ok' } },
+        ],
+      })
+    }
+
+    // An unhappy table: help the server win them back, fast.
+    if (t.mood?.value === 'unhappy' && !t.recoveredAt)
+      add('recovery', String(t.mood.at), {
+        title: `${t.name} isn’t happy: make it right`,
+        hint: 'Listen, say sorry, fix it fast. A replacement dish, something on the house or a manager visit often wins guests back.',
+        text: { title: k('t.recovery', { table: t.name }), hint: k('h.recovery') },
+        impact: 5,
+        createdAt: t.mood.at,
+        dueAt: t.mood.at + 2 * MIN,
+        actions: [
+          { label: 'Sorted', k: 'action.recovery_fixed', event: 'guest.recovered', payload: { tableId: t.id, how: 'fixed' }, primary: true },
+          { label: 'Ask the manager', k: 'action.recovery_manager', event: 'guest.recovered', payload: { tableId: t.id, how: 'manager' } },
+        ],
+      })
+
     // Unavailable items the guest still expects.
     const off = lines.filter((l) => l.status === 'unavailable' && !l.unavailableInformedAt)
     if (off.length) {
@@ -490,16 +591,24 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
     const tickets = new Map<string, OrderLine[]>()
     for (const l of lines) tickets.set(l.ticketId, [...(tickets.get(l.ticketId) ?? []), l])
     for (const [ticketId, tl] of tickets) {
-      const late = tl.filter((l) => l.status === 'fired' && !l.delayInformedAt && now > l.expectedReadyAt + sop.kitchenDelayToleranceMin * MIN)
+      const tol = sop.kitchenDelayToleranceMin * MIN
+      // Late now, or forecast to be late given how busy the station is: warn early, with a real number.
+      const forecast = new Map(tl.filter((l) => l.status === 'fired').map((l) => [l.id, predictReady(state, config, l, now)]))
+      const late = tl.filter(
+        (l) => l.status === 'fired' && !l.delayInformedAt && (now > l.expectedReadyAt + tol || (forecast.get(l.id)! > l.expectedReadyAt + tol && now >= l.firedAt + (l.expectedReadyAt - l.firedAt) * 0.4)),
+      )
       if (!late.length) continue
-      const over = Math.max(...late.map((l) => now - l.expectedReadyAt))
-      const appear = Math.min(...late.map((l) => l.expectedReadyAt)) + sop.kitchenDelayToleranceMin * MIN
+      const eta = Math.max(...late.map((l) => forecast.get(l.id)!))
+      const overdue = late.some((l) => now > l.expectedReadyAt + tol)
+      const over = overdue ? Math.max(...late.map((l) => now - l.expectedReadyAt)) : Math.max(...late.map((l) => eta - l.expectedReadyAt))
+      const appear = Math.min(...late.map((l) => (now > l.expectedReadyAt + tol ? l.expectedReadyAt + tol : l.firedAt + (l.expectedReadyAt - l.firedAt) * 0.4)))
+      const etaMin = minutesUntil(eta, now)
       add('kitchen_delay', ticketId, {
-        title: `${t.name} ${late[0].course}s running ${minutes(over)} late`,
-        hint: `Kitchen is behind on ${late.map((l) => l.name).join(', ')}. A heads-up now beats an apology later.`,
+        title: overdue ? `${t.name} ${late[0].course}s running ${minutes(over)} late` : `${t.name} ${late[0].course}s likely ${minutes(over)} late`,
+        hint: `Kitchen is behind on ${late.map((l) => l.name).join(', ')}. Ready in about ${etaMin} min. A heads-up now beats an apology later.`,
         text: {
-          title: k('t.kitchen_delay', { table: t.name, course: `@course.${late[0].course}`, min: Math.max(1, Math.round(over / MIN)) }),
-          hint: k('h.kitchen_delay', { dishes: late.map((l) => l.name).join(', ') }),
+          title: k(overdue ? 't.kitchen_delay' : 't.kitchen_delay_soon', { table: t.name, course: `@course.${late[0].course}`, min: Math.max(1, Math.round(over / MIN)) }),
+          hint: k('h.kitchen_delay_eta', { dishes: late.map((l) => l.name).join(', '), eta: etaMin }),
         },
         impact: 4,
         createdAt: appear,
@@ -537,7 +646,12 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
           impact: 2,
           createdAt: checkAt,
           dueAt: checkAt + 2 * MIN,
-          actions: [{ label: 'Checked in', event: 'server.checkback', payload: { tableId: t.id, course }, primary: true }],
+          // The check-in doubles as a quick mood read: one tap records how the table is feeling.
+          actions: [
+            { label: 'Happy', k: 'action.mood_happy', event: 'server.checkback', payload: { tableId: t.id, course, mood: 'happy' }, primary: true },
+            { label: 'Okay', k: 'action.mood_ok', event: 'server.checkback', payload: { tableId: t.id, course, mood: 'ok' } },
+            { label: 'Not happy', k: 'action.mood_unhappy', event: 'server.checkback', payload: { tableId: t.id, course, mood: 'unhappy' } },
+          ],
         })
       const clearAt = servedAt + sop.courseCheckAfterMin * MIN
       if (now >= clearAt - 1 * MIN && !t.billRequestedAt) {
@@ -642,9 +756,45 @@ export function scoreTask(task: Task, table: TableState | undefined, now: number
   return Math.round((task.impact * (0.6 + urgency) + neglect + vip) * 100) / 100
 }
 
-export function tasksFor(tasks: Task[], staffId: string, limit = 3): { top: Task[]; queued: number } {
+/**
+ * The server's top cards. Tasks that fit the same trip ride along on one card instead of taking
+ * their own slot: more food at the pass, another job at the same table, or the table next door.
+ * Only one-tap tasks are folded in; anything needing a choice (a mood, a safety call) keeps its card.
+ */
+export function tasksFor(tasks: Task[], staffId: string, limit = 3, tables?: Record<string, TableState>): { top: Task[]; queued: number } {
   const mine = tasks.filter((t) => t.staffId === staffId)
-  return { top: mine.slice(0, limit), queued: Math.max(0, mine.length - limit) }
+  const foldable = (r: Task) => r.actions.length === 1 && r.actions[0].event !== 'task.snoozed' && r.kind !== 'safety_check' && r.kind !== 'recovery'
+  const top: Task[] = []
+  let folded = 0
+  for (const task of mine) {
+    const host = foldable(task)
+      ? top.find((h) => (h.related?.length ?? 0) < 2 && ((h.kind === 'pickup' && task.kind === 'pickup') || (h.tableId && h.tableId === task.tableId)))
+      : undefined
+    if (host) {
+      host.related = [...(host.related ?? []), related(task, host.kind === 'pickup' && task.kind === 'pickup' ? 'pass' : 'same')]
+      folded++
+      continue
+    }
+    if (top.length < limit) top.push({ ...task })
+  }
+  // Next door: a waiting task at the neighbouring table, offered on the card for that trip.
+  if (tables) {
+    const shown = new Set([...top.map((t) => t.id), ...top.flatMap((t) => t.related?.map((r) => r.id) ?? [])])
+    for (const r of mine) {
+      if (shown.has(r.id) || !foldable(r)) continue
+      const host = top.find((h) => (h.related?.length ?? 0) < 2 && isNear(tables[h.tableId], tables[r.tableId]))
+      if (host) {
+        host.related = [...(host.related ?? []), related(r, 'near')]
+        shown.add(r.id)
+        folded++
+      }
+    }
+  }
+  return { top, queued: Math.max(0, mine.length - top.length - folded) }
+}
+
+function related(r: Task, where: 'same' | 'near' | 'pass'): NonNullable<Task['related']>[number] {
+  return { id: r.id, kind: r.kind, tableName: r.tableName, where, title: r.title, text: r.text?.title, action: r.actions[0] }
 }
 
 // ---------------------------------------------------------------------------
@@ -698,6 +848,12 @@ export interface Analytics {
   load: { staffId: string; activeTables: number; overloaded: boolean }[]
   suggestions: string[]
   recentVisits: VisitRecord[]
+  /** How guests felt at check-ins tonight, counted per table (never per server). */
+  moods: { happy: number; ok: number; unhappy: number; recovered: number }
+  /** Tables where a server asked the manager to visit, not yet visited. */
+  managerRequests: { tableId: string; tableName: string; at: number }[]
+  /** Dishes caught by the safety check tonight. */
+  safetyCatches: number
 }
 
 const STAGE_LABELS: Record<Segment['stage'], string> = {
@@ -773,7 +929,23 @@ export function analytics(state: EngineState, config: RestaurantConfig): Analyti
     load,
     suggestions,
     recentVisits: state.visits.slice(-15).reverse(),
+    moods: moodCounts(state),
+    managerRequests: Object.values(state.tables)
+      .filter((t) => t.managerRequestedAt && !(t.managerVisitedAt && t.managerVisitedAt >= t.managerRequestedAt))
+      .map((t) => ({ tableId: t.id, tableName: t.name, at: t.managerRequestedAt! })),
+    safetyCatches: Object.values(state.tables).reduce((n, t) => n + t.lines.filter((l) => l.safetyResolvedAt).length, 0),
   }
+}
+
+function moodCounts(state: EngineState) {
+  const out = { happy: 0, ok: 0, unhappy: 0, recovered: 0 }
+  const seen = [...state.visits.map((v) => ({ mood: v.mood, recovered: v.recovered })), ...Object.values(state.tables).filter((t) => t.visitId).map((t) => ({ mood: t.mood?.value, recovered: !!t.recoveredAt }))]
+  for (const v of seen) {
+    if (!v.mood) continue
+    out[v.mood]++
+    if (v.mood === 'unhappy' && v.recovered) out.recovered++
+  }
+  return out
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10

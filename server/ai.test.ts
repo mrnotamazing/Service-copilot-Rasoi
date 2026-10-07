@@ -96,3 +96,45 @@ describe('staff profile', () => {
     expect(() => api.post('/api/staff/profile', { staffId: 'nobody', pronouns: 'x' })).toThrow()
   })
 })
+
+describe('coach and practice', () => {
+  it('coaches from the server’s own visits only', async () => {
+    const hub = new Hub(memoryStore())
+    const a = await createAi(hub).ask({ kind: 'coach', staffId: 's_aisha' })
+    expect(a.text).toMatch(/Kitchen delays never count against you/)
+  })
+
+  it('role-plays a guest and scores the reply with the built-in rubric', async () => {
+    const ai = createAi(new Hub(memoryStore()))
+    const open = await ai.ask({ kind: 'practice', scenario: 'cold_food', history: [] })
+    expect(open.text).toMatch(/lukewarm/)
+    expect(open.feedback).toBeUndefined()
+    const good = await ai.ask({
+      kind: 'practice',
+      scenario: 'cold_food',
+      history: [{ role: 'guest', text: open.text }, { role: 'server', text: 'I’m so sorry, I completely understand. Let me replace it right away, it will be with you in 5 minutes.' }],
+    })
+    expect(good.stars).toBe(3)
+    expect(good.feedback).toMatch(/✓ You apologised/)
+    expect(good.done).toBe(false)
+    const blame = await ai.ask({ kind: 'practice', scenario: 'cold_food', history: [{ role: 'server', text: 'Sorry, that is the kitchen’s fault, not mine.' }] })
+    expect(blame.stars).toBe(1)
+    expect(blame.feedback).toMatch(/Leave the kitchen out of it/)
+  })
+
+  it('reads a structured Dify practice answer', async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ answer: 'COACH: ✓ Kind and clear.\nGUEST: Alright, thank you.' }), { status: 200 }))
+    const ai = createAi(new Hub(memoryStore()), { url: 'http://dify.local/v1', key: 'k', fetchImpl: fetchImpl as unknown as typeof fetch })
+    const a = await ai.ask({ kind: 'practice', scenario: 'long_wait', history: [{ role: 'server', text: 'Sorry, 5 minutes.' }] })
+    expect(a).toMatchObject({ text: 'Alright, thank you.', feedback: '✓ Kind and clear.', source: 'dify' })
+  })
+})
+
+describe('saved configs from older versions', () => {
+  it('gets ingredient tags for the safety check', async () => {
+    const { withDefaults } = await import('./hub.ts')
+    const { DEMO_CONFIG } = await import('../shared/config.ts')
+    const old = { ...DEMO_CONFIG, menu: DEMO_CONFIG.menu.map(({ contains: _c, ...m }) => m) }
+    expect(withDefaults(old).menu.find((m) => m.id === 'm_burrata')?.contains).toEqual(['dairy'])
+  })
+})
