@@ -3,6 +3,7 @@ import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Task } from '../../shared/types.ts'
+import { Mascot, TAGLINE, Wordmark } from '../brand/marks.tsx'
 import { AppShell } from '../components/kit.tsx'
 import { TaskCard } from '../components/TaskCard.tsx'
 import { Badge } from '@/components/ui/badge'
@@ -57,10 +58,11 @@ export default function AboutView() {
         {/* Hero: the thesis, with the product itself as the image. */}
         <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-12 lg:grid-cols-[1.1fr_1fr] lg:pt-20">
           <div className="min-w-0">
-            <p className="text-sm text-muted-foreground">OB project proposal, Working Group B3</p>
-            <h1 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.25rem)] font-medium leading-[1.02] tracking-[-0.02em]">Six tables. Twelve standards. One pair of hands.</h1>
+            <Mascot className="-ml-2 w-[min(320px,70vw)]" speed="var(--foreground)" title="TableMate's running chef" />
+            <p className="tagline mt-4 text-muted-foreground">{TAGLINE}</p>
+            <h1 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.25rem)] leading-[1.02] tracking-[-0.035em]">Six tables. Twelve standards. One pair of hands.</h1>
             <p className="mt-6 max-w-[38rem] text-pretty text-lg leading-relaxed text-muted-foreground">
-              Rasoi is a service copilot for fine-dining servers. It reads what the restaurant’s POS already knows and puts the next three things that matter on the server’s phone, in
+              TableMate is a service copilot for fine-dining servers. It reads what the restaurant’s POS already knows and puts the next three things that matter on the server’s phone, in
               the order the guest would want them done. When something runs late, it records whose step it was, so nobody is blamed for a slow grill.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
@@ -268,7 +270,7 @@ export default function AboutView() {
             {[
               ['No app', 'Servers work a simulated six-table rush the usual way.'],
               ['Monitoring-style app', 'Same tasks, but with rankings and everything visible to the manager.'],
-              ['Rasoi copilot', 'Top-three cards, self-closing tasks, private stats, delay receipts.'],
+              ['TableMate', 'Top-three cards, self-closing tasks, private stats, delay receipts.'],
             ].map(([t, d], i) => (
               <div key={t} className={cn('rounded-2xl border p-5', i === 2 ? 'border-primary/50 bg-accent/40' : 'bg-card')}>
                 <div className="text-sm text-muted-foreground">Condition {i + 1}</div>
@@ -286,7 +288,9 @@ export default function AboutView() {
         <section className="border-t bg-secondary/40">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 md:grid-cols-2">
             <div>
-              <h2 className="font-display text-2xl">Working Group B3</h2>
+              <Wordmark className="text-3xl" />
+              <p className="tagline mt-2 text-muted-foreground">{TAGLINE}</p>
+              <h2 className="mt-6 font-display text-xl">An OB project by Working Group B3</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Drishti Gulati, Div Mehta, Sehaj Mittal, Vidush Srivastava, Shobith Das, Arnavi Khandelwal and Jonnah Harshith.</p>
               <Button asChild className="mt-5">
                 <Link to="/">

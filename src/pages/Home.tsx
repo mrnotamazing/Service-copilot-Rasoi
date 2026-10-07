@@ -1,6 +1,7 @@
 import { ArrowRight, BookOpen, ChefHat, HeartHandshake, LayoutDashboard, Play, Sparkles, Users } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
+import { Mascot } from '../brand/marks.tsx'
 import { AppShell, LiveClock, SectionTitle, ShellSkeleton } from '../components/kit.tsx'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -18,10 +19,11 @@ export default function Home() {
 
   return (
     <AppShell title="Tonight’s service" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />} wide={false}>
-      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="rounded-3xl border bg-card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="relative overflow-hidden rounded-3xl bg-hero p-5 text-hero-foreground">
+        <Mascot className="pointer-events-none absolute right-5 top-1/2 w-44 -translate-y-1/2 max-sm:hidden" speed="var(--hero-foreground)" />
+        <div className="relative flex flex-wrap items-center justify-between gap-3 sm:pr-48">
           <div>
-            <p className="text-sm text-muted-foreground">{idle ? 'Doors aren’t open yet' : `${seated} of ${snap.tables.length} tables seated`}</p>
+            <p className="text-sm opacity-75">{idle ? 'Doors aren’t open yet' : `${seated} of ${snap.tables.length} tables seated`}</p>
             <h2 className="font-display text-2xl">{idle ? 'Ready when you are' : 'Service is running'}</h2>
           </div>
           {idle ? (
@@ -29,21 +31,21 @@ export default function Home() {
               <Play /> Start a simulated service
             </Button>
           ) : (
-            <Badge variant="outline" className="gap-1 text-muted-foreground">
+            <Badge variant="outline" className="gap-1 border-white/20 text-hero-foreground/80">
               <Sparkles className="size-3" /> {snap.ai.provider === 'dify' ? 'AI via Dify' : 'Built-in AI writer'}
             </Badge>
           )}
         </div>
-        <div className="mt-5 flex items-center gap-3">
+        <div className="relative mt-5 flex items-center gap-3 sm:pr-48">
           <Users className="size-4 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
             <div className="flex justify-between text-sm">
               <span>Team goal: tables served fully to standard</span>
-              <span className="text-muted-foreground tabular">
+              <span className="tabular opacity-75">
                 {Math.min(snap.team.smooth, snap.team.goal)}/{snap.team.goal}
               </span>
             </div>
-            <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-1.5 h-1.5" aria-label="Team goal progress" />
+            <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-1.5 h-1.5 bg-white/15" aria-label="Team goal progress" />
           </div>
         </div>
       </motion.section>

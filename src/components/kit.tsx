@@ -1,4 +1,5 @@
-import { BookOpen, CakeSlice, ChefHat, HeartPulse, LayoutDashboard, Monitor, Moon, Settings, Star, Sun, Users, UtensilsCrossed } from 'lucide-react'
+import { BookOpen, CakeSlice, ChefHat, HeartPulse, LayoutDashboard, Monitor, Moon, Settings, Star, Sun, Users } from 'lucide-react'
+import { Mark, Wordmark } from '../brand/marks.tsx'
 import type { ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
@@ -10,13 +11,9 @@ import { cn } from '@/lib/utils'
 
 export function Brand() {
   return (
-    <Link to="/" className="inline-flex items-center gap-2">
-      <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
-        <UtensilsCrossed className="size-4" />
-      </span>
-      <span className="font-display text-lg leading-none">
-        Rasoi <span className="text-muted-foreground">Copilot</span>
-      </span>
+    <Link to="/" className="inline-flex items-center gap-2" aria-label="TableMate home">
+      <Mark className="h-6 w-auto text-tomato" />
+      <Wordmark className="text-xl leading-none" />
     </Link>
   )
 }
@@ -155,7 +152,9 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
         Skip to main content
       </a>
-      <aside className="sticky top-0 hidden h-dvh flex-col border-r bg-sidebar px-3 py-4 md:flex">
+      {/* The column carries the background to the bottom of long pages; the sidebar inside stays put. */}
+      <div className="hidden border-r bg-sidebar md:block">
+      <aside className="sticky top-0 flex h-dvh flex-col px-3 py-4">
         <div className="px-2">
           <Brand />
         </div>
@@ -182,6 +181,7 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
           <ThemeToggle />
         </div>
       </aside>
+      </div>
 
       <div className="flex min-w-0 flex-col pb-[calc(env(safe-area-inset-bottom,0px)+64px)] md:pb-0">
         <header className="sticky top-0 z-20 border-b bg-background/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -233,7 +233,9 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
 export function ShellSkeleton() {
   return (
     <div className="min-h-dvh md:grid md:grid-cols-[232px_1fr]" aria-busy="true" aria-label="Loading">
-      <div className="hidden border-r bg-sidebar md:block" />
+      <div className="hidden border-r bg-sidebar p-5 md:block">
+        <Mark className="h-6 w-auto text-primary pulse-soft" />
+      </div>
       <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 md:px-8">
         <div className="h-7 w-48 animate-pulse rounded-md bg-muted" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

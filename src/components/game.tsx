@@ -61,7 +61,7 @@ export function BadgeTile({ b }: { b: PlayerView['badges'][number] }) {
   const earned = b.earnedAt !== null
   return (
     <div className={cn('flex flex-col items-center rounded-2xl border p-3 text-center', earned ? 'bg-card' : 'bg-muted/40')}>
-      <span className={cn('relative grid size-12 place-items-center rounded-full', earned ? 'bg-gradient-to-br from-primary to-[oklch(0.68_0.17_45)] text-primary-foreground shadow-md shadow-primary/20' : 'bg-muted text-muted-foreground')}>
+      <span className={cn('relative grid size-12 place-items-center rounded-full', earned ? 'bg-gradient-to-br from-primary to-primary-2 text-primary-foreground shadow-md shadow-primary/20' : 'bg-muted text-muted-foreground')}>
         <Icon className="size-6" />
         {!earned && <Lock className="absolute -bottom-0.5 -right-0.5 size-4 rounded-full bg-background p-0.5" />}
       </span>
@@ -105,7 +105,7 @@ export function Celebrations({ awards, muted = false }: { awards: Award[]; muted
   useEffect(() => {
     if (!current) return
     haptic.celebrate()
-    void confetti({ particleCount: 90, spread: 70, origin: { y: 0.75 }, colors: ['#e8a03a', '#f4c26b', '#3f86d9', '#5fb38a'], disableForReducedMotion: true, zIndex: 60 })
+    void confetti({ particleCount: 90, spread: 70, origin: { y: 0.75 }, colors: ['#d34f2f', '#ec7a3a', '#f4c26b', '#34251d', '#2f8a5f'], disableForReducedMotion: true, zIndex: 60 })
   }, [current])
 
   return (
@@ -138,7 +138,7 @@ export function Celebrations({ awards, muted = false }: { awards: Award[]; muted
                   initial={{ scale: 0.5, rotate: -12 }}
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: 'spring', stiffness: 260, damping: 14 }}
-                  className="mb-2 grid size-20 place-items-center rounded-full bg-gradient-to-br from-primary to-[oklch(0.68_0.17_45)] text-primary-foreground shadow-xl shadow-primary/30"
+                  className="mb-2 grid size-20 place-items-center rounded-full bg-gradient-to-br from-primary to-primary-2 text-primary-foreground shadow-xl shadow-primary/30"
                 >
                   {current.kind === 'level' ? <Crown className="size-10" /> : current.kind === 'quest' ? <Trophy className="size-10" /> : <Star className="size-10" />}
                 </motion.span>

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 export type ThemeChoice = 'light' | 'dark' | 'system'
-const KEY = 'rasoi-theme'
+const KEY = 'tablemate-theme'
 
 function readChoice(): ThemeChoice {
   try {

@@ -1,91 +1,106 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
-@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/outfit";
 
 @custom-variant dark (&:is(.dark *));
 
-/* Rasoi: warm linen by day, a candle-lit dining room by night. Saffron is the one accent;
-   green/amber carry state; blue/ochre are reserved for floor vs kitchen in charts. */
+/* TableMate brand. Tomato acts, chocolate speaks, cream carries the page.
+   Light: cream paper and chocolate ink. Dark: the chocolate panel from the app-icon sheet.
+   Sage and amber are reserved for state; blue/ochre only mark floor vs kitchen in charts. */
 :root {
-  --radius: 0.85rem;
-  --background: oklch(0.985 0.006 75);
-  --foreground: oklch(0.24 0.02 50);
-  --card: oklch(0.997 0.003 75);
-  --card-foreground: oklch(0.24 0.02 50);
-  --popover: oklch(0.997 0.003 75);
-  --popover-foreground: oklch(0.24 0.02 50);
-  --primary: oklch(0.74 0.16 66);
-  --primary-foreground: oklch(0.22 0.04 50);
-  --secondary: oklch(0.955 0.01 75);
-  --secondary-foreground: oklch(0.28 0.02 50);
-  --muted: oklch(0.955 0.01 75);
-  --muted-foreground: oklch(0.5 0.02 55);
-  --accent: oklch(0.95 0.035 75);
-  --accent-foreground: oklch(0.3 0.04 55);
-  --destructive: oklch(0.58 0.2 28);
-  --border: oklch(0.9 0.012 70);
-  --input: oklch(0.88 0.014 70);
-  --ring: oklch(0.74 0.16 66);
-  --good: oklch(0.56 0.12 160);
-  --warn: oklch(0.62 0.15 55);
-  --kitchen: oklch(0.6 0.13 75);
+  --radius: 1rem;
+  --tomato: #d34f2f;
+  --chocolate: #34251d;
+  --cream: #fbf8f0;
+  --background: #fbf8f0;
+  --foreground: #34251d;
+  --card: #fffdf8;
+  --card-foreground: #34251d;
+  --popover: #fffdf8;
+  --popover-foreground: #34251d;
+  --primary: #c4442a; /* brand tomato, deepened a touch so button text passes 4.5:1 */
+  --primary-foreground: #fffaf2;
+  --secondary: #f3ece0;
+  --secondary-foreground: #34251d;
+  --muted: #f3ece0;
+  --muted-foreground: #7a6658;
+  --accent: #fbe6dc;
+  --accent-foreground: #8f2f17;
+  --destructive: #b42318;
+  --border: #e9dfcf;
+  --input: #e2d6c3;
+  --ring: #c4442a;
+  --good: #23744e;
+  --warn: #94600f;
+  --kitchen: #a8690c;
   --floor-mark: #2f74c8;
   --kitchen-mark: #a8690c;
   --chart-1: #2f74c8;
   --chart-2: #a8690c;
-  --chart-3: oklch(0.6 0.1 160);
-  --chart-4: oklch(0.6 0.1 300);
-  --chart-5: oklch(0.6 0.02 60);
-  --sidebar: oklch(0.97 0.008 75);
-  --sidebar-foreground: oklch(0.24 0.02 50);
-  --sidebar-primary: oklch(0.74 0.16 66);
-  --sidebar-primary-foreground: oklch(0.22 0.04 50);
-  --sidebar-accent: oklch(0.95 0.035 75);
-  --sidebar-accent-foreground: oklch(0.3 0.04 55);
-  --sidebar-border: oklch(0.9 0.012 70);
-  --sidebar-ring: oklch(0.74 0.16 66);
+  --chart-3: #2f8a5f;
+  --chart-4: #8a5cc2;
+  --chart-5: #7a6658;
+  --sidebar: #f6f0e5;
+  --sidebar-foreground: #34251d;
+  --sidebar-primary: #c4442a;
+  --sidebar-primary-foreground: #fffaf2;
+  --sidebar-accent: #fbe6dc;
+  --sidebar-accent-foreground: #8f2f17;
+  --sidebar-border: #e9dfcf;
+  --sidebar-ring: #c4442a;
+  --hero: #34251d;
+  --hero-foreground: #fbf3e8;
+  --primary-2: #ec7a3a;
 }
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.165 0.012 50);
-  --foreground: oklch(0.95 0.01 75);
-  --card: oklch(0.205 0.014 50);
-  --card-foreground: oklch(0.95 0.01 75);
-  --popover: oklch(0.22 0.014 50);
-  --popover-foreground: oklch(0.95 0.01 75);
-  --primary: oklch(0.79 0.15 70);
-  --primary-foreground: oklch(0.2 0.03 50);
-  --secondary: oklch(0.26 0.014 50);
-  --secondary-foreground: oklch(0.93 0.01 75);
-  --muted: oklch(0.25 0.013 50);
-  --muted-foreground: oklch(0.7 0.02 65);
-  --accent: oklch(0.3 0.03 60);
-  --accent-foreground: oklch(0.95 0.01 75);
-  --destructive: oklch(0.7 0.18 28);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.79 0.15 70);
-  --good: oklch(0.74 0.12 160);
-  --warn: oklch(0.78 0.14 60);
-  --kitchen: oklch(0.76 0.12 80);
+  --background: #2a1e18;
+  --foreground: #fbf3e8;
+  --card: #34251d;
+  --card-foreground: #fbf3e8;
+  --popover: #3a2a21;
+  --popover-foreground: #fbf3e8;
+  --primary: #e5603e;
+  --primary-foreground: #2a1e18;
+  --secondary: #3f2f26;
+  --secondary-foreground: #fbf3e8;
+  --muted: #3a2b22;
+  --muted-foreground: #c3ad9c;
+  --accent: #4a2a1f;
+  --accent-foreground: #ffd9cb;
+  --destructive: #f0715c;
+  --border: rgb(255 240 225 / 0.1);
+  --input: rgb(255 240 225 / 0.16);
+  --ring: #e5603e;
+  --good: #5fbf8f;
+  --warn: #e7a94a;
+  --kitchen: #d8a24c;
   --floor-mark: #3f86d9;
   --kitchen-mark: #b87a14;
   --chart-1: #3f86d9;
   --chart-2: #b87a14;
-  --sidebar: oklch(0.19 0.012 50);
-  --sidebar-foreground: oklch(0.95 0.01 75);
-  --sidebar-accent: oklch(0.3 0.03 60);
-  --sidebar-accent-foreground: oklch(0.95 0.01 75);
-  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar: #241a14;
+  --sidebar-foreground: #fbf3e8;
+  --sidebar-accent: #4a2a1f;
+  --sidebar-accent-foreground: #ffd9cb;
+  --sidebar-border: rgb(255 240 225 / 0.08);
+  --hero: #1f1611;
+  --hero-foreground: #fbf3e8;
+  --primary-2: #f39158;
 }
 
 @theme inline {
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-heading: "Fraunces Variable", ui-serif, Georgia, serif;
-  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
+  --font-sans: "Outfit Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-tomato: var(--tomato);
+  --color-chocolate: var(--chocolate);
+  --color-cream: var(--cream);
+  --color-hero: var(--hero);
+  --color-primary-2: var(--primary-2);
+  --color-hero-foreground: var(--hero-foreground);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -145,6 +160,10 @@
   }
   h1, h2, h3 {
     text-wrap: balance;
+    letter-spacing: -0.02em;
+  }
+  .font-display {
+    font-weight: 600;
   }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
@@ -163,3 +182,6 @@
 @media (prefers-reduced-motion: reduce) {
   .pulse-soft { animation: none; }
 }
+
+/* Brand tagline: the one place letter-spaced capitals are used, as on the brand sheet. */
+.tagline { text-transform: uppercase; letter-spacing: 0.28em; font-size: 0.72rem; font-weight: 500; }

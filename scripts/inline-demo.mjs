@@ -8,7 +8,7 @@ const inlineFonts = (css) =>
   css.replace(/url\(\.\/([\w.-]+\.woff2)\)/g, (_, f) => `url(data:font/woff2;base64,${readFileSync(`${dir}/assets/${f}`).toString('base64')})`)
 html = html.replace(/<link rel="stylesheet" crossorigin href="\.\/(assets\/[^"]+)">/g, (_, f) => `<style>${inlineFonts(readFileSync(`${dir}/${f}`, 'utf8'))}</style>`)
 // Icons: embed the SVG; manifest and touch icons only make sense for the installed app.
-const iconSvg = readFileSync('public/icon.svg', 'utf8')
+const iconSvg = readFileSync('public/favicon.svg', 'utf8')
 html = html
   .replace(/<link rel="icon"[^>]*>/, `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,${Buffer.from(iconSvg).toString('base64')}" />`)
   .replace(/\s*<link rel="(apple-touch-icon|manifest)"[^>]*>/g, '')

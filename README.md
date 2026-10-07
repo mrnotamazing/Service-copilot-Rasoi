@@ -1,4 +1,6 @@
-# Rasoi Service Copilot
+# TableMate
+
+**The right service. At the right time.**
 
 > **New here?** Start with [docs/getting-started.md](docs/getting-started.md): install, run and use it, step by step.
 > To turn on AI through Dify, see [docs/dify-setup.md](docs/dify-setup.md).
@@ -116,7 +118,7 @@ The copilot builds the facts; Dify phrases them (`server/ai.ts`). Without Dify c
 
 ## Front end
 
-React 19 + Vite + Tailwind CSS v4, with [shadcn/ui](https://ui.shadcn.com) components (`src/components/ui`), [Motion](https://motion.dev) for card animations, [Sonner](https://sonner.emilkowal.ski) toasts and [Lucide](https://lucide.dev) icons. Light and dark themes (toggle in the header). Add more shadcn components with `npx shadcn@latest add <name>`.
+Brand: TableMate (tomato `#D34F2F`, chocolate `#34251D`, cream `#FBF8F0`, Outfit typeface, running-chef mascot in `src/brand/marks.tsx`). React 19 + Vite + Tailwind CSS v4, with [shadcn/ui](https://ui.shadcn.com) components (`src/components/ui`), [Motion](https://motion.dev) for card animations, [Sonner](https://sonner.emilkowal.ski) toasts and [Lucide](https://lucide.dev) icons. Light and dark themes (toggle in the header). Add more shadcn components with `npx shadcn@latest add <name>`.
 
 ## Run it
 

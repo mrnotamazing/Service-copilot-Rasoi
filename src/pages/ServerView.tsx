@@ -1,4 +1,5 @@
-import { Bot, ChevronLeft, Flame, HeartHandshake, LayoutGrid, Loader2, Lock, MessageSquareText, Send, Shield, Sparkles, Target, Trophy, Users, UtensilsCrossed } from 'lucide-react'
+import { Armchair, Bot, CakeSlice, ChevronLeft, Flame, HeartHandshake, HeartPulse, Loader2, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { Mark, Mascot, TAGLINE, Wordmark } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -19,20 +20,22 @@ import { useAi } from '../lib/ai.ts'
 import { clock, mmss } from '../lib/format.ts'
 import { act, noteId, post, useSnapshot } from '../lib/live.ts'
 
-type Tab = 'floor' | 'kitchen' | 'progress' | 'assist'
-const TABS: { id: Tab; label: string; Icon: typeof LayoutGrid }[] = [
-  { id: 'floor', label: 'Floor', Icon: LayoutGrid },
+// Tabs follow the brand's usage example: Home (the chef-hat mark), Tables, Kitchen, Profile.
+type Tab = 'home' | 'tables' | 'kitchen' | 'profile'
+const TABS: { id: Tab; label: string; Icon: (p: { className?: string }) => ReactNode }[] = [
+  { id: 'home', label: 'Home', Icon: ({ className }) => <Mark className={cn('h-5 w-auto', className)} /> },
+  { id: 'tables', label: 'Tables', Icon: Armchair },
   { id: 'kitchen', label: 'Kitchen', Icon: UtensilsCrossed },
-  { id: 'progress', label: 'Progress', Icon: Trophy },
-  { id: 'assist', label: 'Assist', Icon: Sparkles },
+  { id: 'profile', label: 'Profile', Icon: UserRound },
 ]
 
 export default function ServerView() {
   const { staffId = '' } = useParams()
   const { snap, connected } = useSnapshot('server', staffId)
   const [params, setParams] = useSearchParams()
-  const tab = (TABS.find((t) => t.id === params.get('tab'))?.id ?? 'floor') as Tab
-  const setTab = (t: Tab) => setParams(t === 'floor' ? {} : { tab: t }, { replace: true })
+  const tab = (TABS.find((t) => t.id === params.get('tab'))?.id ?? 'home') as Tab
+  const setTab = (t: Tab) => setParams(t === 'home' ? {} : { tab: t }, { replace: true })
+  const [assist, setAssist] = useState(false)
 
   const me = snap?.config.staff.find((s) => s.id === staffId)
   const myTables = useMemo(() => snap?.tables.filter((t) => t.serverId === staffId) ?? [], [snap, staffId])
@@ -58,16 +61,19 @@ export default function ServerView() {
             </div>
           </div>
           {game && <StreakChip streak={game.player.streak} shields={game.player.shields} />}
-          <span className={cn('size-2 rounded-full', connected ? 'bg-good' : 'bg-warn pulse-soft')} aria-label={connected ? 'Live' : 'Reconnecting'} />
+          <Button size="icon" variant="ghost" className="relative text-primary" aria-label="Ask TableMate" onClick={() => setAssist(true)}>
+            <Sparkles />
+            <span className={cn('absolute right-1 top-1 size-1.5 rounded-full', connected ? 'bg-good' : 'bg-warn pulse-soft')} aria-label={connected ? 'Live' : 'Reconnecting'} />
+          </Button>
         </header>
 
         <main id="main" className="flex-1 overflow-y-auto overscroll-contain">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={tab} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.15 }} className="px-4 pb-6 pt-4">
-              {tab === 'floor' && <FloorTab snap={snap} staffId={staffId} color={me.color} myTables={myTables} onKudos={() => setTab('progress')} />}
+              {tab === 'home' && <FloorTab snap={snap} staffId={staffId} onKudos={() => setTab('profile')} />}
+              {tab === 'tables' && <TablesTab snap={snap} color={me.color} myTables={myTables} />}
               {tab === 'kitchen' && <KitchenTab snap={snap} staffId={staffId} myTables={myTables} />}
-              {tab === 'progress' && <ProgressTab snap={snap} staffId={staffId} />}
-              {tab === 'assist' && <AssistTab staffId={staffId} />}
+              {tab === 'profile' && <ProgressTab snap={snap} staffId={staffId} />}
             </motion.div>
           </AnimatePresence>
         </main>
@@ -95,6 +101,19 @@ export default function ServerView() {
         </nav>
 
         {game && <Celebrations awards={game.awards} muted={snap.sim.autopilot.includes(staffId)} />}
+        <Drawer open={assist} onOpenChange={setAssist}>
+          <DrawerContent className="mx-auto max-h-[85dvh] max-w-[440px]">
+            <DrawerHeader>
+              <DrawerTitle className="flex items-center gap-2 font-display text-2xl">
+                <Sparkles className="size-5 text-primary" /> Ask TableMate
+              </DrawerTitle>
+              <DrawerDescription>Your section briefing and answers about service standards.</DrawerDescription>
+            </DrawerHeader>
+            <div className="overflow-y-auto px-4 pb-6">
+              <AssistTab staffId={staffId} />
+            </div>
+          </DrawerContent>
+        </Drawer>
         <Onboarding staffId={staffId} name={me.name} />
       </div>
 
@@ -113,7 +132,7 @@ export default function ServerView() {
 
 // ---------------------------------------------------------------------------
 
-function FloorTab({ snap, staffId, color, myTables, onKudos }: { snap: Snapshot; staffId: string; color: string; myTables: Snapshot['tables']; onKudos: () => void }) {
+function FloorTab({ snap, staffId, onKudos }: { snap: Snapshot; staffId: string; onKudos: () => void }) {
   const { top, queued } = snap.me!
   const game = snap.me!.game
   const autopilot = snap.sim.autopilot.includes(staffId)
@@ -143,7 +162,7 @@ function FloorTab({ snap, staffId, color, myTables, onKudos }: { snap: Snapshot;
                   initial={{ scale: 0.6, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-primary to-[oklch(0.68_0.17_45)] px-2 py-0.5 text-xs font-bold text-primary-foreground tabular"
+                  className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-primary to-primary-2 px-2 py-0.5 text-xs font-bold text-primary-foreground tabular"
                 >
                   <Flame className="size-3" /> Combo ×{combo}
                 </motion.span>
@@ -163,9 +182,7 @@ function FloorTab({ snap, staffId, color, myTables, onKudos }: { snap: Snapshot;
           </AnimatePresence>
           {top.length === 0 && (
             <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="grid place-items-center rounded-2xl border border-dashed px-6 py-10 text-center">
-              <span className="grid size-12 place-items-center rounded-full bg-good/15 text-good">
-                <Sparkles className="size-6" />
-              </span>
+              <Mascot className="w-40" speed="var(--muted-foreground)" />
               <div className="mt-3 font-display text-xl">All caught up</div>
               <p className="mt-1 text-sm text-muted-foreground">Your section is running smoothly. New tasks appear here the moment they’re needed.</p>
             </motion.div>
@@ -174,13 +191,56 @@ function FloorTab({ snap, staffId, color, myTables, onKudos }: { snap: Snapshot;
         {top.length > 0 && <p className="mt-2 text-center text-[11px] text-muted-foreground">Swipe right when done, left for later</p>}
       </section>
 
+    </div>
+  )
+}
+
+function TablesTab({ snap, color, myTables }: { snap: Snapshot; color: string; myTables: Snapshot['tables'] }) {
+  const seated = myTables.filter((t) => t.visitId)
+  return (
+    <div className="space-y-5">
       <section>
-        <h2 className="mb-2 font-display text-xl">My tables</h2>
+        <h2 className="mb-2 font-display text-xl">My section</h2>
         <div className="grid grid-cols-3 gap-2">
           {myTables.map((t) => (
             <TableTile key={t.id} t={t} now={snap.now} color={color} />
           ))}
         </div>
+      </section>
+      <section>
+        <h2 className="mb-2 font-display text-xl">Guests right now</h2>
+        {seated.length === 0 ? (
+          <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">No guests seated in your section yet.</p>
+        ) : (
+          <ul className="divide-y rounded-2xl border bg-card">
+            {seated.map((t) => {
+              const pending = t.lines.filter((l) => l.status === 'fired').length
+              const ready = t.lines.filter((l) => l.status === 'ready').length
+              return (
+                <li key={t.id} className="flex items-start gap-3 p-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-secondary font-semibold">{t.name}</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                      {t.party?.guestName ?? `Party of ${t.party?.size ?? '?'}`}
+                      {t.party?.vip && <Star className="size-3.5 text-primary" aria-label="Regular guest" />}
+                      {t.party?.occasion && <CakeSlice className="size-3.5 text-primary" aria-label={t.party.occasion} />}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {t.party?.size} guests, seated {Math.round((snap.now - (t.seatedAt ?? snap.now)) / 60_000)} min
+                      {pending ? `, ${pending} in the kitchen` : ''}
+                      {ready ? `, ${ready} ready at the pass` : ''}
+                    </div>
+                    {t.party?.allergies.length ? (
+                      <div className="mt-1 inline-flex items-center gap-1 rounded-md bg-warn/12 px-1.5 py-0.5 text-xs font-medium text-warn">
+                        <HeartPulse className="size-3" /> {t.party.allergies.join(', ')}
+                      </div>
+                    ) : null}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
       </section>
     </div>
   )
@@ -309,7 +369,7 @@ function ProgressTab({ snap, staffId }: { snap: Snapshot; staffId: string }) {
   return (
     <div className="space-y-6">
       {/* Rank */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[oklch(0.3_0.04_55)] to-[oklch(0.2_0.02_50)] p-5 text-[oklch(0.96_0.01_75)]">
+      <section className="relative overflow-hidden rounded-3xl bg-hero p-5 text-hero-foreground">
         <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-primary/25 blur-2xl" aria-hidden />
         <div className="text-sm opacity-75">Level {level.level}</div>
         <div className="font-display text-3xl">{level.title}</div>
@@ -564,13 +624,13 @@ function useUnreadKitchen(snap: Snapshot | null, staffId: string, viewing: boole
 }
 
 const ONBOARD = [
-  { Icon: LayoutGrid, title: 'Your next three moves', body: 'The copilot watches the POS and shows the three things that matter most right now, in the order guests would want them.' },
-  { Icon: Sparkles, title: 'Swipe right when it’s done', body: 'Or tap the button. Swipe left to push a card to later. Most cards close by themselves when the POS sees the step happen.' },
+  { Icon: Sparkles, title: 'Your next three moves', body: 'The copilot watches the POS and shows the three things that matter most right now, in the order guests would want them.' },
+  { Icon: Send, title: 'Swipe right when it’s done', body: 'Or tap the button. Swipe left to push a card to later. Most cards close by themselves when the POS sees the step happen.' },
   { Icon: Trophy, title: 'Your progress is yours', body: 'Earn XP, keep your streak and unlock badges. Only you see them. Kitchen delays are never counted against you.' },
 ]
 
 function Onboarding({ staffId, name: who }: { staffId: string; name: string }) {
-  const key = `rasoi-onboarded-${staffId}`
+  const key = `tablemate-onboarded-${staffId}`
   const [open, setOpen] = useState(() => {
     try {
       return !localStorage.getItem(key)
@@ -593,10 +653,18 @@ function Onboarding({ staffId, name: who }: { staffId: string; name: string }) {
       <DrawerContent className="mx-auto max-w-[440px]">
         <div className="mx-auto w-full max-w-sm">
           <DrawerHeader className="items-center text-center">
-            <span className="mb-2 grid size-16 place-items-center rounded-2xl bg-primary/15 text-primary">
-              <s.Icon className="size-8" />
-            </span>
-            {step === 0 && <p className="text-sm text-muted-foreground">Welcome, {who}</p>}
+            {step === 0 ? (
+              <>
+                <Mascot className="mb-1 w-48" speed="var(--muted-foreground)" />
+                <p className="text-sm text-muted-foreground">
+                  Welcome to <Wordmark className="text-base" />, {who}
+                </p>
+              </>
+            ) : (
+              <span className="mb-2 grid size-16 place-items-center rounded-2xl bg-primary/12 text-primary">
+                <s.Icon className="size-8" />
+              </span>
+            )}
             <DrawerTitle className="font-display text-2xl">{s.title}</DrawerTitle>
             <DrawerDescription className="text-balance">{s.body}</DrawerDescription>
           </DrawerHeader>
@@ -622,6 +690,10 @@ function Onboarding({ staffId, name: who }: { staffId: string; name: string }) {
 function PhoneSkeleton() {
   return (
     <div className="mx-auto flex h-dvh max-w-[440px] flex-col gap-4 p-4" aria-busy="true" aria-label="Loading your shift">
+      <div className="flex items-center gap-2 text-primary">
+        <Mark className="h-6 w-auto pulse-soft" />
+        <span className="tagline text-muted-foreground">{TAGLINE}</span>
+      </div>
       <div className="flex items-center gap-3">
         <Skeleton className="size-11 rounded-full" />
         <div className="flex-1 space-y-1.5">
