@@ -23,7 +23,7 @@ not blamed for a slow grill.
 
 | Route | Who | What |
 |---|---|---|
-| `/server/:staffId` | Each server (phone) | Top 3 cards, my tables, two-way kitchen notes, private shift stats |
+| `/server/:staffId` | Each server (phone or iPad) | Phone: bottom tabs. iPad/laptop (≥768px): side rail with next-up cards, section map, guests and kitchen thread side by side. `?device=phone` previews the phone layout on a big screen. |
 | `/kitchen` | Pass / expo screen | Open tickets with timers, Ready button, 86 board, notes to/from floor |
 | `/manager` | Floor manager | Load per section, bottlenecks by stage and station, delay receipts, suggestions. **No individual rankings.** |
 | `/setup` | Manager | SOP standards, POS integrations, service simulator |

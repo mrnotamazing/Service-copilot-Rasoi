@@ -215,7 +215,7 @@ export default function AboutView() {
               [<Flame key="b" />, 'Streaks with shields', 'Tables served fully to standard build a streak. Every third earns a shield that absorbs one slip, so one bad moment doesn’t wipe the evening.'],
               [<Trophy key="c" />, 'Ranks, badges and quests', 'Commis to Maître d’. Badges like Allergy guardian and Heads-up hero, some reachable in the first shift, and three small quests each night.'],
               [<Users key="d" />, 'A team goal, not a leaderboard', 'The floor works toward one shared target. Staff thank each other with kudos, which earn XP for both and show on the team board.'],
-              [<Smartphone key="e" />, 'Feels like a real app', 'Swipe a card right when it’s done, left for later. A buzz on a win, a quick celebration for a badge, a shift recap at close. Installs to the home screen.'],
+              [<Smartphone key="e" />, 'Feels like a real app', 'Swipe a card right when it’s done, left for later. A buzz on a win, a quick celebration for a badge, a shift recap at close. Works on phones and on the iPads servers take orders on, and installs to the home screen.'],
               [<ShieldCheck key="f" />, 'Private by default', 'XP, streaks and badges live on the server’s own phone. Managers only see the team goal and kudos, never individual scores.'],
             ].map(([icon, t, d]) => (
               <div key={t as string} className="rounded-2xl border bg-card p-5">

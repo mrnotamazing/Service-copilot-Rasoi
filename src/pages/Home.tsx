@@ -73,7 +73,7 @@ export default function Home() {
                   {tables} {tables === 1 ? 'table' : 'tables'}, {open} {open === 1 ? 'card' : 'cards'}
                 </span>
                 <span className="inline-flex items-center gap-1 font-medium text-primary">
-                  Open phone <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                  Open their screen <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </div>
             </Link>
