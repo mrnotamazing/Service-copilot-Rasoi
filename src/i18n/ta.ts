@@ -500,4 +500,7 @@ export const ta: Record<Key, string> = {
   'acc.dishMissing': "குரல் இல்லையா? சாதனத்தின் பேச்சு அமைப்புகளில் சேர்க்கவும் (Mac: System Settings › Accessibility › Spoken Content › Manage Voices). அதுவரை உச்சரிப்பு எழுத்துமுறை பயன்படும்.",
   'time.justNow': "இப்போது",
   'time.ago': "{n} நிமி. முன்",
+  'floor.legendGuest': "விருந்தினர் அமர்ந்துள்ளார்",
+  'floor.legendProgress': "உணவு எவ்வளவு முடிந்தது",
+  'floor.legendTodo': "செய்ய வேண்டியவை",
 }

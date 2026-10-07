@@ -500,4 +500,7 @@ export const bn: Record<Key, string> = {
   'acc.dishMissing': "কোনো কণ্ঠ নেই? ডিভাইসের স্পিচ সেটিংসে যোগ করুন (Mac: System Settings › Accessibility › Spoken Content › Manage Voices)। ততক্ষণ উচ্চারণ-বানান ব্যবহার হবে।",
   'time.justNow': "এইমাত্র",
   'time.ago': "{n} মিনিট আগে",
+  'floor.legendGuest': "অতিথি বসে আছেন",
+  'floor.legendProgress': "খাওয়া কতদূর",
+  'floor.legendTodo': "করণীয় কাজ",
 }

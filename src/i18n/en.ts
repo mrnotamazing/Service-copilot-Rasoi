@@ -521,6 +521,9 @@ export const en = {
   'acc.dishMissing': "Missing a voice? Add it in your device’s speech settings (Mac: System Settings › Accessibility › Spoken Content › Manage Voices). Until then, a respelling is used.",
   'time.justNow': "just now",
   'time.ago': "{n} min ago",
+  'floor.legendGuest': "Guest seated",
+  'floor.legendProgress': "How far the meal is",
+  'floor.legendTodo': "Things to do",
 } as const
 
 export type Key = keyof typeof en

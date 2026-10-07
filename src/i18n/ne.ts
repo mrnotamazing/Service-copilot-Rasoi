@@ -500,4 +500,7 @@ export const ne: Record<Key, string> = {
   'acc.dishMissing': "आवाज छैन? यन्त्रको स्पिच सेटिङमा थप्नुहोस् (Mac: System Settings › Accessibility › Spoken Content › Manage Voices)। तबसम्म उच्चारण-लेखाइ प्रयोग हुन्छ।",
   'time.justNow': "भर्खरै",
   'time.ago': "{n} मिनेट अघि",
+  'floor.legendGuest': "पाहुना बसेका",
+  'floor.legendProgress': "खाना कहाँसम्म पुग्यो",
+  'floor.legendTodo': "गर्नुपर्ने काम",
 }

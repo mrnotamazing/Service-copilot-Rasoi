@@ -500,4 +500,7 @@ export const hi: Record<Key, string> = {
   'acc.dishMissing': "कोई आवाज़ नहीं है? डिवाइस की स्पीच सेटिंग में जोड़ें (Mac: System Settings › Accessibility › Spoken Content › Manage Voices)। तब तक उच्चारण-लिखावट इस्तेमाल होगी।",
   'time.justNow': "अभी",
   'time.ago': "{n} मिनट पहले",
+  'floor.legendGuest': "मेहमान बैठे",
+  'floor.legendProgress': "खाना कहाँ तक पहुँचा",
+  'floor.legendTodo': "करने के काम",
 }

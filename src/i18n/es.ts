@@ -500,4 +500,7 @@ export const es: Record<Key, string> = {
   'acc.dishMissing': "¿Falta una voz? Añádela en los ajustes de voz del dispositivo (Mac: Ajustes del Sistema › Accesibilidad › Contenido leído › Gestionar voces). Mientras, se usa una pronunciación aproximada.",
   'time.justNow': "ahora mismo",
   'time.ago': "hace {n} min",
+  'floor.legendGuest': "Cliente sentado",
+  'floor.legendProgress': "Avance de la comida",
+  'floor.legendTodo': "Pendientes",
 }
