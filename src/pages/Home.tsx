@@ -78,11 +78,11 @@ export default function Home() {
                   <div className="text-xs text-muted-foreground">{t('home.section', { s: sectionOf(s.id) ?? '' })}</div>
                 </div>
               </div>
-              <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                <span className="tabular">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span className="whitespace-nowrap tabular">
                   {t('home.load', { tables, cards: open })}
                 </span>
-                <span className="inline-flex items-center gap-1 font-medium text-primary">
+                <span className="inline-flex items-center gap-1 whitespace-nowrap font-medium text-primary">
                   {t('home.open')} <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </div>

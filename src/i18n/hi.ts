@@ -325,4 +325,6 @@ export const hi: Record<Key, string> = {
   'pronoun.placeholder': "जैसे ze/zir",
   'profile.save': "सेव करें",
   'profile.saved': "सेव हो गया",
+  'acc.open': "भाषा और सुलभता",
+  'acc.openSub': "भाषा, पढ़कर सुनाना, अक्षर का आकार, अलर्ट",
 }

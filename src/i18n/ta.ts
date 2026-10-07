@@ -325,4 +325,6 @@ export const ta: Record<Key, string> = {
   'pronoun.placeholder': "உதா. ze/zir",
   'profile.save': "சேமி",
   'profile.saved': "சேமிக்கப்பட்டது",
+  'acc.open': "மொழி மற்றும் அணுகல்",
+  'acc.openSub': "மொழி, உரக்கப் படித்தல், எழுத்து அளவு, எச்சரிக்கைகள்",
 }

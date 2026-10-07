@@ -325,4 +325,6 @@ export const ne: Record<Key, string> = {
   'pronoun.placeholder': "जस्तै ze/zir",
   'profile.save': "सेभ गर्नुहोस्",
   'profile.saved': "सेभ भयो",
+  'acc.open': "भाषा र पहुँच",
+  'acc.openSub': "भाषा, पढेर सुनाउने, अक्षरको आकार, सूचना",
 }

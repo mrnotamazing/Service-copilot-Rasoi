@@ -183,8 +183,8 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
         </nav>
         <div className="mt-auto flex items-center justify-between rounded-xl border bg-background/60 px-3 py-2">
           <span className="text-xs text-muted-foreground">Saffron House</span>
-          <span className="flex items-center">
-            <AccessButton className="size-9" />
+          <span className="flex items-center gap-1">
+            <AccessButton />
             <ThemeToggle />
           </span>
         </div>
@@ -204,7 +204,7 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
             <div className="ml-auto flex items-center gap-2">
               {right}
               <span className="flex items-center md:hidden">
-                <AccessButton className="size-9" />
+                <AccessButton />
                 <ThemeToggle />
               </span>
             </div>

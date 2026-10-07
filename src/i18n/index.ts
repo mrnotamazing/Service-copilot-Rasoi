@@ -13,13 +13,13 @@ export type Dict = Record<Key, string>
 export const DICTS: Record<Lang, Dict> = { en, hi, ne, bn, ta, es }
 
 /** Shown in each language's own name, so people can find theirs whatever is selected. */
-export const LANGUAGES: { id: Lang; native: string; english: string; speech: string }[] = [
-  { id: 'en', native: 'English', english: 'English', speech: 'en-IN' },
-  { id: 'hi', native: 'हिन्दी', english: 'Hindi', speech: 'hi-IN' },
-  { id: 'ne', native: 'नेपाली', english: 'Nepali', speech: 'ne-NP' },
-  { id: 'bn', native: 'বাংলা', english: 'Bengali', speech: 'bn-IN' },
-  { id: 'ta', native: 'தமிழ்', english: 'Tamil', speech: 'ta-IN' },
-  { id: 'es', native: 'Español', english: 'Spanish', speech: 'es-ES' },
+export const LANGUAGES: { id: Lang; native: string; english: string; speech: string; short: string }[] = [
+  { id: 'en', native: 'English', english: 'English', speech: 'en-IN', short: 'EN' },
+  { id: 'hi', native: 'हिन्दी', english: 'Hindi', speech: 'hi-IN', short: 'हि' },
+  { id: 'ne', native: 'नेपाली', english: 'Nepali', speech: 'ne-NP', short: 'ने' },
+  { id: 'bn', native: 'বাংলা', english: 'Bengali', speech: 'bn-IN', short: 'বা' },
+  { id: 'ta', native: 'தமிழ்', english: 'Tamil', speech: 'ta-IN', short: 'த' },
+  { id: 'es', native: 'Español', english: 'Spanish', speech: 'es-ES', short: 'ES' },
 ]
 
 export type Params = Record<string, string | number>

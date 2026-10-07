@@ -325,4 +325,6 @@ export const es: Record<Key, string> = {
   'pronoun.placeholder': "p. ej. elle",
   'profile.save': "Guardar",
   'profile.saved': "Guardado",
+  'acc.open': "Idioma y accesibilidad",
+  'acc.openSub': "Idioma, lectura en voz alta, tamaño del texto, avisos",
 }

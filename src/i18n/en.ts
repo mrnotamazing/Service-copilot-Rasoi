@@ -346,6 +346,8 @@ export const en = {
   'pronoun.placeholder': "e.g. ze/zir",
   'profile.save': "Save",
   'profile.saved': "Saved",
+  'acc.open': "Language & accessibility",
+  'acc.openSub': "Language, read aloud, text size, alerts",
 } as const
 
 export type Key = keyof typeof en

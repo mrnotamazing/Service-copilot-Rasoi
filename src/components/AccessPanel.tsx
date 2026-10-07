@@ -1,4 +1,4 @@
-import { Accessibility, Check, Volume2 } from 'lucide-react'
+import { Accessibility, Check, Languages, Volume2 } from 'lucide-react'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
@@ -9,16 +9,44 @@ import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { DEFAULT_PREFS, setPrefs, usePrefs, type Prefs } from '../lib/prefs.ts'
 import { canSpeak, hasVoice, speak } from '../lib/speech.ts'
 
-/** Opens the comfort & access settings. Lives in every staff header so it is never more than a tap away. */
-export function AccessButton({ className, label }: { className?: string; label?: boolean }) {
+/**
+ * Opens language & accessibility settings. Shown in every staff header as a pill with the
+ * current language ("EN", "हि") so it is easy to spot, and as a labelled row where there is room.
+ */
+export function AccessButton({ className, variant = 'pill' }: { className?: string; variant?: 'pill' | 'row' | 'icon' }) {
   const [open, setOpen] = useState(false)
   const t = useT()
+  const { lang } = usePrefs()
+  const short = LANGUAGES.find((l) => l.id === lang)?.short ?? 'EN'
   return (
     <>
-      <Button size={label ? 'default' : 'icon'} variant="ghost" className={className} aria-label={t('hdr.access')} title={t('hdr.access')} onClick={() => setOpen(true)}>
-        <Accessibility className="size-5" />
-        {label && <span>{t('hdr.access')}</span>}
-      </Button>
+      {variant === 'row' ? (
+        <button type="button" onClick={() => setOpen(true)} className={cn('flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-colors hover:bg-accent', className)}>
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+            <Languages className="size-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-medium">{t('acc.open')}</span>
+            <span className="block truncate text-xs text-muted-foreground">{t('acc.openSub')}</span>
+          </span>
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold">{short}</span>
+        </button>
+      ) : variant === 'icon' ? (
+        <Button size="icon" variant="ghost" className={className} aria-label={t('acc.open')} title={t('acc.open')} onClick={() => setOpen(true)}>
+          <Languages className="size-5" />
+        </Button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={t('acc.open')}
+          title={t('acc.open')}
+          className={cn('inline-flex h-9 shrink-0 items-center gap-1 rounded-full border bg-background px-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent', className)}
+        >
+          <Languages className="size-4 text-primary" />
+          {short}
+        </button>
+      )}
       <AccessPanel open={open} onOpenChange={setOpen} />
     </>
   )

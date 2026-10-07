@@ -124,7 +124,7 @@ export default function ServerView() {
               <Sparkles className="size-5" />
               {liveDot}
             </Button>
-            <AccessButton className="size-11" />
+            <AccessButton className="h-10" />
             <ThemeToggle />
           </div>
         </nav>
@@ -228,7 +228,7 @@ export default function ServerView() {
             </div>
           </div>
           {game && <StreakChip streak={game.player.streak} shields={game.player.shields} />}
-          <AccessButton className="text-muted-foreground" />
+          <AccessButton />
           <Button size="icon" variant="ghost" className="relative text-primary" aria-label={t('hdr.ask')} onClick={() => setAssist(true)}>
             <Sparkles />
             {liveDot}
@@ -598,6 +598,7 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
 
   return (
     <div className={cn(wide ? 'columns-2 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid' : 'space-y-6')}>
+      <AccessButton variant="row" />
       {/* Rank */}
       <section className="relative overflow-hidden rounded-3xl bg-hero p-5 text-hero-foreground">
         <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-primary/25 blur-2xl" aria-hidden />
@@ -907,7 +908,7 @@ function Onboarding({ staffId, name: who }: { staffId: string; name: string }) {
           {step === 0 && <LanguageRow />}
           {step === ONBOARD.length - 1 && (
             <div className="flex justify-center pb-2">
-              <AccessButton label className="h-11 rounded-xl border" />
+              <AccessButton variant="row" className="mx-4 w-auto" />
             </div>
           )}
           <div className="flex justify-center gap-1.5 pb-2" aria-hidden>
