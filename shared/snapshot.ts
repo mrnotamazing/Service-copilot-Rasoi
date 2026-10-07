@@ -41,7 +41,7 @@ export interface Snapshot {
   /** Shared with everyone: the team goal and kudos. Never individual scores. */
   team: ReturnType<typeof teamView>
   /** server role: own top tasks and private stats */
-  me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[]; game: PlayerView | null; upcoming: Upcoming[] }
+  me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[]; game: PlayerView | null; upcoming: Upcoming[]; tasks: Task[] }
   /** manager role: process analytics, no per-person stats */
   analytics?: Analytics
   integrations?: IntegrationStatus[]

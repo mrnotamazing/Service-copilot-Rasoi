@@ -88,7 +88,7 @@ export function upcomingFor(state: EngineState, config: RestaurantConfig, staffI
     if (!t.billRequestedAt && (t.courseClearedAt.dessert || (mainsDone && noDessert && now > mainsDone + 2 * MIN)))
       out.push({ id: `up:bill:${t.id}`, kind: 'bill_soon', tableId: t.id, tableName: t.name, at: now + 2 * MIN, text: k('up.bill', { table: t.name }) })
   }
-  return out.sort((a, b) => a.at - b.at).slice(0, 3)
+  return out.sort((a, b) => a.at - b.at)
 }
 
 /** Table numbers next to each other in the same section count as "next door". */

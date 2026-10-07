@@ -57,6 +57,8 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
           myVisits: hub.state.visits.filter((v) => v.serverId === staffId).slice(-40).reverse(),
           game: playerView(hub.game, staffId),
           upcoming: upcomingFor(hub.state, hub.config, staffId, now, tasks.filter((t) => t.staffId === staffId)),
+          // Every open task of mine (not just the top three), for the per-table view on the floor plan.
+          tasks: tasks.filter((t) => t.staffId === staffId).slice(0, 30),
         },
       }
     }

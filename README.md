@@ -117,6 +117,14 @@ Built on the research about motivating without controlling (see `shared/game.ts`
 - **Voice**: a pronunciation guide for dishes (`src/lib/pronounce.ts`), speech-friendly text ("T3" → "Table 3", "2×" → "2"), the most natural voice on the device (choose one in Language & accessibility), read sentence by sentence.
 - **IST everywhere**: service starts at 7:00 pm IST and every clock shows IST, whatever timezone the server or device is in (`shared/time.ts`).
 
+## Floor plan
+
+Home and Tables show the section as a room (`src/components/FloorPlan.tsx`): the kitchen pass at the top, the entrance at the bottom, every table drawn to its size with chairs, its open-task count, allergy/needs/occasion flags, visit progress and last mood. Tap a table for **Now** (every open task, with its buttons), **Coming up**, the **order** (forecast ready times, safety flags) and **Done so far** (`shared/timeline.ts`). Table positions live in the config (`pos`).
+
+## Dish pronunciation
+
+Read-aloud code-switches like a person: dish words are spoken by a voice from their own cuisine (Hindi for paneer tikka, Italian for gnocchi, French for crème brûlée), the rest in the server's language (`src/lib/pronounce.ts`). Missing voices fall back to respellings. **Language & accessibility → Hear the dish names** plays the menu and shows which cuisine voices the device has.
+
 ## Roles, profiles and themes
 
 - **Signed in as** (bottom of the sidebar, or the Profile tab on a phone): switch the device between a server's app, the kitchen display and the manager console. Each role has its own home, navigation and colours: servers tomato, kitchen saffron with larger type, manager a cool blue-grey (`src/lib/role.ts`, `html[data-role]` in `src/index.css`).

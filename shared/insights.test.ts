@@ -131,3 +131,18 @@ describe('guest mood', () => {
     expect(a.managerRequests).toEqual([{ tableId: 'T2', tableName: 'T2', at: T0 + 11 * MIN }])
   })
 })
+
+describe('table timeline', () => {
+  it('tells the table’s story in order', async () => {
+    const { tableTimeline } = await import('./timeline.ts')
+    const s = run([
+      [0, seat('T1')],
+      [1, { type: 'server.greeted', payload: { tableId: 'T1' } }],
+      [3, fire('T1', 'a', [['a1', 'm_soup']])],
+      [10, { type: 'item.ready', payload: { lineIds: ['a1'] } }],
+      [11, { type: 'item.served', payload: { lineIds: ['a1'] } }],
+    ])
+    expect(tableTimeline(s.tables.T1).map((i) => (i.text as { k: string }).k)).toEqual(['tl.seated', 'tl.greeted', 'tl.ordered', 'tl.ready', 'tl.served'])
+    expect(tableTimeline(s.tables.T1)[3].kitchen).toBe(true)
+  })
+})

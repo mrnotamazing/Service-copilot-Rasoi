@@ -1,4 +1,4 @@
-import { Accessibility, Check, Languages, Volume2 } from 'lucide-react'
+import { Accessibility, Check, Languages, UtensilsCrossed, Volume2, X } from 'lucide-react'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
@@ -7,7 +7,8 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { DEFAULT_PREFS, setPrefs, usePrefs, type Prefs } from '../lib/prefs.ts'
-import { canSpeak, hasVoice, speakTask, voicesFor } from '../lib/speech.ts'
+import { canSpeak, cuisineVoices, hasVoice, speak, speakTask, voicesFor } from '../lib/speech.ts'
+import { MENU_FOR_TEST } from '../lib/pronounce.ts'
 
 /**
  * Opens language & accessibility settings. Shown in every staff header as a pill with the
@@ -159,6 +160,22 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
               <Volume2 /> {t('acc.test')}
             </Button>
             {canSpeak() && p.lang !== 'en' && !hasVoice(p.lang) && <p className="text-xs text-warn">{t('acc.noVoice')}</p>}
+            {canSpeak() && (
+              <div className="rounded-xl border bg-card p-3">
+                <Button variant="secondary" className="h-10 w-full rounded-lg" onClick={() => speak(`${t('acc.dishIntro')} ${MENU_FOR_TEST.join(', ')}.`)}>
+                  <UtensilsCrossed /> {t('acc.testDishes')}
+                </Button>
+                <p className="mt-2 text-xs text-muted-foreground">{t('acc.dishNote')}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5 text-xs">
+                  {(Object.entries(cuisineVoices()) as [string, boolean][]).map(([code, ok]) => (
+                    <span key={code} className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5', ok ? 'bg-good/12 text-good' : 'bg-warn/12 text-warn')}>
+                      {ok ? <Check className="size-3" /> : <X className="size-3" />} {CUISINE_NAME[code]}
+                    </span>
+                  ))}
+                </div>
+                {Object.values(cuisineVoices()).some((ok) => !ok) && <p className="mt-1.5 text-xs text-muted-foreground">{t('acc.dishMissing')}</p>}
+              </div>
+            )}
           </Group>
 
           <Group title={t('acc.alerts')}>
@@ -182,6 +199,9 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
     </Drawer>
   )
 }
+
+/** Cuisine voices, named in their own language. */
+const CUISINE_NAME: Record<string, string> = { hi: 'हिन्दी', it: 'Italiano', fr: 'Français' }
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (

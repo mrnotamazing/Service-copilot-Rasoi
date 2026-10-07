@@ -38,6 +38,8 @@ export interface TableDef {
   section: string
   /** Table identifier in the POS (e.g. Petpooja table_no). */
   posTableId?: string
+  /** Where the table sits in its section, in % of the floor plan (x left→right, y pass→entrance). */
+  pos?: { x: number; y: number }
 }
 
 /** Service standards, in minutes. Every task the copilot raises comes from one of these. */

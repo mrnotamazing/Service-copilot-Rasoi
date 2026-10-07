@@ -15,9 +15,11 @@ import { MOOD_TONE, Reaction } from '../components/Reaction.tsx'
 import { CoachCard } from '../components/Coach.tsx'
 import { PracticeCard, PracticeDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
+import { tableTimeline } from '../../shared/timeline.ts'
+import { FloorPlan } from '../components/FloorPlan.tsx'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
 import { BadgeTile, Celebrations, LevelRing, StreakChip, useAwardText } from '../components/game.tsx'
-import { TableTile, ThemeToggle } from '../components/kit.tsx'
+import { ThemeToggle } from '../components/kit.tsx'
 import { TaskCard, useTaskWords } from '../components/TaskCard.tsx'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
@@ -32,7 +34,7 @@ import { useAi } from '../lib/ai.ts'
 import { chime, haptic } from '../lib/haptics.ts'
 import { setPrefs, usePrefs } from '../lib/prefs.ts'
 import { speakTask } from '../lib/speech.ts'
-import { clock, useWallClock } from '../lib/format.ts'
+import { clock, minutesAgo, useWallClock } from '../lib/format.ts'
 import { act, noteId, post, useSnapshot } from '../lib/live.ts'
 import type { Task, Upcoming } from '../../shared/types.ts'
 
@@ -461,6 +463,8 @@ function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tab
         </div>
       ) : null}
 
+      {t.visitId && <TableNow snap={snap} table={t} />}
+
       {t.visitId && (
         <>
           <h3 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tr('tables.order')}</h3>
@@ -507,19 +511,17 @@ function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tab
           )}
         </>
       )}
+      {t.visitId && <TableDone table={t} now={snap.now} />}
     </section>
   )
 }
 
-function SectionMap({ snap, color, myTables, large, picked, onPick }: { snap: Snapshot; color: string; myTables: Snapshot['tables']; large?: boolean; picked?: string; onPick?: (id: string) => void }) {
+function SectionMap({ snap, myTables, large, picked, onPick }: { snap: Snapshot; color?: string; myTables: Snapshot['tables']; large?: boolean; picked?: string; onPick?: (id: string) => void }) {
+  const t = useT()
   return (
     <section>
-      <h2 className="mb-2 font-display text-xl">{useT()('tables.mySection')}</h2>
-      <div className={cn('grid gap-2', large ? 'grid-cols-[repeat(auto-fill,minmax(120px,1fr))]' : 'grid-cols-[repeat(auto-fill,minmax(84px,1fr))]')}>
-        {myTables.map((t) => (
-          <TableTile key={t.id} t={t} now={snap.now} color={color} active={picked === t.id} onClick={onPick ? () => onPick(t.id) : undefined} />
-        ))}
-      </div>
+      <h2 className="mb-2 font-display text-xl">{t('tables.mySection')}</h2>
+      <FloorPlan snap={snap} tables={myTables} tasks={snap.me?.tasks ?? []} picked={picked} onPick={(id) => onPick?.(id)} compact={!large} />
     </section>
   )
 }
@@ -633,6 +635,7 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
   const [table, setTable] = useState('')
   const [text, setText] = useState('')
   const tr = useT()
+  const ago = useAgo()
   const active = myTables.filter((t) => t.visitId)
   const thread = snap.notes.filter((n) => !n.tableId || myTables.some((t) => t.id === n.tableId) || n.from === staffId).slice(-30)
 
@@ -659,7 +662,7 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
               <div className={cn('max-w-[80%] rounded-2xl px-3 py-2 text-sm', mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary', n.text.startsWith('ALLERGY') && 'ring-2 ring-warn')}>
                 {n.tableId && <span className={cn('mr-1 text-xs font-semibold', mine ? 'opacity-80' : 'text-muted-foreground')}>{n.tableId}</span>}
                 {n.text}
-                <div className={cn('mt-0.5 text-right text-[10px] tabular', mine ? 'opacity-70' : 'text-muted-foreground')}>{clock(n.at)}</div>
+                <div className={cn('mt-0.5 text-right text-[10px] tabular', mine ? 'opacity-70' : 'text-muted-foreground')}>{ago(snap.now, n.at)}</div>
               </div>
             </li>
           )
@@ -1132,8 +1135,9 @@ const UP_ICON: Record<Upcoming['kind'], typeof Clock3> = { food_ready: HandPlatt
  * What's likely to need the server in the next few minutes, from tonight's real timings.
  * Quiet on purpose: a heads-up to get ahead, not another task.
  */
-function ComingUp({ items }: { items: Upcoming[] }) {
+function ComingUp({ items: all }: { items: Upcoming[] }) {
   const t = useT()
+  const items = all.slice(0, 3)
   if (!items.length) return null
   return (
     <div className="mt-4">
@@ -1153,4 +1157,102 @@ function ComingUp({ items }: { items: Upcoming[] }) {
       </ul>
     </div>
   )
+}
+
+/** What this table needs now (every open card, not just the top three) and what is coming. */
+function TableNow({ snap, table }: { snap: Snapshot; table: Snapshot['tables'][number] }) {
+  const tr = useT()
+  const tasks = (snap.me?.tasks ?? []).filter((k) => k.tableId === table.id)
+  const ups = (snap.me?.upcoming ?? []).filter((u) => u.tableId === table.id)
+  return (
+    <>
+      <h3 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tr('table.now')}</h3>
+      {tasks.length === 0 ? (
+        <p className="rounded-xl bg-good/8 px-3 py-2 text-sm text-good">{tr('table.nothingNow')}</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {tasks.map((k) => (
+            <TableTaskRow key={k.id} task={k} staffId={snap.me!.staffId} />
+          ))}
+        </ul>
+      )}
+      {ups.length > 0 && (
+        <>
+          <h3 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tr('up.title')}</h3>
+          <ul className="space-y-1.5">
+            {ups.map((u) => (
+              <li key={u.id} className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm">
+                <Clock3 className="size-4 shrink-0 text-primary" /> {tr.text(u.text)}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  )
+}
+
+function TableTaskRow({ task, staffId }: { task: Task; staffId: string }) {
+  const words = useTaskWords(task)
+  const [busy, setBusy] = useState(false)
+  const tr = useT()
+  return (
+    <li className="rounded-xl bg-secondary/70 px-3 py-2">
+      <div className="text-sm font-medium">{words.title}</div>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
+        {task.actions.map((a) => (
+          <Button
+            key={a.label}
+            size="sm"
+            variant={a.primary ? 'default' : 'outline'}
+            className="h-8 rounded-full"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true)
+              try {
+                await act(a.event, a.event === 'task.snoozed' ? { ...a.payload, taskId: task.id, staffId } : a.payload)
+              } catch {
+                toast.error(tr('toast.error'))
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            {words.action(a)}
+          </Button>
+        ))}
+      </div>
+    </li>
+  )
+}
+
+/** Everything already done for these guests, with times: the table's story so far. */
+function TableDone({ table, now }: { table: Snapshot['tables'][number]; now: number }) {
+  const tr = useT()
+  const ago = useAgo()
+  const items = tableTimeline(table).reverse()
+  if (!items.length) return null
+  return (
+    <>
+      <h3 className="mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tr('table.done')}</h3>
+      <ol className="relative space-y-2 border-l pl-4">
+        {items.map((i, n) => (
+          <li key={n} className="relative text-sm">
+            <span className={cn('absolute -left-[1.3rem] top-1 grid size-3 place-items-center rounded-full border-2 border-card', i.kitchen ? 'bg-kitchen' : 'bg-good')} aria-hidden />
+            <span className="mr-2 text-xs text-muted-foreground tabular">{ago(now, i.at)}</span>
+            <span className="inline-block first-letter:uppercase">{tr.text(i.text)}</span>
+          </li>
+        ))}
+      </ol>
+    </>
+  )
+}
+
+/** "just now" / "12 min ago", measured in service time so it always agrees with the cards. */
+function useAgo() {
+  const tr = useT()
+  return (now: number, at: number) => {
+    const n = minutesAgo(at, now)
+    return n < 1 ? tr('time.justNow') : tr('time.ago', { n })
+  }
 }

@@ -22,6 +22,11 @@ export function mmss(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
+/** Minutes since an event, by service time: stays right even when the demo runs sped up. */
+export function minutesAgo(at: number, now: number): number {
+  return Math.max(0, Math.round((now - at) / 60_000))
+}
+
 export function mins(ms: number): string {
   const m = Math.abs(ms) / 60_000
   return m < 1 ? '<1 min' : `${Math.round(m)} min`

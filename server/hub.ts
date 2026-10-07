@@ -130,6 +130,10 @@ export class Hub {
 export function withDefaults(config: RestaurantConfig): RestaurantConfig {
   return {
     ...config,
+    tables: config.tables.map((t) => {
+      const base = DEMO_CONFIG.tables.find((d) => d.id === t.id)
+      return t.pos || !base?.pos ? t : { ...t, pos: base.pos }
+    }),
     menu: config.menu.map((m) => {
       const base = DEMO_CONFIG.menu.find((d) => d.id === m.id)
       return m.contains || !base?.contains ? m : { ...m, contains: base.contains }

@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { clock, mmss } from '../lib/format.ts'
+import { mmss, minutesAgo } from '../lib/format.ts'
 import { act, noteId, post, useSnapshot } from '../lib/live.ts'
 import { useRolePage } from '../lib/role.ts'
 
@@ -132,7 +132,7 @@ export default function KitchenView() {
                 {fromFloor.map((n) => (
                   <li key={n.id} className={cn('rounded-lg p-2.5 text-sm', n.text.startsWith('ALLERGY') ? 'bg-warn/15 font-medium text-warn' : 'bg-muted')}>
                     <div className="text-[11px] font-normal text-muted-foreground">
-                      {snap.config.staff.find((s) => s.id === n.from)?.name ?? n.from}, {n.tableId ?? 'general'}, {clock(n.at)}
+                      {snap.config.staff.find((s) => s.id === n.from)?.name ?? n.from}, {n.tableId ?? 'general'}, {minutesAgo(n.at, snap.now) < 1 ? 'just now' : `${minutesAgo(n.at, snap.now)} min ago`}
                     </div>
                     {n.text}
                   </li>

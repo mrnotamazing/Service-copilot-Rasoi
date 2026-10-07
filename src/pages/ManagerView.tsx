@@ -9,7 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useAi } from '../lib/ai.ts'
-import { clock } from '../lib/format.ts'
+import { clock, minutesAgo } from '../lib/format.ts'
 import { act, useSnapshot } from '../lib/live.ts'
 import { useRolePage } from '../lib/role.ts'
 
@@ -55,7 +55,7 @@ export default function ManagerView() {
               <span className="font-medium text-foreground">A server asked you to visit:</span>
               {a.managerRequests.map((r) => (
                 <Button key={r.tableId} size="sm" variant="outline" className="h-8 rounded-full" onClick={() => void act('manager.visited', { tableId: r.tableId }, 'manager')}>
-                  {r.tableName} · since {clock(r.at)} · mark visited
+                  {r.tableName} · {minutesAgo(r.at, snap.now) < 1 ? 'just now' : `${minutesAgo(r.at, snap.now)} min ago`} · mark visited
                 </Button>
               ))}
             </AlertDescription>
