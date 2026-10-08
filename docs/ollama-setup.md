@@ -49,7 +49,7 @@ If you started TableMate before Ollama, that's fine: it checks every few seconds
 ## 4. Use it
 
 1. Open **http://localhost:5173** and press Cmd+Shift+R (Windows: Ctrl+Shift+R).
-2. **Setup** → the AI card says **Local AI connected**.
+2. **Demo & setup** → **Setup** tab: the AI card says **Local AI connected**.
 3. **Floor staff** → a server → the **sparkle button**. The chat badge says **Local AI (Ollama)**.
    Ask anything, in any of the app's languages.
 

@@ -9,7 +9,7 @@ export const es: Record<Key, string> = {
   'nav.floorStaff': 'Equipo de sala',
   'nav.overview': 'Resumen',
   'nav.setup': 'Ajustes',
-  'nav.demo': "Control de demo",
+  'nav.demo': "Demo y ajustes",
   'nav.how': 'Cómo funciona',
   'hdr.back': 'Volver a todas las pantallas',
   'hdr.ask': 'Preguntar a TableMate',

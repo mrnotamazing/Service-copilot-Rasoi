@@ -9,7 +9,7 @@ export const hi: Record<Key, string> = {
   'nav.floorStaff': 'फ़्लोर स्टाफ़',
   'nav.overview': 'ओवरव्यू',
   'nav.setup': 'सेटअप',
-  'nav.demo': "डेमो कंट्रोल",
+  'nav.demo': "डेमो और सेटअप",
   'nav.how': 'यह कैसे काम करता है',
   'hdr.back': 'सभी स्क्रीन पर वापस',
   'hdr.ask': 'TableMate से पूछें',

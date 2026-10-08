@@ -1,5 +1,5 @@
 import { MotionConfig } from 'motion/react'
-import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { STANDALONE } from './lib/live.ts'
@@ -9,7 +9,6 @@ import Home from './pages/Home.tsx'
 import KitchenView from './pages/KitchenView.tsx'
 import ManagerView from './pages/ManagerView.tsx'
 import ServerView from './pages/ServerView.tsx'
-import SetupView from './pages/SetupView.tsx'
 import DemoView from './pages/DemoView.tsx'
 
 const Router = STANDALONE ? HashRouter : BrowserRouter
@@ -26,7 +25,7 @@ export default function App() {
             <Route path="/server/:staffId" element={<ServerView />} />
             <Route path="/kitchen" element={<KitchenView />} />
             <Route path="/manager" element={<ManagerView />} />
-            <Route path="/setup" element={<SetupView />} />
+            <Route path="/setup" element={<Navigate to="/demo?tab=setup" replace />} />
             <Route path="/demo" element={<DemoView />} />
             <Route path="/about" element={<AboutView />} />
           </Routes>

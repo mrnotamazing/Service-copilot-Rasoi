@@ -396,8 +396,8 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     return {
       text:
         audience === 'manager'
-          ? 'That one needs the AI coach, which isn’t connected right now, so I can only answer from the built-in notes: briefings, escalations and comps, feedback and recognition, rushes, staff support, conflict, emergencies, inclusion and harassment reports. Try one of these, or connect Ollama or Claude in Setup.'
-          : 'That one needs the AI trainer, which isn’t connected right now, so I can only answer from the built-in notes: service standards, tonight’s menu and what’s in each dish, allergies and diets, complaints, access and inclusion, and your section. Try one of these, or ask your manager to connect AI in Setup.',
+          ? 'That one needs the AI coach, which isn’t connected right now, so I can only answer from the built-in notes: briefings, escalations and comps, feedback and recognition, rushes, staff support, conflict, emergencies, inclusion and harassment reports. Try one of these, or connect Ollama or Claude in Demo & setup → Setup.'
+          : 'That one needs the AI trainer, which isn’t connected right now, so I can only answer from the built-in notes: service standards, tonight’s menu and what’s in each dish, allergies and diets, complaints, access and inclusion, and your section. Try one of these, or ask your manager to connect AI in Demo & setup → Setup.',
       suggestions: starters,
     }
   }

@@ -62,7 +62,7 @@ DIFY_API_URL=https://api.dify.ai/v1        # or http://localhost/v1 for your own
 DIFY_API_KEY=app-xxxxxxxxxxxxxxxx
 ```
 
-Restart the copilot (`Ctrl+C`, then `npm run dev`). The terminal prints `AI: Dify at …`, and **Setup → AI assistance** shows **Dify connected**.
+Restart the copilot (`Ctrl+C`, then `npm run dev`). The terminal prints `AI: Dify at …`, and **Demo & setup → Setup → AI assistance** shows **Dify connected**.
 
 ## How the copilot calls Dify
 

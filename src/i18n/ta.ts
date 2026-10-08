@@ -9,7 +9,7 @@ export const ta: Record<Key, string> = {
   'nav.floorStaff': 'தள ஊழியர்கள்',
   'nav.overview': 'மேலோட்டம்',
   'nav.setup': 'அமைப்பு',
-  'nav.demo': "டெமோ கட்டுப்பாடு",
+  'nav.demo': "டெமோ & அமைப்பு",
   'nav.how': 'இது எப்படி வேலை செய்கிறது',
   'hdr.back': 'எல்லா திரைகளுக்கும் திரும்பு',
   'hdr.ask': 'TableMate-இடம் கேளுங்கள்',

@@ -26,8 +26,7 @@ not blamed for a slow grill.
 | `/server/:staffId` | Each server (phone or iPad) | Phone: bottom tabs. iPad/laptop (≥768px): side rail with next-up cards, section map, guests and kitchen thread side by side. `?device=phone` previews the phone layout on a big screen. |
 | `/kitchen` | Pass / expo screen | Counts strip and station filter; tickets on the line (timer, progress, allergy and diet clashes, Ready) and food waiting at the pass (Nudge the server); all-day counts, notes from the floor, quick notes to the floor, 86 board |
 | `/manager` | Floor manager | **Needs you now** (visit requests, safety clashes, late kitchen, bills waiting, unhappy tables), a five-number pulse, every section as a live floor plan with its load, bottlenecks by stage and station, mood, team goal, delay receipts. **No individual rankings.** |
-| `/setup` | Manager | SOP standards, POS integrations, service simulator |
-| `/demo` | Presenter | **Demo control**: start, pause, reset; speed (1–30×) and how busy; who's on autopilot (each server, kitchen, manager); **Stage a moment** on cue (allergy guest, kitchen falls behind, birthday regulars, unhappy table, access need, dish runs out, guest asks for manager, bill, arrival, rush); **Showcase mode** runs the whole restaurant itself and stages a moment every few minutes; a live feed narrates every step; links open each screen in its own tab. |
+| `/demo` | Manager / presenter | **Demo & setup**. *Run the demo* tab: start, pause, reset; speed (1–30×) and how busy; who's on autopilot (each server, kitchen, manager); **Stage a moment** on cue (allergy guest, kitchen falls behind, birthday regulars, unhappy table, access need, dish runs out, guest asks for manager, bill, arrival, rush); **Showcase mode** runs the whole restaurant itself and stages a moment every few minutes; a live feed narrates every step; links open each screen in its own tab. *Setup* tab (`/setup` opens it): service standards (SOPs), AI assistance, POS integrations. |
 
 ## How a card is born
 
@@ -175,7 +174,7 @@ npm test         # engine tests
 
 Production: `npm run build && npm start` serves the app and API on port 4000.
 
-Then open **Setup → Start service**. Use the speed slider to compress an evening.
+Then open **Demo & setup** and click **Start a fresh demo** (or **Start service**, with the speed set to compress an evening).
 For a role-play study, turn a server's autopilot off and play them on a phone.
 
 ## Using it for the study

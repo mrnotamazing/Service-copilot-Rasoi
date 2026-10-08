@@ -13,6 +13,7 @@ import {
   Play,
   Receipt,
   RotateCcw,
+  Settings,
   ShieldAlert,
   Smartphone,
   Sparkles,
@@ -23,11 +24,12 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { FeedItem, FeedKind } from '../../shared/narrate.ts'
 import type { Snapshot } from '../../shared/snapshot.ts'
 import { Avatar } from '../components/Avatar.tsx'
+import { SetupPanels } from '../components/SetupPanels.tsx'
 import { AppShell, LiveClock, ShellSkeleton } from '../components/kit.tsx'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -52,6 +54,12 @@ const MOMENTS: { kind: Kind; title: string; shows: string; Icon: LucideIcon }[] 
   { kind: 'rush', title: 'Sudden rush', shows: 'Fills every free table at once.', Icon: Users },
 ]
 
+type Tab = 'run' | 'setup'
+const TABS: { id: Tab; label: string; Icon: LucideIcon }[] = [
+  { id: 'run', label: 'Run the demo', Icon: Clapperboard },
+  { id: 'setup', label: 'Setup', Icon: Settings },
+]
+
 const SPEEDS = [1, 2, 5, 10, 20, 30]
 const PACES: { value: number; label: string }[] = [
   { value: 0.6, label: 'Quiet' },
@@ -63,16 +71,41 @@ const PACES: { value: number; label: string }[] = [
 const FEED_ICON: Record<FeedKind, LucideIcon> = { guest: Users, kitchen: ChefHat, staff: HandPlatter, alert: TriangleAlert, training: GraduationCap, demo: Clapperboard }
 
 /**
- * Demo control: run, pace and reset the simulated service, stage moments on cue, or switch on
- * showcase mode and let the whole restaurant run itself while you present.
+ * Demo & setup. Run the demo: run, pace and reset the simulated service, stage moments on cue, or
+ * switch on showcase mode and let the whole restaurant run itself while you present. Setup: the
+ * service standards, the AI behind the assistant, and POS integrations.
  */
 export default function DemoView() {
   useRolePage({ kind: 'manager' })
   const { snap, connected } = useSnapshot('manager')
+  // The tab lives in the address, so /setup (and bookmarks to it) open the Setup tab.
+  const [params, setParams] = useSearchParams()
+  const tab: Tab = params.get('tab') === 'setup' ? 'setup' : 'run'
   if (!snap) return <ShellSkeleton />
   return (
-    <AppShell title="Demo control" sub="Run the simulated service for a presentation" right={<LiveClock now={snap.now} ok={connected} />}>
-      <div className="space-y-5">
+    <AppShell title="Demo & setup" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />}>
+      <div role="tablist" aria-label="Demo and setup" className="mb-5 inline-grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+        {TABS.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`panel-${id}`}
+            onClick={() => setParams(id === 'run' ? {} : { tab: id }, { replace: true })}
+            className={cn('flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors', tab === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+          >
+            <Icon className="size-4" aria-hidden /> {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'setup' ? (
+        <div role="tabpanel" id="panel-setup" aria-labelledby="tab-setup">
+          <SetupPanels snap={snap} />
+        </div>
+      ) : (
+      <div role="tabpanel" id="panel-run" aria-labelledby="tab-run" className="space-y-5">
         <ControlBar snap={snap} />
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <Moments snap={snap} />
@@ -86,6 +119,7 @@ export default function DemoView() {
           <Screens snap={snap} />
         </div>
       </div>
+      )}
     </AppShell>
   )
 }

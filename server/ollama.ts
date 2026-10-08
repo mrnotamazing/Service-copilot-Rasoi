@@ -21,7 +21,7 @@ const NUM_CTX = 6144
 export interface OllamaStatus {
   running: boolean
   model: string | null
-  /** Installed models, for the Setup page. */
+  /** Installed models, for the Setup tab. */
   models: string[]
 }
 

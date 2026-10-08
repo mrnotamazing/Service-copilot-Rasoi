@@ -49,7 +49,7 @@ Leave this terminal open; closing it stops the app.
 ## 4. Use it
 
 1. Open **http://localhost:5173** in Chrome.
-2. Click **Setup** → **Start service**, and set **Speed** to about 10×.
+2. Click **Demo & setup** → **Start a fresh demo** (or **Start service** and set **Speed** to about 10×).
 3. Open **Manager** to watch the floor, or pick **Aisha / Rohan / Meera** to see a server’s phone screen.
 4. To play a server yourself, switch off their **autopilot** and tap the cards as they come up. Try **What do I say?** on a greeting or delay card, and **Brief me** in the Briefing tab.
 
