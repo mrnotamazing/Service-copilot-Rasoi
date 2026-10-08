@@ -43,6 +43,8 @@ export interface PlayerState {
   counters: Record<string, number>
   badges: Record<string, number> // badge id -> earned at
   quests: Record<string, number> // quest id -> completed at
+  /** Practice scores over time, for the person's own learning journey (private). */
+  practiceLog: { at: number; scenario: string; score: number; final?: boolean }[]
 }
 
 export interface Kudos {
@@ -154,7 +156,7 @@ export function initialGame(config: RestaurantConfig): GameState {
 }
 
 function blankPlayer(staffId: string): PlayerState {
-  return { staffId, xp: 0, combo: 0, bestCombo: 0, streak: 0, bestStreak: 0, shields: 0, counters: {}, badges: {}, quests: {} }
+  return { staffId, xp: 0, combo: 0, bestCombo: 0, streak: 0, bestStreak: 0, shields: 0, counters: {}, badges: {}, quests: {}, practiceLog: [] }
 }
 
 type Grade = 'swift' | 'on_time' | 'late'
@@ -198,6 +200,8 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
     const used = p.counters[dayKey] ?? 0
     const xp = Math.max(0, Math.min(practiceXp(score, final, outcome), PRACTICE_DAILY_XP - used))
     p.counters[dayKey] = used + xp
+    p.practiceLog.push({ at: ev.at, scenario, score: Math.round(score), final: final || undefined })
+    if (p.practiceLog.length > 120) p.practiceLog.splice(0, p.practiceLog.length - 120)
     if (final) {
       p.counters[`sc:${scenario}`] = 1
       bump(game, staffId, 'practices', ev.at, config)

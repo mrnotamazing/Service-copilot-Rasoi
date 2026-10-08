@@ -3,6 +3,7 @@
 
 import { analytics, staffStats, tasksFor } from '../shared/engine.ts'
 import { predictReady, upcomingFor } from '../shared/predict.ts'
+import { crunchAhead, forecast, learningPlan, shiftIntel, whyFirst } from '../shared/intel.ts'
 import { cleanProfile } from '../shared/profile.ts'
 import { playerView, teamView } from '../shared/game.ts'
 import type { IncomingEvent } from '../shared/events.ts'
@@ -12,6 +13,7 @@ import { CATALOG } from './adapters/index.ts'
 import { AiError, createAi, type AiKind, type AiRequest, type DifyOptions } from './ai.ts'
 import type { Hub } from './hub.ts'
 import { MOMENTS, type Simulator } from './simulator.ts'
+import { runWhatIf, type WhatIf } from './whatif.ts'
 
 export type ApiBody = Record<string, unknown>
 
@@ -47,6 +49,11 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     }
     if (role === 'server' && staffId) {
       const { top, queued } = tasksFor(tasks, staffId, 3, hub.state.tables)
+      const mine = tasks.filter((t) => t.staffId === staffId)
+      const upcoming = upcomingFor(hub.state, hub.config, staffId, now, mine)
+      const crunch = crunchAhead(upcoming, mine, now)
+      const myVisits = hub.state.visits.filter((v) => v.serverId === staffId)
+      const myTables = Object.values(hub.state.tables).filter((t) => t.serverId === staffId && t.visitId)
       return {
         ...base,
         me: {
@@ -54,15 +61,19 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
           top,
           queued,
           stats: staffStats(hub.state, hub.config).find((s) => s.staffId === staffId) ?? null,
-          myVisits: hub.state.visits.filter((v) => v.serverId === staffId).slice(-40).reverse(),
+          myVisits: myVisits.slice(-40).reverse(),
           game: playerView(hub.game, staffId),
-          upcoming: upcomingFor(hub.state, hub.config, staffId, now, tasks.filter((t) => t.staffId === staffId)),
+          upcoming: crunch ? [crunch, ...upcoming] : upcoming,
           // Every open task of mine (not just the top three), for the per-table view on the floor plan.
-          tasks: tasks.filter((t) => t.staffId === staffId).slice(0, 30),
+          tasks: mine.slice(0, 30),
+          // Why the top card comes first, and a private learning journey built from this shift.
+          why: top[0] ? whyFirst(top[0], mine, hub.state.tables[top[0].tableId], now) : [],
+          learning: learningPlan(hub.game.players[staffId]?.practiceLog ?? [], myVisits, myTables, 'server'),
         },
       }
     }
-    if (role === 'manager') return { ...base, analytics: analytics(hub.state, hub.config), integrations: integrations(), openTasks, feed: hub.feed.slice(-40) }
+    if (role === 'manager')
+      return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40) }
     return { ...base, openTasks }
   }
 
@@ -92,6 +103,15 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       if (typeof body.showcase === 'boolean') sim.setShowcase(body.showcase)
       hub.emit()
       return sim.status()
+    },
+    // Run tonight in a sandbox, as it is and with one thing changed, and compare (never touches live service).
+    '/api/whatif': (body) => {
+      const w: WhatIf = {}
+      if (typeof body.covers === 'number') w.covers = Math.max(0.5, Math.min(2.5, body.covers))
+      if (typeof body.sickServer === 'string' && hub.config.staff.some((s) => s.id === body.sickServer && s.role === 'server')) w.sickServer = body.sickServer
+      if (body.extraGrill === true) w.extraGrill = true
+      if (typeof body.kitchenSpeed === 'number') w.kitchenSpeed = Math.max(0.5, Math.min(1.5, body.kitchenSpeed))
+      return runWhatIf(hub.config, w)
     },
     // A staff member's own profile: name, pronouns, colour, avatar, languages. Only fields sent are changed.
     '/api/staff/profile': (body) => {
@@ -125,7 +145,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     },
   }
 
-  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice', 'chat']
+  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice', 'chat', 'complaint', 'incident']
 
   return {
     snapshot,
@@ -147,7 +167,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
             .map((m) => ({ role: m.role, text: m.text.slice(0, 1500), ...(typeof m.score === 'number' && m.score >= 0 && m.score <= 100 ? { score: m.score } : {}) }))
         : undefined
       const mode = body.mode === 'practice' ? 'practice' : body.mode === 'ask' ? 'ask' : undefined
-      const req: AiRequest = { kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true }
+      const req: AiRequest = { kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true, tableId: str(body.tableId), visitId: str(body.visitId) }
       let answer: Awaited<ReturnType<typeof ai.ask>>
       try {
         answer = await ai.ask(req, onText)

@@ -1,4 +1,4 @@
-import { Accessibility, ArrowRight, ChefHat, Clock3, Route, ShieldAlert, Smile, Sprout, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, UserRound, Users, Volume2, Languages } from 'lucide-react'
+import { Accessibility, ArrowRight, ChefHat, Clock3, Route, ShieldAlert, Smile, Sprout, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, UserRound, Users, Volume2, Languages, Compass, TrendingUp, History, GraduationCap, FlaskConical } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -258,6 +258,27 @@ export default function AboutView() {
               </div>
             ))}
           </div>
+        </Section>
+
+        <Section title="Assist, predict, explain, learn" lead="More than a task list: the same events power a copilot that helps now, warns early, explains what happened and turns it into practice.">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {[
+              [<Compass key="a" />, 'Assist', 'The next best action with why it comes first, and help with an upset guest built from what is really happening at that table.'],
+              [<TrendingUp key="b" />, 'Predict', 'Dishes likely to be late, a busy patch about to hit a server, a station about to fall behind, a section about to be swamped.'],
+              [<History key="c" />, 'Explain', 'Any table reconstructed step by step, and why tonight is going the way it is: floor or kitchen, the bottleneck, when it bunched up.'],
+              [<GraduationCap key="d" />, 'Learn', 'A private learning journey: practice scores over time and practice suggested from the server’s own shift.'],
+              [<FlaskConical key="e" />, 'Decide', 'What if 30% more guests come, a server is off sick or a second grill cook joins? Run tonight both ways in a sandbox and compare.'],
+            ].map(([icon, t, d]) => (
+              <div key={t as string} className="rounded-2xl border bg-card p-5">
+                <span className="text-primary [&_svg]:size-5">{icon}</span>
+                <h3 className="mt-2 font-medium">{t}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{d}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 max-w-[70ch] text-sm leading-relaxed text-muted-foreground">
+            Rules decide anything safety-critical and every attribution, so each warning and explanation can be checked. Language models only phrase the facts. Forecasts and explanations are about stages, stations and section load, never about ranking people.
+          </p>
         </Section>
 
         <Section title="Motivation without surveillance" lead="Service is a game servers already play: timing, reading the room, rescuing a table. The copilot keeps score for them, not on them.">

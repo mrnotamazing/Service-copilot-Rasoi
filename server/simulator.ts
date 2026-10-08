@@ -45,6 +45,11 @@ export class Simulator {
   autoManager = false
   /** Runs itself and stages a key moment every few minutes of service time. */
   showcase = false
+  /** What-if knobs: how fast the kitchen cooks (1 = as usual) and an extra cook on the grill. */
+  kitchenSpeed = 1
+  extraGrill = false
+  /** Parties who gave up waiting for a table. */
+  walkouts = 0
   private nextMoment = 0
   private momentIndex = 0
   private startedAt: number | null = null
@@ -108,6 +113,7 @@ export class Simulator {
     this.reaction.clear()
     this.busyUntil.clear()
     this.stockOutDone = false
+    this.walkouts = 0
     this.momentIndex = 0
     this.nextMoment = 0
     this.hub.clock.set(Date.now())
@@ -208,6 +214,23 @@ export class Simulator {
     }
   }
 
+  /**
+   * Run service forward by `minutes` of service time at once, without real timers (for what-if runs
+   * and tests). The clock stays paused afterwards.
+   */
+  fastForward(minutes: number, onMinute?: () => void) {
+    if (this.startedAt === null) {
+      this.startedAt = this.hub.clock.now()
+      this.nextArrival = this.startedAt + 0.2 * MIN
+    }
+    this.hub.clock.pause()
+    for (let i = 0; i < minutes * 4; i++) {
+      this.hub.clock.set(this.hub.clock.now() + MIN / 4)
+      this.tick()
+      if (i % 4 === 3) onMinute?.()
+    }
+  }
+
   /** Seat a party at the smallest free table that fits; false if none is free. */
   private seat(party: Partial<Party>, _why: string): boolean {
     const size = party.partySize ?? pick([2, 2, 3, 4, 4])
@@ -251,10 +274,11 @@ export class Simulator {
     // Stations work on a couple of dishes at once; a queue at the station adds real time.
     const station = (id: string) => this.hub.config.menu.find((m) => m.id === id)!.station
     const queued = Object.values(this.hub.state.tables).flatMap((x) => x.lines).filter((l) => l.status === 'fired' && lines.some((n) => station(n.menuItemId) === l.station)).length
-    let cook = prep * rand(0.8, 1.15) + Math.max(0, queued - 1) * 0.75
-    if (grill && busy && chance(0.45)) cook += rand(5, 10) // grill backs up at peak
+    // A second grill cook halves the grill's queue and mostly stops it backing up at peak.
+    let cook = prep * rand(0.8, 1.15) + Math.max(0, queued - 1) * 0.75 * (grill && this.extraGrill ? 0.5 : 1)
+    if (grill && busy && chance(this.extraGrill ? 0.1 : 0.45)) cook += rand(5, 10) // grill backs up at peak
     else if (chance(0.12)) cook += rand(4, 8)
-    const doneAt = now + cook * MIN
+    const doneAt = now + (cook / this.kitchenSpeed) * MIN
     for (const l of lines) this.readyPlan.set(l.id, doneAt)
     this.send({ type: 'order.fired', source: 'pos:sim', payload: { tableId: t.id, ticketId: newId('kot'), lines } })
   }
@@ -273,7 +297,9 @@ export class Simulator {
       this.nextArrival = now + (rand(5, 10) * MIN) / (peak * this.intensity)
     }
     // Guests who wait too long for a table leave.
+    const before = this.waitlist.length
     this.waitlist = this.waitlist.filter((g) => now - g.since < 25 * MIN)
+    this.walkouts += before - this.waitlist.length
     for (const g of [...this.waitlist]) {
       const free = tables.filter((t) => t.status === 'available' && t.seats >= g.size).sort((a, b) => a.seats - b.seats)[0]
       if (!free) continue

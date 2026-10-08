@@ -33,6 +33,7 @@ export function AssistantDrawer({
   initialMode = 'ask',
   wide,
   role = 'server',
+  initialScenario,
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
@@ -41,6 +42,8 @@ export function AssistantDrawer({
   initialMode?: 'ask' | 'practice'
   wide?: boolean
   role?: AssistantRole
+  /** Open the practice room straight into this situation (e.g. one suggested from tonight's shift). */
+  initialScenario?: string
 }) {
   const t = useT()
   return (
@@ -52,7 +55,7 @@ export function AssistantDrawer({
         </DrawerHeader>
         {open && (
           <div className="min-h-0 flex-1">
-            <Assistant staffId={staffId} provider={provider} initialMode={initialMode} role={role} />
+            <Assistant staffId={staffId} provider={provider} initialMode={initialMode} role={role} initialScenario={initialScenario} />
           </div>
         )}
       </DrawerContent>

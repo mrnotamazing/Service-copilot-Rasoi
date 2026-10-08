@@ -1,7 +1,8 @@
 import type { FeedItem } from './narrate.ts'
+import type { Forecast, LearningPlan, ShiftIntel } from './intel.ts'
 import type { Analytics } from './engine.ts'
 import type { PlayerView, teamView } from './game.ts'
-import type { Note, RestaurantConfig, StaffStats, TableState, Task, Upcoming, VisitRecord } from './types.ts'
+import type { Note, RestaurantConfig, StaffStats, TableState, Task, TaskText, Upcoming, VisitRecord } from './types.ts'
 
 export type Role = 'server' | 'kitchen' | 'manager'
 
@@ -44,9 +45,12 @@ export interface Snapshot {
   /** Shared with everyone: the team goal and kudos. Never individual scores. */
   team: ReturnType<typeof teamView>
   /** server role: own top tasks and private stats */
-  me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[]; game: PlayerView | null; upcoming: Upcoming[]; tasks: Task[] }
+  me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[]; game: PlayerView | null; upcoming: Upcoming[]; tasks: Task[]; why?: TaskText[]; learning?: LearningPlan }
   /** manager role: process analytics, no per-person stats */
   analytics?: Analytics
+  /** manager role: why tonight is going the way it is, and what the next 15 minutes look like. */
+  intel?: ShiftIntel
+  forecast?: Forecast
   integrations?: IntegrationStatus[]
   /** manager/kitchen: how many open cards each server has (load, not performance) */
   openTasks?: Record<string, number>

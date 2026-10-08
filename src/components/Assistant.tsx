@@ -46,7 +46,7 @@ const STARTERS: Record<AssistantRole, Key[]> = {
  * coaches each reply (Practice). Servers and managers each get their own training and situations.
  * Answers come in the person's language when an AI model is connected.
  */
-export function Assistant({ staffId, provider, initialMode = 'ask', role = 'server' }: { staffId: string; provider: AiAnswer['source']; initialMode?: Mode; role?: AssistantRole }) {
+export function Assistant({ staffId, provider, initialMode = 'ask', role = 'server', initialScenario }: { staffId: string; provider: AiAnswer['source']; initialMode?: Mode; role?: AssistantRole; initialScenario?: string }) {
   const t = useT()
   const [mode, setMode] = useState<Mode>(initialMode)
   return (
@@ -76,16 +76,16 @@ export function Assistant({ staffId, provider, initialMode = 'ask', role = 'serv
         <Chat staffId={staffId} provider={provider} mode="ask" role={role} />
       </div>
       <div className={cn('min-h-0 flex-1', mode !== 'practice' && 'hidden')}>
-        <PracticeRoom staffId={staffId} provider={provider} role={role} />
+        <PracticeRoom staffId={staffId} provider={provider} role={role} initialScenario={initialScenario} />
       </div>
     </div>
   )
 }
 
 /** Practice: pick a situation, then role-play it in the chat. */
-function PracticeRoom({ staffId, provider, role }: { staffId: string; provider: AiAnswer['source']; role: AssistantRole }) {
+function PracticeRoom({ staffId, provider, role, initialScenario }: { staffId: string; provider: AiAnswer['source']; role: AssistantRole; initialScenario?: string }) {
   const t = useT()
-  const [scenario, setScenario] = useState<string | null>(null)
+  const [scenario, setScenario] = useState<string | null>(initialScenario ?? null)
   if (!scenario)
     return (
       <div className="h-full overflow-y-auto px-4 pb-6">

@@ -1,4 +1,4 @@
-import { Accessibility, Armchair, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, ChevronLeft, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { Accessibility, Armchair, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, ChevronLeft, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -14,6 +14,7 @@ import { useRolePage } from '../lib/role.ts'
 import { MOOD_TONE, Reaction } from '../components/Reaction.tsx'
 import { CoachCard } from '../components/Coach.tsx'
 import { AssistantDrawer, PracticeCard } from '../components/Practice.tsx'
+import { ComplaintHelp, LearningJourney, WhyFirst } from '../components/Intel.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
 import { tableTimeline } from '../../shared/timeline.ts'
 import { FloorPlan } from '../components/FloorPlan.tsx'
@@ -365,6 +366,7 @@ function NextUp({ snap, staffId }: { snap: Snapshot; staffId: string }) {
       <p className="sr-only" aria-live="polite">
         {all[0] ? t('floor.next', { title: lead.title }) : t('floor.caughtUp')}
       </p>
+      {top.length > 0 && <WhyFirst why={snap.me!.why} />}
       <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
         <AnimatePresence mode="popLayout" initial={false}>
           {top.map((t, i) => (
@@ -450,6 +452,7 @@ function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tab
       ) : null}
 
       {t.visitId && <TableNow snap={snap} table={t} />}
+      {t.visitId && snap.me && <ComplaintHelp key={t.id} tableId={t.id} staffId={snap.me.staffId} />}
 
       {t.visitId && (
         <>
@@ -747,6 +750,7 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
 
       <CoachCard staffId={staffId} />
       <PracticeCard staffId={staffId} provider={snap.ai.provider} />
+      <LearningJourney plan={snap.me!.learning} staffId={staffId} provider={snap.ai.provider} />
 
       {/* Quests */}
       <section>
@@ -1058,7 +1062,7 @@ function NewTaskAlerts({ top }: { top: Task[] }) {
   return <div key={flash} className="edge-flash pointer-events-none fixed inset-0 z-50" aria-hidden />
 }
 
-const UP_ICON: Record<Upcoming['kind'], typeof Clock3> = { food_ready: HandPlatter, course_end: Hourglass, bill_soon: ReceiptText }
+const UP_ICON: Record<Upcoming['kind'], typeof Clock3> = { food_ready: HandPlatter, course_end: Hourglass, bill_soon: ReceiptText, crunch: Gauge }
 
 /**
  * What's likely to need the server in the next few minutes, from tonight's real timings.
@@ -1075,10 +1079,10 @@ function ComingUp({ items: all }: { items: Upcoming[] }) {
       </h3>
       <ul className="divide-y rounded-2xl border border-dashed">
         {items.map((u) => (
-          <li key={u.id} className="flex items-center gap-2.5 px-3 py-2 text-sm">
+          <li key={u.id} className={cn('flex items-center gap-2.5 px-3 py-2 text-sm', u.kind === 'crunch' && 'bg-warn/10 font-medium')}>
             {(() => {
               const Icon = UP_ICON[u.kind]
-              return <Icon className="size-4 shrink-0 text-primary" aria-hidden />
+              return <Icon className={cn('size-4 shrink-0', u.kind === 'crunch' ? 'text-warn' : 'text-primary')} aria-hidden />
             })()}
             <span className="min-w-0 flex-1">{t.text(u.text)}</span>
           </li>

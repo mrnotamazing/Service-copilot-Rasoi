@@ -7,9 +7,9 @@ import type { Course, OrderLine, RestaurantConfig, TableState, Task, TaskText, U
 
 const MIN = 60_000
 /** Dishes a station can work on at once before tickets start queueing. */
-const STATION_CAPACITY = 2
+export const STATION_CAPACITY = 2
 /** Minutes each extra queued dish adds at a station. */
-const QUEUE_COST_MIN = 0.75
+export const QUEUE_COST_MIN = 0.75
 /** Typical minutes a table takes to eat each course, until tonight's data says otherwise. */
 const DEFAULT_EAT_MIN: Record<string, number> = { starter: 12, main: 18, dessert: 9, drink: 10 }
 

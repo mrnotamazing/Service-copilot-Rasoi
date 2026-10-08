@@ -11,7 +11,7 @@ export function useAi() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function ask(kind: AiKind, body: { staffId?: string; taskId?: string; question?: string; lang?: string } = {}) {
+  async function ask(kind: AiKind, body: { staffId?: string; taskId?: string; question?: string; lang?: string; tableId?: string; visitId?: string } = {}) {
     setLoading(true)
     setError(null)
     try {

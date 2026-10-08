@@ -1,9 +1,11 @@
-import { ChefHat, CircleCheck, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { ChefHat, CircleCheck, History, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
 import { AppShell, LiveClock, ShellSkeleton, PanelTitle } from '../components/kit.tsx'
 import { Avatar } from '../components/Avatar.tsx'
 import { FloorPlan } from '../components/FloorPlan.tsx'
+import { IncidentSheet, NextFifteen, WhatIfCard, WhyTonight } from '../components/ManagerIntel.tsx'
+import { liveVisit, reconstructVisit, type Reconstruction } from '../../shared/intel.ts'
 import { AssistantDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
 import { useState } from 'react'
@@ -38,6 +40,7 @@ export default function ManagerView() {
   const { snap, connected } = useSnapshot('manager')
   const summary = useAi()
   const [assist, setAssist] = useState(false)
+  const [incident, setIncident] = useState<Reconstruction | null>(null)
   if (!snap || !snap.analytics) return <ShellSkeleton />
   const managerId = snap.config.staff.find((s) => s.role === 'manager')?.id ?? 'm_floor'
   const a = snap.analytics
@@ -50,10 +53,13 @@ export default function ManagerView() {
       sub={snap.config.name}
       right={
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" className="h-9 rounded-full" onClick={() => setAssist(true)}>
-            <Sparkles /> Ask TableMate
+          <Button variant="secondary" size="sm" className="h-9 rounded-full" onClick={() => setAssist(true)} aria-label="Ask TableMate">
+            <Sparkles /> <span className="hidden sm:inline">Ask TableMate</span>
           </Button>
-          <LiveClock now={snap.now} ok={connected} />
+          {/* The phone shows the time already; keep the header on one line. */}
+          <span className="hidden sm:contents">
+            <LiveClock now={snap.now} ok={connected} />
+          </span>
         </div>
       }
     >
@@ -61,7 +67,19 @@ export default function ManagerView() {
       <div className="space-y-5">
         <NeedsYou snap={snap} />
         <Pulse snap={snap} />
-        <LiveFloor snap={snap} />
+        {snap.intel && snap.forecast && (
+          <div className="grid gap-5 lg:grid-cols-2">
+            <WhyTonight intel={snap.intel} />
+            <NextFifteen forecast={snap.forecast} name={name} />
+          </div>
+        )}
+        <LiveFloor
+          snap={snap}
+          onReconstruct={(t) => {
+            const v = liveVisit(t, snap.config, snap.now)
+            if (v) setIncident(reconstructVisit(v, snap.config, true))
+          }}
+        />
 
         <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
           <Card>
@@ -186,6 +204,7 @@ export default function ManagerView() {
           </Card>
         </div>
 
+        <WhatIfCard servers={snap.config.staff.filter((s) => s.role === 'server')} />
         <Card>
           <CardHeader>
             <Heading>Shift summary</Heading>
@@ -205,10 +224,10 @@ export default function ManagerView() {
         <Card>
           <CardHeader>
             <Heading>Delay receipts: recent tables</Heading>
-            <CardDescription>Each bar is one step of the visit, coloured by who controlled it.</CardDescription>
+            <CardDescription>Each bar is one step of the visit, coloured by who controlled it. Open one to see what happened, step by step.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {a.recentVisits.length === 0 ? <p className="text-sm text-muted-foreground">Receipts appear as tables finish.</p> : a.recentVisits.map((v) => <Receipt key={v.visitId} v={v} server={name(v.serverId)} />)}
+            {a.recentVisits.length === 0 ? <p className="text-sm text-muted-foreground">Receipts appear as tables finish.</p> : a.recentVisits.map((v) => <Receipt key={v.visitId} v={v} server={name(v.serverId)} onOpen={() => setIncident(reconstructVisit(v, snap.config))} />)}
             <Legend />
           </CardContent>
         </Card>
@@ -217,6 +236,7 @@ export default function ManagerView() {
           <ShieldCheck className="size-3.5 text-good" /> Process view only: stages, stations and load. Personal scores stay on each server’s phone, and every delay is attributed to whoever controlled that step.
         </p>
       </div>
+      <IncidentSheet r={incident} onClose={() => setIncident(null)} server={incident ? name(incident.serverId) : ''} />
     </AppShell>
   )
 }
@@ -241,12 +261,12 @@ function Legend() {
 }
 
 /** One table's visit: each measured step as a bar on the visit's timeline. */
-function Receipt({ v, server }: { v: VisitRecord; server: string }) {
+function Receipt({ v, server, onOpen }: { v: VisitRecord; server: string; onOpen: () => void }) {
   const span = Math.max(1, v.endedAt - v.seatedAt)
   const pos = (t: number) => ((t - v.seatedAt) / span) * 100
   const lapses = v.segments.filter((s) => s.lapse)
   return (
-    <div className="rounded-xl border bg-background/50 p-3">
+    <button type="button" onClick={onOpen} className="block w-full rounded-xl border bg-background/50 p-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`What happened at ${v.tableName}, ${clock(v.seatedAt)}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
         <span>
           <span className="font-semibold">{v.tableName}</span> <span className="text-muted-foreground">{v.partySize} guests, served by {server}</span>
@@ -270,7 +290,7 @@ function Receipt({ v, server }: { v: VisitRecord; server: string }) {
           ? 'Every step to standard.'
           : lapses.map((s) => `${s.label} +${((s.end - s.start) / 60_000 - s.targetMin).toFixed(1)} min (${s.owner}${s.station ? `, ${s.station}` : ''})`).join(' · ')}
       </p>
-    </div>
+    </button>
   )
 }
 
@@ -425,7 +445,7 @@ function Pulse({ snap }: { snap: Snap }) {
 }
 
 /** Every section as a floor plan, with its server and how loaded they are (load, never performance). */
-function LiveFloor({ snap }: { snap: Snap }) {
+function LiveFloor({ snap, onReconstruct }: { snap: Snap; onReconstruct: (t: Snap['tables'][number]) => void }) {
   const [picked, setPicked] = useState<string | undefined>()
   const a = snap.analytics!
   const sections = Object.entries(snap.config.sections)
@@ -456,12 +476,12 @@ function LiveFloor({ snap }: { snap: Snap }) {
           )
         })}
       </div>
-      {table && <TableSummary snap={snap} table={table} />}
+      {table && <TableSummary snap={snap} table={table} onReconstruct={() => onReconstruct(table)} />}
     </section>
   )
 }
 
-function TableSummary({ snap, table: t }: { snap: Snap; table: Snap['tables'][number] }) {
+function TableSummary({ snap, table: t, onReconstruct }: { snap: Snap; table: Snap['tables'][number]; onReconstruct: () => void }) {
   const server = snap.config.staff.find((s) => s.id === t.serverId)
   return (
     <div className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-2xl border bg-card p-4 text-sm">
@@ -488,6 +508,11 @@ function TableSummary({ snap, table: t }: { snap: Snap; table: Snap['tables'][nu
           <div className="text-xs text-muted-foreground">Order</div>
           {t.lines.map((l) => `${l.qty}× ${l.name} (${l.status === 'fired' ? 'cooking' : l.status === 'ready' ? 'at the pass' : l.status})`).join(', ')}
         </div>
+      )}
+      {t.visitId && (
+        <Button variant="outline" size="sm" className="ml-auto self-center" onClick={onReconstruct}>
+          <History /> What’s happened so far
+        </Button>
       )}
     </div>
   )

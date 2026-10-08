@@ -83,6 +83,20 @@ Around this core:
 - **Inclusive by design**: six languages, read-aloud with correct dish pronunciation, accessibility settings, "simple words", respectful wording, and guest needs turned into what to do.
 - **Demo & setup**: a simulator that runs a full dinner service, with staged moments and a hands-free showcase mode, plus the restaurant's standards, AI and POS settings.
 
+### Assist, Predict, Explain, Learn (and Decide)
+
+TableMate is more than a task list: it is an AI service copilot that works at four levels, plus a planning tool for managers. Each level uses the same event data, and each keeps the same rules: suggestions, never orders; process, never people.
+
+| Level | What it does | Where you see it |
+|---|---|---|
+| **Assist** | The next best action, with the reasons it comes first; help with an upset guest built from what is really happening at that table | Server Home ("Why this first"); a table's detail ("Guest upset? Get help") |
+| **Predict** | Warnings before things go wrong: dishes likely to be late, a busy patch about to hit a server, a kitchen station about to fall behind, a section about to be swamped | Server "Coming up"; manager "Next 15 minutes" |
+| **Explain** | What happened at any table, step by step, and why tonight is going the way it is (floor vs kitchen, the bottleneck, when it bunched up) | Manager "Why is this happening?" and "What happened" on any receipt or live table |
+| **Learn** | A private learning journey: practice scores over time, practice suggested from your real shift, one habit to focus on | Server Profile ("My learning journey"), visible only to you |
+| **Decide** | Run tonight in a sandbox with one thing changed (more guests, a server off sick, an extra grill cook, a slower kitchen) and compare | Manager "What if…?" and the manager chat ("What if Aisha is off sick?") |
+
+The product loop: **events → state → prediction → action → outcome → explanation → learning**. A seated table becomes a card; tonight's timings forecast what is coming; the card closes when the POS shows it happened; every step is attributed; and what went wrong becomes the next practice.
+
 ---
 
 ## 4. How it works under the hood
@@ -146,8 +160,9 @@ Phones get bottom tabs; tablets and laptops get a side rail with cards, the floo
 
 **Home tab**
 - **Next up**: the top three cards, ranked. Swipe right for done, left for Later, or use the buttons. Cards close themselves when the POS shows the step happened.
+- **Why this first**: up to three short reasons the top card leads ("Allergy or diet safety comes first", "4 min past the standard", "No one has been to this table for 9 min", "2 more jobs on the same trip", "Your other 3 can wait a few minutes"). A suggestion explained is easier to trust, and easier to overrule.
 - **One trip, several jobs**: combined cards when jobs are next to each other.
-- **Coming up**: what's about to need you (food nearly ready, a course about to finish, a bill about to be asked for).
+- **Coming up**: what's about to need you (food nearly ready, a course about to finish, a bill about to be asked for). When three or more land within a few minutes it warns of a **busy patch** first ("Busy patch in about 4 min: 3 things land together. Do the quick jobs now").
 - **"What do I say?"** on guest-facing cards (greeting, delay, dish unavailable, goodbye) writes a gracious line to say at the table.
 - **Brief me**: a rundown of your section (allergies, regulars, occasions, anything the kitchen is behind on).
 - **My section**: a top-down floor plan (see below).
@@ -156,6 +171,7 @@ Phones get bottom tabs; tablets and laptops get a side rail with cards, the floo
 **Tables tab**
 - **Floor plan**: the section drawn as a room (kitchen pass at the top, entrance at the bottom), each table to size with chairs, its open-task count, flags for allergies, needs and occasions, visit progress traced around the edge, and the last mood.
 - **Tap a table** for **Now** (every open task with its buttons), **Coming up**, **the order** (forecast ready times and safety flags) and **Done so far** (a timeline of the visit).
+- **Guest upset? Get help**: on any seated table. TableMate reads the table's real situation (how long they've waited, which course is late and its likely ready time, what ran out, allergies, the last check-in, whether the manager has been asked) and gives a line to say plus two to four steps. With no AI connected, a built-in composer works out the likely cause from the same facts.
 - **Guest list** with each party's needs, written as what to do ("hard of hearing: face them, speak clearly, offer to write").
 
 **Kitchen tab**
@@ -167,6 +183,7 @@ Phones get bottom tabs; tablets and laptops get a side rail with cards, the floo
 - **Combo** for consecutive on-time actions, **badges** (several reachable on the first shift) and **tonight's quests**.
 - **Kudos** to and from teammates.
 - **Practice tough moments** (see 5.6).
+- **My learning journey** (private): practice grouped into skills (putting things right, delays and changes, allergy safety, inclusive service) with first and latest scores and a trend; **practice suggested from your real shift** ("2 of your tables waited on the kitchen tonight" → practise *Long wait*), opening straight into that role-play; and **your focus this shift**, one floor habit from your own steps that most often ran past standard (kitchen delays never count against you).
 - **Private coach**: one tip drawn from your own shift, visible only to you.
 - **Wrap up my shift**: a private debrief showing where your time went step by step against the standard, your strongest step, the one to work on, safety catches, tables won back and a coaching tip.
 - **Profile editor**: photo (cropped and shrunk on the device), illustrated avatar and colour, display name, pronouns, languages spoken.
@@ -199,7 +216,11 @@ Phones get bottom tabs; tablets and laptops get a side rail with cards, the floo
 - **Kitchen stations**: tickets, how many past standard and by how much.
 - **Suggestions**: e.g. a section over its table limit.
 - **Guest mood and safety tonight**, **team goal and recognition** (kudos), **shift summary** (AI, in plain English) and **delay receipts** (each recent visit as a bar of steps, coloured by owner).
-- **Ask TableMate** for managers (see 5.6).
+- **Why is this happening?**: three lights (guests, kitchen, floor), lost time split between kitchen and floor, the biggest bottleneck (a stage or a station), the 15-minute window when it bunched up and how many tickets fired around then, and what would help.
+- **Next 15 minutes**: each station's forecast (dishes cooking, courses about to be ordered, likely extra wait, tonight's record) and each section's load (cards open plus food landing), with a rebalancing idea by section ("Ask section A to run section B's food from the pass, and seat the next party in section C").
+- **What happened**: open any delay receipt, or a live table, for a step-by-step reconstruction: each step against its standard and who controlled it, the biggest delay, time lost by kitchen vs floor, what would have helped, and "Tell me the story" for an AI narrative.
+- **What if…?**: runs 2½ hours of service three times in a sandbox, as it is and with one change, with the same guests both ways (seeded), and compares guests seated, food wait, kitchen and floor steps past standard, the most tables one server had, and parties who gave up waiting, with recommendations. Live service is never touched.
+- **Ask TableMate** for managers (see 5.6). It also answers "Why is service slow tonight?", "What happens in the next 15 minutes?" and "What if we add a second grill cook?" (from a simulation).
 - **No individual rankings, anywhere.** Personal scores stay on each server's own phone.
 
 ### 5.6 Ask TableMate: the AI trainer and coach
@@ -278,6 +299,12 @@ TableMate uses AI for language and coaching, and plain rules for anything safety
 | Kitchen ready times | Statistics: tonight's prep times + station queues | Honest estimates that improve through the night |
 | Delay attribution (floor vs kitchen) | Rules on who controlled each step | Fairness must be auditable |
 | "What do I say?", briefings, shift summary, coach tip | Language model, fed only facts the engine built | Natural wording; the facts stay correct |
+| Why this first | Rules: the same factors the ranking uses, said in words | Explainable priorities |
+| Forecasts (stations, sections, busy patches) | Statistics: the queue model behind the ETAs, courses about to be ordered, tonight's station record | Early warnings that can be checked |
+| Why is this happening? / What happened | Rules on measured steps and owners; a language model only tells the story | Explanations that are auditable and fair |
+| Guest upset? Get help | Facts from the table's state; a language model writes the line and steps (built-in composer otherwise) | Help that fits the real situation |
+| What if…? | Simulation: the same evening run both ways with the same random seed | Compare options before deciding |
+| Learning journey | Rules on the person's own practice scores and shift | Private, specific practice suggestions |
 | Ask TableMate | Language model with the standards, menu, training notes and live context; checked menu facts added | Expert answers in any language |
 | Practice role-plays | Language model plays the part and scores; blended with a rule-based rubric | Realistic, multilingual and hard to game |
 | Built-in trainer (no AI connected) | Rules and written content in six languages | Every button always works |
@@ -419,6 +446,8 @@ Being honest about what is not done yet:
 
 Ideas for taking TableMate further. Each keeps the same rules: AI for language, coaching and suggestions; rules for safety and fairness; nothing that ranks or watches people.
 
+Already built from this list: next best action with reasons, busy-patch and station forecasts, section rebalancing, incident reconstruction, "why is this happening", complaint help, the private learning journey and what-if planning (see section 3, *Assist, Predict, Explain, Learn*).
+
 ### For servers
 
 | Idea | How it would work | Value | Effort |
@@ -501,15 +530,17 @@ Ideas for taking TableMate further. Each keeps the same rules: AI for language, 
 - [ ] A menu editor (dishes, stations, prep times, ingredient tags)
 - [ ] Preferences that follow the person between devices
 - [ ] Offline mode and install as an app (PWA)
-- [ ] Practice history: progress over weeks for the person (private)
+- [x] Practice history: progress over time for the person (private learning journey; kept for the service, not yet across weeks)
 
 ### Could (from the roadmap)
 
 - [ ] Hands-free voice commands
 - [ ] Live guest translation
 - [ ] Spoken practice
-- [ ] Personalised micro-learning from practice gaps
-- [ ] Manager "ask your data"
+- [x] Personalised micro-learning from practice gaps (practice suggested from the real shift)
+- [x] Live section balancing (by load, in "Next 15 minutes")
+- [x] What-if planning (sandbox simulation)
+- [ ] Manager "ask your data" (partly: "why", "next 15 minutes" and "what if" questions)
 - [ ] Allergen-aware guest menu
 - [ ] Anonymous team pulse
 

@@ -205,7 +205,7 @@ export interface RelatedTask {
 /** Something the copilot expects soon, shown quietly so the server can get ahead of it. */
 export interface Upcoming {
   id: string
-  kind: 'food_ready' | 'course_end' | 'bill_soon'
+  kind: 'food_ready' | 'course_end' | 'bill_soon' | 'crunch'
   tableId: string
   tableName: string
   at: number

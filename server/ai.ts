@@ -6,13 +6,15 @@ import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '.
 import { dishesNamed } from '../shared/dishNames.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
 import { MAX_REPLIES, moodFor, type Mood, type Outcome, patienceAfter, PATIENCE_MAX, practiceDebrief, practiceStep, scenarioById, scenarioOpening, type Score, scoreReply, starsFor } from '../shared/practice.ts'
+import { forecast, liveVisit as liveVisitOf, reconstructVisit, shiftIntel } from '../shared/intel.ts'
 import { predictReady } from '../shared/predict.ts'
 import { menuForNeed, safetyIssues } from '../shared/safety.ts'
 import { istClock } from '../shared/time.ts'
 import { type Audience, findLessons, type Lesson, lessonsFor, MANAGER_STARTERS, STARTERS } from '../shared/training.ts'
 import type { Hub } from './hub.ts'
+import { parseWhatIf, runWhatIf, whatIfText } from './whatif.ts'
 
-export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat'
+export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat' | 'complaint' | 'incident'
 
 /** One message in the assistant chat. In practice mode the guest's lines are the assistant's. */
 export type AiProvider = 'claude' | 'ollama' | 'dify' | 'built-in'
@@ -61,6 +63,9 @@ export interface AiRequest {
   finish?: boolean
   /** The person asked for simple, everyday words. */
   simple?: boolean
+  /** Complaint help: the table. Incident story: the visit. */
+  tableId?: string
+  visitId?: string
 }
 
 /** Language names for the prompt; unknown codes fall back to English. */
@@ -146,7 +151,10 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       }
       case 'shift_summary': {
         const a = analytics(hub.state, cfg)
+        const intel = shiftIntel(hub.state, cfg)
         const facts = [
+          ...intel.why.map((w) => `Why: ${w}`),
+          ...forecast(hub.state, cfg, now, hub.tasks(now)).headlines.map((h) => `Next 15 min: ${h}`),
           `Tables completed: ${a.visits}; served fully to standard: ${a.smoothRate == null ? 'n/a' : Math.round(a.smoothRate * 100) + '%'}`,
           `Lapses past standard: floor-controlled ${a.lapsesByOwner.floor}, kitchen ${a.lapsesByOwner.kitchen}`,
           ...a.stages.filter((s) => s.count).map((s) => `${s.label} (${s.owner}): avg ${s.avgMin} min vs standard ${s.avgTargetMin} min, ${Math.round(s.lapseRate * 100)}% late`),
@@ -158,7 +166,34 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             `Write an end-of-shift summary for the restaurant manager in 4-6 sentences. Focus on process bottlenecks ` +
             `(stages, stations, staffing) and one or two concrete actions for next service. Never single out or rank ` +
             `individual staff.\n\nFacts:\n${facts.map((f) => `- ${f}`).join('\n')}`,
-          fallback: shiftSummaryFallback(a),
+          fallback: a.visits || intel.bottleneck ? [intel.why.join(' '), intel.actions.length ? `Next: ${intel.actions.join(' ')}` : ''].filter(Boolean).join('\n\n') : shiftSummaryFallback(a),
+        }
+      }
+      case 'complaint': {
+        const t = req.tableId ? hub.state.tables[req.tableId] : undefined
+        if (!t?.visitId) throw new AiError('That table has no guests right now.')
+        const facts = complaintFacts(hub, t, now)
+        return {
+          prompt:
+            `A guest at ${t.name} is unhappy and ${name(req.staffId)}, their server, needs help right now. Using only these facts, write:\n` +
+            `SAY: one or two sentences the server can say to the guest now (a sincere apology, what they will do, and a time if one is known; never blame the kitchen or a colleague; never guess about allergens)\n` +
+            `DO: two to four short steps, most important first.\nKeep it calm and practical.\n\nFacts:\n${facts.join('\n')}`,
+          fallback: complaintFallback(hub, t, now),
+          parse: (answer: string) => ({ text: answer.replace(/\*\*(SAY|DO):?\*\*:?/gi, '$1:').trim() }),
+        }
+      }
+      case 'incident': {
+        const v = hub.state.visits.find((x) => x.visitId === req.visitId)
+        const liveT = v ? undefined : Object.values(hub.state.tables).find((x) => x.visitId && x.visitId === req.visitId)
+        const visit = v ?? (liveT ? liveVisitOf(liveT, cfg, now) : null)
+        if (!visit) throw new AiError('That visit is no longer on record.')
+        const r = reconstructVisit(visit, cfg, !v)
+        return {
+          prompt:
+            `Explain to the restaurant manager what happened at this table, in 3-5 plain sentences, in time order. Say which steps ran ` +
+            `past standard and who controlled each (kitchen or floor). Never blame or judge a person; talk about steps, stations and load. ` +
+            `End with one process change that would have helped.\n\nFacts:\n${[...r.story, ...r.helped.map((h) => `Would have helped: ${h}`)].map((f) => `- ${f}`).join('\n')}`,
+          fallback: [r.story.join(' '), ...(r.helped.length ? [`What would help: ${r.helped.join(' ')}`] : [])].join('\n\n'),
         }
       }
       case 'coach': {
@@ -246,6 +281,9 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     // A diet or allergy list worked out from the ingredient tags, so every model answers from facts.
     const asked = practice ? '' : turns.at(-1)!.text
     const forNeed = asked ? menuForNeed(asked, cfg.menu) : null
+    // A manager's "what if…": run it in the sandbox so the answer comes from a simulation, not a guess.
+    const whatIf = manager && asked ? parseWhatIf(asked, cfg) : null
+    const whatIfRun = whatIf ? runWhatIf(cfg, whatIf) : null
     const live = [
       'Live context (changes every message):',
       `- Asking: ${name(req.staffId)}${pronouns(req.staffId) ? ` (${pronouns(req.staffId)})` : ''}, ${manager ? 'the floor manager' : 'a server'}`,
@@ -265,6 +303,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
           ]
         : [manager ? '- Mode: ASK. Answer as their operations coach and peer.' : '- Mode: ASK. Answer as their expert trainer and colleague.']),
       ...(forNeed ? ['- Checked from the menu’s ingredient tags for this question (use exactly this; do not add dishes):', ...forNeed.split('\n').map((l) => `  ${l}`)] : []),
+      ...(whatIfRun ? ['- Simulation for this question (use these results; say they come from a simulation):', ...whatIfText(whatIfRun).split('\n').map((l) => `  ${l}`)] : []),
       manager ? '- The floor right now (seated tables):' : '- Their section right now:',
       ...briefingFacts(mine, cfg, hub.state.unavailable, now),
       ...(manager ? floorFacts(hub, now) : []),
@@ -374,6 +413,19 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       return {
         text: [`Tonight so far: ${seated.length} of ${Object.keys(hub.state.tables).length} tables seated.`, ...facts.map((f) => `• ${f.replace(/^- /, '')}`), '', how.answer].join('\n'),
         suggestions: how.next,
+      }
+    }
+    if (audience === 'manager') {
+      const w = parseWhatIf(question, cfg)
+      if (w) return { text: whatIfText(runWhatIf(cfg, w)), suggestions: ['What if we’re 30% busier?', 'What if we add a second grill cook?', 'Why is service slow tonight?'] }
+      if (/\bwhy\b|what('?s| is) (going on|happening|wrong)|went wrong|bottleneck|slow|behind/.test(q)) {
+        const intel = shiftIntel(hub.state, cfg)
+        return { text: [...intel.why, '', ...intel.actions.map((x) => `• ${x}`)].join('\n').trim(), suggestions: ['What happens in the next 15 minutes?', 'What if we add a second grill cook?'] }
+      }
+      if (/forecast|next (15|fifteen|half|few)|predict|coming up|about to|going to/.test(q)) {
+        const f = forecast(hub.state, cfg, now, hub.tasks(now))
+        const lines = f.headlines.length ? f.headlines : ['Nothing looks likely to fall behind in the next 15 minutes.', ...f.stations.slice(0, 2).map((x) => x.text)]
+        return { text: lines.map((x) => `• ${x}`).join('\n'), suggestions: ['Why is service slow tonight?', 'What if we’re 30% busier?'] }
       }
     }
     if (audience === 'server' && /brief|my section|my tables|section|tables right now/.test(q)) {
@@ -696,6 +748,8 @@ function floorFacts(hub: Hub, now: number): string[] {
     out.push(`- Section ${section}: ${l?.activeTables ?? 0} active tables${l?.overloaded ? ` (over the limit of ${cfg.sop.maxActiveTablesPerServer})` : ''}`)
   }
   for (const r of a.managerRequests) out.push(`- NEEDS YOU: a server asked you to visit ${r.tableName}`)
+  for (const h of forecast(hub.state, cfg, now, hub.tasks(now)).headlines) out.push(`- Next 15 min: ${h}`)
+  for (const w of shiftIntel(hub.state, cfg).why.slice(0, 2)) out.push(`- Tonight so far: ${w}`)
   for (const t of Object.values(hub.state.tables)) {
     if (!t.visitId) continue
     const clash = t.lines.filter((l) => !l.safetyResolvedAt && l.status !== 'served' && l.status !== 'unavailable' && safetyIssues(cfg.menu.find((m) => m.id === l.menuItemId), t.party).length)
@@ -803,4 +857,73 @@ function practiceBuiltIn(scenarioId: string, replies: ChatTurn[], lang: string |
     outcome: step.outcome,
     done: step.done,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Complaint help: what is really going on at the table, and what to say.
+
+function complaintFacts(hub: Hub, t: TableState, now: number): string[] {
+  const cfg = hub.config
+  const out: string[] = []
+  const seated = t.seatedAt ? Math.round((now - t.seatedAt) / MIN) : null
+  out.push(`- ${t.name}: party of ${t.party?.size ?? '?'}${t.party?.guestName ? ` (${t.party.guestName})` : ''}${seated !== null ? `, seated ${seated} min ago` : ''}${t.party?.vip ? ', regulars' : ''}${t.party?.occasion ? `, celebrating a ${t.party.occasion}` : ''}`)
+  if (t.party?.allergies.length) out.push(`- Allergies: ${t.party.allergies.join(', ')} (never guess; confirm with the kitchen)`)
+  for (const n of t.party?.needs ?? []) out.push(`- Guest need: ${NEED_BRIEF[n] ?? n}`)
+  const byCourse = new Map<string, typeof t.lines>()
+  for (const l of t.lines) byCourse.set(l.course, [...(byCourse.get(l.course) ?? []), l])
+  for (const [course, lines] of byCourse) {
+    const fired = lines.filter((l) => l.status === 'fired')
+    const ready = lines.filter((l) => l.status === 'ready')
+    const off = lines.filter((l) => l.status === 'unavailable')
+    if (fired.length) {
+      const eta = Math.max(...fired.map((l) => predictReady(hub.state, cfg, l, now)))
+      const late = Math.max(...fired.map((l) => now - l.expectedReadyAt))
+      out.push(`- ${course}s cooking (${fired.map((l) => l.name).join(', ')}): ordered ${Math.round((now - Math.min(...fired.map((l) => l.firedAt))) / MIN)} min ago, ${late > 0 ? `${Math.round(late / MIN)} min past the usual time, ` : ''}likely ready in about ${Math.max(1, Math.round((eta - now) / MIN))} min${fired.some((l) => l.delayInformedAt) ? '; guests were already told about the delay' : ''}`)
+    }
+    if (ready.length) out.push(`- ${course}s READY at the pass now (${ready.map((l) => l.name).join(', ')}), waiting ${Math.round((now - Math.min(...ready.map((l) => l.readyAt ?? now))) / MIN)} min`)
+    const served = lines.filter((l) => l.servedAt)
+    if (served.length) out.push(`- ${course}s served ${Math.round((now - Math.max(...served.map((l) => l.servedAt!))) / MIN)} min ago (${served.map((l) => l.name).join(', ')})`)
+    if (off.length) out.push(`- Ran out: ${off.map((l) => l.name).join(', ')}${off.some((l) => l.unavailableInformedAt) ? ' (guests were told)' : ' (guests not told yet)'}`)
+  }
+  if (!t.lines.length) out.push(`- No order yet${t.greetedAt ? `; greeted ${Math.round((now - t.greetedAt) / MIN)} min ago` : '; not greeted yet'}`)
+  if (t.mood) out.push(`- At the last check-in (${Math.round((now - t.mood.at) / MIN)} min ago) they were ${t.mood.value}${t.recoveredAt ? ', and were won back' : ''}`)
+  if (t.lastAttentionAt) out.push(`- Last time someone was at the table: ${Math.round((now - t.lastAttentionAt) / MIN)} min ago`)
+  if (t.billRequestedAt && !t.billPresentedAt) out.push(`- Asked for the bill ${Math.round((now - t.billRequestedAt) / MIN)} min ago and still waiting`)
+  out.push(t.managerRequestedAt ? `- The manager was asked to visit ${Math.round((now - t.managerRequestedAt) / MIN)} min ago${t.managerVisitedAt && t.managerVisitedAt >= t.managerRequestedAt ? ' and has been' : ''}` : '- The manager is on the floor and can be asked to visit')
+  return out
+}
+
+/** The built-in answer: the likely cause from the table's own facts, a line to say, and the steps. */
+function complaintFallback(hub: Hub, t: TableState, now: number): string {
+  const cfg = hub.config
+  const who = t.party?.guestName ? `${t.party.guestName}, ` : ''
+  const fired = t.lines.filter((l) => l.status === 'fired')
+  const ready = t.lines.filter((l) => l.status === 'ready')
+  const off = t.lines.filter((l) => l.status === 'unavailable' && !l.unavailableInformedAt)
+  const steps: string[] = []
+  let say: string
+  if (ready.length) {
+    say = `${who}I’m so sorry for the wait. Your ${ready[0].course} is ready right now; I’m bringing it straight over.`
+    steps.push('Take the food from the pass now.', 'Check back two minutes after it lands.')
+  } else if (fired.length) {
+    const eta = Math.max(1, Math.round((Math.max(...fired.map((l) => predictReady(hub.state, cfg, l, now))) - now) / MIN))
+    say = `${who}I’m really sorry about the wait for your ${fired[0].course}. I’ve checked with the kitchen and it will be with you in about ${eta} minutes. I’ll bring it the moment it’s ready.`
+    steps.push('Tell the kitchen this table is unhappy and ask them to prioritise it (Kitchen tab).', 'Offer something while they wait, like bread or a drink, if your manager allows.', 'Go back as soon as the food lands, and check in two minutes later.')
+  } else if (off.length) {
+    const alt = cfg.menu.filter((m) => m.course === off[0].course && m.id !== off[0].menuItemId && hub.state.unavailable[m.id] === undefined).slice(0, 2).map((m) => m.name)
+    say = `${who}I’m very sorry: the ${off[0].name} has just run out tonight.${alt.length ? ` May I suggest the ${alt.join(' or the ')}? I can have it fired straight away.` : ''}`
+    steps.push('Offer two alternatives and fire the new choice at once.', 'Tell the kitchen it’s a replacement so it goes to the front.')
+  } else if (t.lines.some((l) => l.servedAt)) {
+    say = `${who}I’m sorry it isn’t right. Could you tell me what’s wrong? I can have it remade or bring you something else straight away.`
+    steps.push('Listen fully before you answer; don’t explain or defend.', 'Offer to remake it or bring an alternative, and tell the kitchen why.', 'Mark how it went at your next check-in.')
+  } else if (!t.lines.length) {
+    say = `${who}I’m so sorry to keep you waiting. Are you ready to order, or can I help you choose?`
+    steps.push('Take the order now and fire it.', 'Say roughly how long the first course will take.')
+  } else {
+    say = `${who}I’m sorry, I want to put this right. What can I do for you?`
+    steps.push('Listen fully, apologise once, and agree a next step with a time.')
+  }
+  if (t.party?.allergies.length) steps.push(`Don’t guess about their ${t.party.allergies.join(', ')} allergy: confirm any new dish with the kitchen.`)
+  steps.push(t.managerRequestedAt ? 'The manager has been asked; let the guests know they are on the way.' : 'If they are still unhappy, ask the manager to visit (Ask manager on the table).')
+  return `Say: “${say}”\n\nThen:\n${steps.slice(0, 4).map((x, i) => `${i + 1}. ${x}`).join('\n')}`
 }
