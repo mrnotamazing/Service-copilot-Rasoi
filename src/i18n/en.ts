@@ -595,6 +595,8 @@ export const en = {
   'chat.finish': "Finish and get feedback",
   'chat.debrief': "Your feedback",
   'chat.new': "New chat",
+  'chat.failed': "Couldn’t get an answer. Check the connection and try again.",
+  'chat.tryAgain': "Try again",
   'chat.s1': "Brief me on my section",
   'chat.s2': "How do I handle a complaint?",
   'chat.s3': "What’s in the galouti kebab?",

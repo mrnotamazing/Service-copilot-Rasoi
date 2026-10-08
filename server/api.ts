@@ -138,7 +138,15 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         : undefined
       const mode = body.mode === 'practice' ? 'practice' : body.mode === 'ask' ? 'ask' : undefined
       const req: AiRequest = { kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true }
-      const answer = await ai.ask(req, onText)
+      let answer: Awaited<ReturnType<typeof ai.ask>>
+      try {
+        answer = await ai.ask(req, onText)
+      } catch (e) {
+        if (e instanceof AiError) throw e
+        // Never show staff a crash: log it, and answer with a calm, useful line instead.
+        console.error('AI request failed', e)
+        answer = { text: req.mode === 'practice' ? 'Sorry, that turn didn’t go through. Please send your reply again.' : 'Sorry, I couldn’t answer that just now. Please ask again, or try one of the suggestions.', source: 'built-in', notice: 'Something went wrong on our side.' }
+      }
       // Practice is training: each scored reply, and the finish, earns XP (capped per day by the game).
       if (kind === 'chat' && mode === 'practice' && req.staffId && req.scenario && typeof answer.score === 'number' && hub.game.players[req.staffId]) {
         const before = hub.game.players[req.staffId].xp

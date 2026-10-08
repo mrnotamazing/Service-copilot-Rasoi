@@ -7,7 +7,7 @@ import { dishesNamed } from '../shared/dishNames.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
 import { MAX_REPLIES, moodFor, type Mood, type Outcome, patienceAfter, PATIENCE_MAX, practiceDebrief, practiceStep, scenarioById, scenarioOpening, type Score, scoreReply, starsFor } from '../shared/practice.ts'
 import { predictReady } from '../shared/predict.ts'
-import { safetyIssues } from '../shared/safety.ts'
+import { menuForNeed, safetyIssues } from '../shared/safety.ts'
 import { istClock } from '../shared/time.ts'
 import { type Audience, findLessons, type Lesson, lessonsFor, MANAGER_STARTERS, STARTERS } from '../shared/training.ts'
 import type { Hub } from './hub.ts'
@@ -239,9 +239,13 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     // Practice: every reply so far, its score (the app sends back what each one got) and the other side's patience.
     const replies = turns.filter((t) => t.role === 'user')
     const rubric = sc ? replies.map((t) => scoreReply(sc.id, t.text, req.lang)) : []
-    const past = replies.slice(0, -1).map((t, i) => ({ score: t.score ?? rubric[i].score, penalty: rubric[i].penalty }))
+    // (Questions aren't scored: this only applies to role-plays.)
+    const past = sc ? replies.slice(0, -1).map((t, i) => ({ score: t.score ?? rubric[i].score, penalty: rubric[i].penalty })) : []
     const patienceBefore = patienceAfter(past).patience
     const opening = practice && !replies.length
+    // A diet or allergy list worked out from the ingredient tags, so every model answers from facts.
+    const asked = practice ? '' : turns.at(-1)!.text
+    const forNeed = asked ? menuForNeed(asked, cfg.menu) : null
     const live = [
       'Live context (changes every message):',
       `- Asking: ${name(req.staffId)}${pronouns(req.staffId) ? ` (${pronouns(req.staffId)})` : ''}, ${manager ? 'the floor manager' : 'a server'}`,
@@ -260,6 +264,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
                 : `- Score ${asker}'s last reply against the practice rubric, then answer as the ${other}. Write COACH, IDEAL and GUEST in ${language}; keep the labels in English. Format exactly:\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <what an excellent ${manager ? 'manager' : 'server'} would have said instead, 1-2 sentences>\nGUEST: <the ${other}'s next line, in character>`,
           ]
         : [manager ? '- Mode: ASK. Answer as their operations coach and peer.' : '- Mode: ASK. Answer as their expert trainer and colleague.']),
+      ...(forNeed ? ['- Checked from the menu’s ingredient tags for this question (use exactly this; do not add dishes):', ...forNeed.split('\n').map((l) => `  ${l}`)] : []),
       manager ? '- The floor right now (seated tables):' : '- Their section right now:',
       ...briefingFacts(mine, cfg, hub.state.unavailable, now),
       ...(manager ? floorFacts(hub, now) : []),
@@ -269,7 +274,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     if (practice && req.finish) apiTurns.push({ role: 'user', text: '(Finish the practice and give me my debrief.)' })
     else if (practice && apiTurns.at(-1)?.role === 'assistant') apiTurns.push({ role: 'user', text: '(Continue.)' })
     const builtIn = practice ? practiceBuiltIn(sc!.id, replies, req.lang, !!req.finish) : askBuiltIn(turns.at(-1)!.text, req, now, audience)
-    const facts = practice ? [] : dishesNamed(turns.at(-1)!.text, cfg.menu).slice(0, 2).map(dishFacts)
+    const facts = practice ? [] : forNeed ? [forNeed] : dishesNamed(asked, cfg.menu).slice(0, 2).map(dishFacts)
     return {
       facts,
       prompt: `${stableSystem(cfg, audience)}\n\n${live}\n\nConversation so far:\n${apiTurns.map((t) => `${t.role === 'user' ? (manager ? 'MANAGER' : 'SERVER') : practice ? other.toUpperCase() : 'TABLEMATE'}: ${t.text}`).join('\n')}`,
@@ -377,15 +382,12 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     }
     const dish = dishesNamed(question, cfg.menu)[0]
     if (dish) return { text: dishFacts(dish), suggestions: ['How do I describe a dish well?', 'How do I handle allergies?'] }
-    if (/vegan dishes|which dishes|onion or garlic|contain/.test(q)) {
-      const tag = /onion|garlic|jain/.test(q) ? 'root' : /vegan/.test(q) ? null : null
-      const list = cfg.menu.filter((m) => (tag ? m.contains?.includes(tag) : !m.contains?.some((c) => ['meat', 'fish', 'shellfish', 'dairy', 'egg', 'honey'].includes(c))))
-      return {
-        text: list.length
-          ? `${tag ? 'Contain onion, garlic or root vegetables' : 'No animal products listed'}: ${list.map((m) => m.name).join(', ')}. Always confirm with the kitchen.`
-          : 'None on tonight’s menu by the ingredient list. Ask the kitchen what they can adapt.',
-        suggestions: ['Explain Jain food', 'How do I handle allergies?'],
-      }
+    // Diet or allergy lists come from the ingredient tags, never a guess.
+    const forNeed = menuForNeed(question, cfg.menu)
+    if (forNeed) return { text: forNeed, suggestions: ['How do I handle allergies?', 'Explain Jain food'] }
+    if (/onion or garlic|contain/.test(q)) {
+      const list = cfg.menu.filter((m) => m.contains?.includes('root'))
+      return { text: list.length ? `Contain onion, garlic or root vegetables: ${list.map((m) => m.name).join(', ')}. Always confirm with the kitchen.` : 'None on tonight’s menu by the ingredient list.', suggestions: ['Explain Jain food', 'How do I handle allergies?'] }
     }
     const lessons = findLessons(question, 2, audience)
     if (lessons.length) return { text: lessons.map((l, i) => (i === 0 ? l.answer : `Also: ${l.answer}`)).join('\n\n'), suggestions: lessons[0].next }

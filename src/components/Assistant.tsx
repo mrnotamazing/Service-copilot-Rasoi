@@ -121,6 +121,8 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** The request that failed, so "Try again" can resend it exactly. */
+  const [retry, setRetry] = useState<{ history: Message[]; finish: boolean } | null>(null)
   /** The answer so far while it's being written (questions only; role-play turns arrive whole). */
   const [streaming, setStreaming] = useState<string | null>(null)
   const end = useRef<HTMLDivElement>(null)
@@ -133,6 +135,7 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
   async function call(history: Message[], finish = false) {
     setBusy(true)
     setError(null)
+    setRetry(null)
     try {
       const ask = practice ? (path: string, body: unknown) => post<AiAnswer>(path, body) : (path: string, body: unknown) => postStream<AiAnswer>(path, body, setStreaming)
       const a = await ask('/api/ai', {
@@ -163,7 +166,11 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
       // When they've been won over (or lost), the summary follows on its own.
       if (practice && !finish && a.done) void call(next, true)
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('toast.error'))
+      // A request the app understood but refused (e.g. "Pick a situation") says why; anything else
+      // (network, server) gets a plain message and a retry, never a raw error.
+      const msg = e instanceof Error ? e.message : ''
+      setError(/^(Pick a situation|Type a message|Unknown kind)/.test(msg) ? msg : t('chat.failed'))
+      setRetry({ history, finish })
     } finally {
       setStreaming(null)
       setBusy(false)
@@ -221,7 +228,16 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
             <Loader2 className="size-4 animate-spin" /> {practice && messages.length === 0 ? t('chat.guestArriving') : t('chat.thinking')}
           </div>
         )}
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && (
+          <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <span className="min-w-0 flex-1">{error}</span>
+            {retry && (
+              <Button size="sm" variant="outline" className="h-8 rounded-full" disabled={busy} onClick={() => void call(retry.history, retry.finish)}>
+                <RotateCcw /> {t('chat.tryAgain')}
+              </Button>
+            )}
+          </div>
+        )}
         {showSuggestions ? (
           <div className="flex flex-wrap gap-1.5">
             {last!.suggestions!.map((s) => (

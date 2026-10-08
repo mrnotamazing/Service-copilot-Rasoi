@@ -574,6 +574,8 @@ export const es: Record<Key, string> = {
   'chat.finish': "Terminar y ver mi feedback",
   'chat.debrief': "Tu feedback",
   'chat.new': "Nuevo chat",
+  'chat.failed': "No se pudo obtener respuesta. Revisa la conexión e inténtalo de nuevo.",
+  'chat.tryAgain': "Reintentar",
   'chat.s1': "Resúmeme mi sección",
   'chat.s2': "¿Cómo gestiono una queja?",
   'chat.s3': "¿Qué lleva el galouti kebab?",
