@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { en } from '../i18n/en.ts'
-import { post } from '../lib/live.ts'
+import { post, postStream } from '../lib/live.ts'
 import { getPrefs, setPrefs, usePrefs, type Lang } from '../lib/prefs.ts'
 import { speak } from '../lib/speech.ts'
 
@@ -121,18 +121,21 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** The answer so far while it's being written (questions only; role-play turns arrive whole). */
+  const [streaming, setStreaming] = useState<string | null>(null)
   const end = useRef<HTMLDivElement>(null)
   const practice = mode === 'practice'
   // Who the other side of a role-play is: a guest, or (for some manager situations) a team member.
   const other: Key = SCENARIOS.find((x) => x.id === scenario)?.plays === 'staff' ? 'practice.staff' : 'practice.guest'
 
-  useEffect(() => end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), [messages, busy])
+  useEffect(() => end.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth', block: 'end' }), [messages, busy, streaming])
 
   async function call(history: Message[], finish = false) {
     setBusy(true)
     setError(null)
     try {
-      const a = await post<AiAnswer>('/api/ai', {
+      const ask = practice ? (path: string, body: unknown) => post<AiAnswer>(path, body) : (path: string, body: unknown) => postStream<AiAnswer>(path, body, setStreaming)
+      const a = await ask('/api/ai', {
         kind: 'chat',
         mode,
         scenario,
@@ -162,6 +165,7 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
     } catch (e) {
       setError(e instanceof Error ? e.message : t('toast.error'))
     } finally {
+      setStreaming(null)
       setBusy(false)
     }
   }
@@ -205,7 +209,14 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
         {messages.map((m, i) => (
           <Bubble key={i} m={m} practice={practice} other={other} all={messages} />
         ))}
-        {busy && (
+        {busy && streaming ? (
+          <div className="flex flex-col items-start">
+            <div className="max-w-[88%] rounded-2xl rounded-bl-md bg-secondary px-3 py-2 text-sm">
+              <Lines text={streaming} />
+              <span className="mt-0.5 inline-block h-3.5 w-1.5 animate-pulse rounded-sm bg-primary/60 align-middle" aria-hidden />
+            </div>
+          </div>
+        ) : busy && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" /> {practice && messages.length === 0 ? t('chat.guestArriving') : t('chat.thinking')}
           </div>

@@ -14,8 +14,9 @@ export function createClaude(): ChatModel {
   return {
     name: 'claude',
     label: () => MODEL,
-    async reply(system, turns: ChatTurn[]) {
-      const response = await client.beta.messages.create({
+    async reply(system, turns: ChatTurn[], onText) {
+      // Streamed, so the answer appears on screen as it's written.
+      const stream = client.beta.messages.stream({
         model: MODEL,
         max_tokens: 4000,
         // Short, practical answers for staff between tables: low effort keeps them quick.
@@ -29,6 +30,8 @@ export function createClaude(): ChatModel {
         ],
         messages: turns.map((t) => ({ role: t.role, content: t.text })),
       })
+      if (onText) stream.on('text', (_delta, snapshot) => onText(snapshot))
+      const response = await stream.finalMessage()
       if (response.stop_reason === 'refusal') throw new Error('The assistant can’t help with that request')
       const text = response.content
         .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')

@@ -120,7 +120,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
   return {
     snapshot,
     /** AI assistance (async: may call Dify). Throws AiError for a bad request. */
-    async ask(body: ApiBody) {
+    async ask(body: ApiBody, onText?: (text: string) => void) {
       const kind = AI_KINDS.find((k) => k === body.kind)
       if (!kind) throw new AiError('Unknown kind of AI request.')
       const str = (v: unknown) => (typeof v === 'string' ? v.slice(0, 500) : undefined)
@@ -138,7 +138,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         : undefined
       const mode = body.mode === 'practice' ? 'practice' : body.mode === 'ask' ? 'ask' : undefined
       const req: AiRequest = { kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true }
-      const answer = await ai.ask(req)
+      const answer = await ai.ask(req, onText)
       // Practice is training: each scored reply, and the finish, earns XP (capped per day by the game).
       if (kind === 'chat' && mode === 'practice' && req.staffId && req.scenario && typeof answer.score === 'number' && hub.game.players[req.staffId]) {
         const before = hub.game.players[req.staffId].xp

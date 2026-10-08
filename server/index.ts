@@ -120,6 +120,17 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       }
       const body = req.method === 'POST' ? await readJson(req) : {}
       if (req.method === 'POST' && (typeof body !== 'object' || body === null || Array.isArray(body))) throw new AdapterError('Expected a JSON object')
+      // The same, streamed: one JSON line per update ({ text }), then { answer } or { error }.
+      if (req.method === 'POST' && url.pathname === '/api/ai/stream') {
+        res.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no' })
+        try {
+          const answer = await api.ask(body as Record<string, unknown>, (text) => res.write(`${JSON.stringify({ text })}\n`))
+          res.end(`${JSON.stringify({ answer })}\n`)
+        } catch (e) {
+          res.end(`${JSON.stringify({ error: e instanceof Error ? e.message : String(e) })}\n`)
+        }
+        return
+      }
       if (req.method === 'POST' && url.pathname === '/api/ai') {
         try {
           return send(res, 200, await api.ask(body as Record<string, unknown>))

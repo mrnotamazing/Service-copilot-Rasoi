@@ -95,6 +95,38 @@ export async function post<T = unknown>(path: string, body: unknown = {}): Promi
   return data as T
 }
 
+/**
+ * Like `post` for the assistant, but shows the answer while it's written: `onText` gets the whole
+ * answer so far. Falls back to a normal request if streaming isn't available.
+ */
+export async function postStream<T = unknown>(path: string, body: unknown, onText: (text: string) => void): Promise<T> {
+  if (local) return (await local.localPost(path, body as Record<string, unknown>, onText)) as T
+  const res = await fetch(`${path}/stream`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  if (!res.ok || !res.body) return post<T>(path, body)
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  let result: T | undefined
+  const read = (line: string) => {
+    if (!line.trim()) return
+    const msg = JSON.parse(line) as { text?: string; answer?: T; error?: string }
+    if (msg.error) throw new Error(msg.error)
+    if (msg.answer) result = msg.answer
+    else if (msg.text !== undefined) onText(msg.text)
+  }
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop() ?? ''
+    lines.forEach(read)
+  }
+  read(buf)
+  if (!result) throw new Error('The answer was cut off. Try again.')
+  return result
+}
+
 export function act(type: string, payload: Record<string, unknown>, source: 'app' | 'kitchen' | 'manager' = 'app') {
   return post('/api/actions', { type, payload, source })
 }

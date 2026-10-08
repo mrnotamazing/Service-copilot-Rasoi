@@ -9,7 +9,7 @@ import { MAX_REPLIES, moodFor, type Mood, type Outcome, patienceAfter, PATIENCE_
 import { predictReady } from '../shared/predict.ts'
 import { safetyIssues } from '../shared/safety.ts'
 import { istClock } from '../shared/time.ts'
-import { type Audience, findLessons, lessonsFor, MANAGER_STARTERS, STARTERS } from '../shared/training.ts'
+import { type Audience, findLessons, type Lesson, lessonsFor, MANAGER_STARTERS, STARTERS } from '../shared/training.ts'
 import type { Hub } from './hub.ts'
 
 export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat'
@@ -31,10 +31,13 @@ export interface ChatModel {
   available?(): boolean
   /** Small local models can get menu facts wrong: add the menu's own line for any dish the question names. */
   checkFacts?: boolean
+  /** A slower local model: send a compact prompt (only the training notes that matter for this question). */
+  compact?: boolean
   /** Which model is answering, for the Setup page (e.g. "gemma3:4b"). */
   label?(): string | undefined
   /** `reminder` restates the format and length in one line; small local models follow it far better than the long system prompt. */
-  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[]): Promise<string>
+  /** `onText`, when given, receives the whole answer so far as it's written (for streaming to the screen). */
+  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[], onText?: (text: string) => void): Promise<string>
 }
 
 export interface PracticeTurn {
@@ -273,6 +276,14 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       fallback: builtIn.text,
       // Everything the built-in answer knows (score, ideal, mood…) except its text, which is the fallback.
       extra: Object.fromEntries(Object.entries(builtIn).filter(([k]) => k !== 'text')) as Partial<AiAnswer>,
+      // Slower local models get only the notes that matter: for a question, the best matches; for a
+      // role-play, the ones about that situation (the rubric and the scene are in the live part).
+      compact: {
+        stable: stableSystem(cfg, audience, findLessons(practice ? scenarioOpening(sc!.id) : turns.at(-1)!.text, practice ? 2 : 3, audience)),
+        live,
+      },
+      streamable: !practice,
+      instant: opening && !req.finish,
       system: {
         stable: stableSystem(cfg, audience),
         live,
@@ -286,10 +297,15 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       },
       turns: apiTurns,
       parse: practice
-        ? (raw: string) => {
+        ? (raw: string, opts?: { local?: boolean }) => {
             // Smaller models often bold the labels (**COACH:**); read them either way.
             const answer = raw.replace(/\*\*\s*(COACH|GUEST|STARS|SCORE|IDEAL)\s*:?\s*\*\*\s*:?/gi, '$1:')
-            const field = (label: string) => answer.match(new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n\\s*(?:COACH|SCORE|IDEAL|GUEST|STARS):|$)`, 'i'))?.[1]?.trim()
+            // A field the model left as the format's placeholder ("<what worked>", "0-100") counts as missing.
+            const field = (label: string) => {
+              const v = answer.match(new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n\\s*(?:COACH|SCORE|IDEAL|GUEST|STARS):|$)`, 'i'))?.[1]?.trim()
+              if (!v || /<[^>]{2,60}>/.test(v) && v.replace(/<[^>]*>/g, '').trim().length < 12) return undefined
+              return v.replace(/^<|>$/g, '').replace(/^["“](.*)["”]$/s, '$1').trim() || undefined
+            }
             if (req.finish) {
               // Stars follow the scores the replies actually got, so the debrief and the XP agree.
               return { ...builtIn, text: answer.replace(/STARS:\s*[1-3]\s*$/i, '').trim(), feedback: undefined }
@@ -309,10 +325,16 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
                 .trim()
             const ended = /\[END\]/i.test(guest)
             guest = guest.replace(/\[END\]/gi, '').trim()
+            // A small model sometimes repeats the last thing it said; the scripted reaction is better than an echo.
+            const said = turns.filter((t) => t.role === 'assistant').map((t) => t.text.trim())
+            if (said.includes(guest)) guest = ''
             // The model's score, held back where the rubric caught blame, judgement or a safety guess.
             const own = rubric.at(-1)!
-            const modelScore = Number(field('SCORE')?.match(/\d{1,3}/)?.[0])
-            const score = Math.max(0, Math.min(own.penalty ? 40 : 100, Number.isFinite(modelScore) ? modelScore : own.score))
+            const scoreText = field('SCORE')
+            const modelScore = scoreText && !/\d\s*[-–]\s*\d/.test(scoreText) ? Number(scoreText.match(/\d{1,3}/)?.[0]) : NaN
+            // A small local model is a shakier judge: blend its score with the rubric's.
+            const judged = Number.isFinite(modelScore) ? (opts?.local ? Math.round((modelScore + own.score) / 2) : modelScore) : own.score
+            const score = Math.max(0, Math.min(own.penalty ? 40 : 100, judged))
             const state = patienceAfter([...past, { score, penalty: own.penalty }])
             const done = ended || !!state.outcome
             const outcome = state.outcome ?? (done ? (state.patience >= 3 ? 'won' : state.patience <= 1 ? 'lost' : 'ok') : undefined)
@@ -406,17 +428,20 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     get modelLabel(): string | undefined {
       return modelReady() ? model!.label?.() : undefined
     },
-    async ask(req: AiRequest): Promise<AiAnswer> {
+    /** `onText` receives the answer so far while a model writes it (plain-text answers only). */
+    async ask(req: AiRequest, onText?: (text: string) => void): Promise<AiAnswer> {
       const built = build(req)
       const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
       const prompt = `${built.prompt}\n\nStyle: ${INCLUSIVE_STYLE}\nReply in ${language}.`
       const fallback = built.fallback
+      if (built.instant) return { text: fallback, source: 'built-in', ...built.extra }
       let notice: string | undefined
       if (model && modelReady()) {
         try {
-          const system = built.system ?? { stable: stableSystem(hub.config), live: `Reply in ${language}.` }
-          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }])
-          const out = { ...built.extra, ...(built.parse ? built.parse(answer) : { text: answer }), source: model.name }
+          const full = built.system ?? { stable: stableSystem(hub.config), live: `Reply in ${language}.` }
+          const system = model.compact && built.compact ? { ...built.compact, reminder: full.reminder } : full
+          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], built.streamable ? onText : undefined)
+          const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name }
           if (model.checkFacts && built.facts?.length) out.text = `${out.text}\n\nFrom the menu: ${built.facts.join('\n')}`
           return out
         } catch (e) {
@@ -444,9 +469,15 @@ interface Built {
   /** Fields returned alongside the text (practice feedback, stars, done). */
   extra?: Partial<AiAnswer>
   /** Splits a structured model answer into fields. */
-  parse?: (answer: string) => Partial<AiAnswer> & { text: string }
+  parse?: (answer: string, opts?: { local?: boolean }) => Partial<AiAnswer> & { text: string }
   /** Menu lines for dishes the question names, for models that need a fact check. */
   facts?: string[]
+  /** The same instructions with only the training notes that matter here, for slower local models. */
+  compact?: { stable: string; live: string }
+  /** The answer is plain text that can be shown while it's written. */
+  streamable?: boolean
+  /** Answer with the built-in text straight away (e.g. a role-play's opening line, already in every language). */
+  instant?: boolean
   /** Chat kinds: the system prompt (cacheable part + live part) and the turns for a chat model. */
   system?: { stable: string; live: string; reminder?: string }
   turns?: ChatTurn[]
@@ -457,7 +488,11 @@ interface Built {
  * menu with what each dish contains, and the training notes. Identical on every request for a
  * given config, so it caches.
  */
-export function stableSystem(cfg: RestaurantConfig, audience: Audience = 'server'): string {
+/**
+ * The long, stable part of the assistant's instructions. `lessons` narrows the training notes to the
+ * ones that matter for this question (for slower local models); by default all of them are included.
+ */
+export function stableSystem(cfg: RestaurantConfig, audience: Audience = 'server', lessons: Lesson[] = lessonsFor(audience)): string {
   const manager = audience === 'manager'
   return [
     manager
@@ -490,7 +525,7 @@ export function stableSystem(cfg: RestaurantConfig, audience: Audience = 'server
       : 'Practice rubric (for role-plays): a great reply apologises sincerely, shows understanding, gives a clear next step and a time, never blames the kitchen, never guesses about allergens (checks with the chef), speaks to the guest directly, and asks rather than assumes.',
     '',
     manager ? 'Training notes (the house way of managing):' : 'Training notes (the house way of doing things):',
-    ...lessonsFor(audience).map((l) => `- ${l.title}: ${l.answer}`),
+    ...lessons.map((l) => `- ${l.title}: ${l.answer}`),
   ].join('\n')
 }
 

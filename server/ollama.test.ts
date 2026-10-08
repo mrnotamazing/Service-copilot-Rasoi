@@ -7,6 +7,7 @@ import { createOllama, ollamaErrorReason } from './ollama.ts'
 function fakeOllama(models: string[], reply: string, seen: { body?: Record<string, unknown> } = {}) {
   return (async (url: string, init?: RequestInit) => {
     // Sizes grow with the number in the tag (gemma3:1b < gemma3:4b), as real downloads do.
+    if (url.endsWith('/api/generate')) return new Response('{}')
     if (url.endsWith('/api/tags')) return new Response(JSON.stringify({ models: models.map((name) => ({ name, size: Number(name.match(/(\d+)b$/)?.[1] ?? 1) * 1e9 })) }))
     seen.body = JSON.parse(String(init?.body))
     return new Response(JSON.stringify({ message: { role: 'assistant', content: reply } }))
@@ -29,7 +30,12 @@ describe('ollama', () => {
     expect(msgs[0].role).toBe('system')
     expect(msgs[0].content).toMatch(/TableMate/)
     expect(msgs.at(-1)!.content).toMatch(/^Wine with the lamb shank\?\n\n\(You are TableMate/)
-    expect((seen.body!.options as { num_ctx: number }).num_ctx).toBeGreaterThanOrEqual(8192)
+    // A compact prompt: only the notes that matter, so a small context (faster on a laptop) is enough.
+    expect(msgs[0].content.length).toBeLessThan(9000)
+    expect(msgs[0].content).toMatch(/Drinks and pairings/)
+    expect(msgs[0].content).not.toMatch(/Table reset/)
+    expect(seen.body!.options).toMatchObject({ num_ctx: 6144, num_predict: 320 })
+    expect(seen.body!.stream).toBe(true)
   })
 
   it('reads practice labels even when the model bolds them', async () => {
@@ -68,5 +74,23 @@ describe('ollama', () => {
   it('explains common failures in plain words', () => {
     expect(ollamaErrorReason(Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } }))).toMatch(/isn’t running/)
     expect(ollamaErrorReason(new Error("model 'gemma3:4b' not found"))).toMatch(/ollama pull/)
+  })
+
+  it('streams the answer as it’s written and loads the model when it’s found', async () => {
+    const calls: string[] = []
+    const lines = ['{"message":{"content":"<think>hmm</think>Offer "}}', '{"message":{"content":"the Malbec."}}', '{"done":true}'].join('\n')
+    const fetchImpl = (async (url: string) => {
+      calls.push(url.split('/api/')[1])
+      if (url.endsWith('/api/tags')) return new Response(JSON.stringify({ models: [{ name: 'gemma3:4b', size: 4e9 }] }))
+      if (url.endsWith('/api/generate')) return new Response('{}')
+      return new Response(lines)
+    }) as unknown as typeof fetch
+    const o = createOllama({ fetchImpl, pollMs: 60_000 })
+    await o.refresh()
+    expect(calls).toContain('generate')
+    const seen: string[] = []
+    const a = await createAi(new Hub(memoryStore()), { chat: o.model }).ask({ kind: 'chat', mode: 'ask', messages: [{ role: 'user', text: 'A wine for tonight?' }] }, (t) => seen.push(t))
+    expect(a.text).toBe('Offer the Malbec.')
+    expect(seen).toEqual(['Offer', 'Offer the Malbec.'])
   })
 })

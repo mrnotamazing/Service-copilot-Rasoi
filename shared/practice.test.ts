@@ -172,5 +172,23 @@ describe('practice with a language model', () => {
     expect(a.score).toBeLessThanOrEqual(40)
     expect(a.mood).toBe('worse')
   })
-})
 
+  it('ignores placeholders a small model copies back and blends a local model’s score with the rubric', async () => {
+    const echo = 'COACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <a better reply I could have given>\nGUEST: Okay, but how long will it take?'
+    const local = { ...chatWith(echo), compact: true }
+    const a = await createAi(new Hub(memoryStore()), { chat: local }).ask({
+      kind: 'chat', mode: 'practice', scenario: 'cold_food', staffId: 's_aisha',
+      messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: 'I’m so sorry. Let me replace it right away; it’ll be with you in 10 minutes.' }],
+    })
+    expect(a.score).toBe(100)
+    expect(a.feedback).not.toMatch(/</)
+    expect(a.ideal).toBe(PRACTICE_TEXT.en.scenarios.cold_food.ideal[0])
+    expect(a.text).toBe('Okay, but how long will it take?')
+    const harsh = { ...chatWith('COACH: ✓ ok\nSCORE: 20\nIDEAL: Say sorry and give a time.\nGUEST: Hmm.'), compact: true }
+    const b = await createAi(new Hub(memoryStore()), { chat: harsh }).ask({
+      kind: 'chat', mode: 'practice', scenario: 'cold_food', staffId: 's_aisha',
+      messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: 'I’m so sorry. Let me replace it right away; it’ll be with you in 10 minutes.' }],
+    })
+    expect(b.score).toBe(60)
+  })
+})
