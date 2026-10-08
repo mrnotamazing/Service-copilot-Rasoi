@@ -1,4 +1,5 @@
-import { Pause, Play, RotateCcw, Sparkles } from 'lucide-react'
+import { Clapperboard, Pause, Play, RotateCcw, Sparkles } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type { Sop } from '../../shared/types.ts'
@@ -53,6 +54,13 @@ export default function SetupView() {
         <Card>
           <CardHeader>
             <Heading>Service simulator</Heading>
+            <CardAction>
+              <Button asChild size="sm" variant="secondary" className="rounded-full">
+                <Link to="/demo">
+                  <Clapperboard /> Demo control
+                </Link>
+              </Button>
+            </CardAction>
             <CardDescription>
               Runs a dinner rush through the same pipeline a real POS uses. Use it for demos, training and the role-play study. Each server can be played by a person on their phone, or left on
               autopilot.

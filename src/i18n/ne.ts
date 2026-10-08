@@ -9,6 +9,7 @@ export const ne: Record<Key, string> = {
   'nav.floorStaff': 'फ्लोर स्टाफ',
   'nav.overview': 'सारांश',
   'nav.setup': 'सेटअप',
+  'nav.demo': "डेमो नियन्त्रण",
   'nav.how': 'यो कसरी काम गर्छ',
   'hdr.back': 'सबै स्क्रिनमा फर्कनुहोस्',
   'hdr.ask': 'TableMate लाई सोध्नुहोस्',

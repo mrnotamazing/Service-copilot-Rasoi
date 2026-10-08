@@ -3,7 +3,7 @@
 // an item runs out, guests ask for the bill and leave. Servers can be played by
 // people on their phones, or by "autopilot" so the demo runs on its own.
 
-import { newId, type FiredLine, type IncomingEvent } from '../shared/events.ts'
+import { newId, type FiredLine, type IncomingEvent, type PayloadOf } from '../shared/events.ts'
 import type { SimStatus } from '../shared/snapshot.ts'
 import type { Course, TableState } from '../shared/types.ts'
 import type { Hub } from './hub.ts'
@@ -19,6 +19,14 @@ const rand = (a: number, b: number) => a + Math.random() * (b - a)
 const pick = <T>(xs: T[]): T => xs[Math.floor(Math.random() * xs.length)]
 const chance = (p: number) => Math.random() < p
 
+type Party = Omit<PayloadOf<'table.seated'>, 'tableId'>
+
+/** Moments the presenter can stage on cue (and that showcase mode stages by itself). */
+export const MOMENTS = ['arrival', 'allergy', 'vip', 'access', 'kitchen_delay', 'sold_out', 'unhappy', 'manager', 'bill', 'rush'] as const
+export type MomentKind = (typeof MOMENTS)[number]
+/** The order showcase mode works through: each one shows off a different part of the app. */
+const SHOWCASE: MomentKind[] = ['allergy', 'kitchen_delay', 'vip', 'unhappy', 'access', 'sold_out', 'manager', 'bill']
+
 interface Plan {
   orderAt?: number
   billAt?: number
@@ -33,9 +41,15 @@ export class Simulator {
   intensity = 1 // arrivals multiplier
   autopilot = new Set<string>()
   autoKitchen = true
+  /** The manager answers visit requests by themselves (for showcase mode). */
+  autoManager = false
+  /** Runs itself and stages a key moment every few minutes of service time. */
+  showcase = false
+  private nextMoment = 0
+  private momentIndex = 0
   private startedAt: number | null = null
   private timer: ReturnType<typeof setInterval> | null = null
-  private waitlist: { size: number; since: number }[] = []
+  private waitlist: { size: number; since: number; party?: Partial<Party> }[] = []
   private nextArrival = 0
   private plans = new Map<string, Plan>() // visitId -> plan
   private readyPlan = new Map<string, number>() // lineId -> when kitchen will finish
@@ -54,6 +68,8 @@ export class Simulator {
       intensity: this.intensity,
       autopilot: [...this.autopilot],
       autoKitchen: this.autoKitchen,
+      autoManager: this.autoManager,
+      showcase: this.showcase,
       waiting: this.waitlist.length,
       startedAt: this.startedAt,
     }
@@ -92,6 +108,8 @@ export class Simulator {
     this.reaction.clear()
     this.busyUntil.clear()
     this.stockOutDone = false
+    this.momentIndex = 0
+    this.nextMoment = 0
     this.hub.clock.set(Date.now())
     this.hub.clock.resume()
     this.hub.emit()
@@ -107,6 +125,98 @@ export class Simulator {
     if (on) this.autopilot.add(staffId)
     else this.autopilot.delete(staffId)
     this.hub.emit()
+  }
+
+  /** Showcase mode: everyone on autopilot, the service running, and a staged moment every few minutes. */
+  setShowcase(on: boolean) {
+    this.showcase = on
+    if (on) {
+      for (const st of this.hub.config.staff) if (st.role === 'server') this.autopilot.add(st.id)
+      this.autoKitchen = true
+      this.autoManager = true
+      if (!this.running) this.start()
+      this.nextMoment = this.hub.clock.now() + 1.5 * MIN
+    }
+    this.hub.emit()
+  }
+
+  /** Stage a moment now. Returns what happened, or why it couldn't (e.g. no free table). */
+  moment(kind: MomentKind): { ok: boolean; text: string } {
+    const hub = this.hub
+    const now = hub.clock.now()
+    if (this.startedAt === null) this.start()
+    const tables = Object.values(hub.state.tables)
+    const eating = tables.filter((t) => t.visitId && !t.billRequestedAt && t.lines.some((l) => l.servedAt))
+    const say = (ok: boolean, text: string) => {
+      if (ok) {
+        hub.feed.push({ id: newId('demo'), at: now, kind: 'demo', text: `Staged: ${text}` })
+        hub.emit()
+      }
+      return { ok, text }
+    }
+    switch (kind) {
+      case 'arrival':
+        return this.seat({}, 'a new party arrives') ? say(true, 'a new party arrives') : say(false, 'No free table right now; they’ll be seated when one frees up.')
+      case 'allergy':
+        return say(this.seat({ allergies: ['nuts'], guestName: 'Sam Banerjee' }, 'nut allergy'), 'a guest with a nut allergy arrives')
+      case 'vip':
+        return say(this.seat({ vip: true, occasion: 'birthday', guestName: 'Ria D’Souza', partySize: 4 }, 'birthday'), 'regulars arrive for a birthday')
+      case 'access':
+        return say(this.seat({ needs: [pick(['wheelchair', 'hearing', 'vision', 'quiet', 'service_animal'])] }, 'access need'), 'a guest with an access need arrives')
+      case 'kitchen_delay': {
+        const cooking = tables.flatMap((t) => t.lines.filter((l) => l.status === 'fired'))
+        if (!cooking.length) return say(false, 'Nothing is cooking right now; try again once orders are in.')
+        const extra = rand(6, 9) * MIN
+        for (const l of cooking) this.readyPlan.set(l.id, (this.readyPlan.get(l.id) ?? l.expectedReadyAt) + extra)
+        this.send({ type: 'note.sent', source: 'kitchen', payload: { noteId: newId('note'), direction: 'to_floor', text: `Grill is backed up, about ${Math.round(extra / MIN)} minutes behind`, from: 'k_pass' } })
+        return say(true, 'the kitchen falls behind')
+      }
+      case 'sold_out': {
+        const fired = new Set(tables.flatMap((t) => t.lines.filter((l) => l.status === 'fired').map((l) => l.menuItemId)))
+        const options = hub.config.menu.filter((m) => m.course !== 'dessert' && hub.state.unavailable[m.id] === undefined)
+        const item = options.find((m) => fired.has(m.id)) ?? pick(options)
+        if (!item) return say(false, 'Everything is already off.')
+        this.send({ type: 'item.stock', source: 'pos:sim', payload: { menuItemId: item.id, available: false } })
+        this.send({ type: 'note.sent', source: 'kitchen', payload: { noteId: newId('note'), direction: 'to_floor', text: `${item.name} is off for tonight`, from: 'k_pass' } })
+        return say(true, `${item.name} runs out`)
+      }
+      case 'unhappy': {
+        const t = eating.find((x) => x.mood?.value !== 'unhappy')
+        if (!t) return say(false, 'No table is eating yet; try again once food is out.')
+        const course = [...t.lines].reverse().find((l) => l.servedAt)!.course
+        this.send({ type: 'server.checkback', source: 'sim', payload: { tableId: t.id, course, mood: 'unhappy' } })
+        return say(true, `${t.name} isn’t happy with their food`)
+      }
+      case 'manager': {
+        const t = eating.find((x) => !x.managerRequestedAt)
+        if (!t) return say(false, 'No table is eating yet; try again once food is out.')
+        this.send({ type: 'guest.recovered', source: 'sim', payload: { tableId: t.id, how: 'manager' } })
+        return say(true, `${t.name} asks to see the manager`)
+      }
+      case 'bill': {
+        const t = tables.find((x) => x.visitId && !x.billRequestedAt && x.lines.some((l) => l.course === 'main' && l.servedAt))
+        if (!t) return say(false, 'No table has finished mains yet.')
+        this.send({ type: 'bill.requested', source: 'pos:sim', payload: { tableId: t.id } })
+        return say(true, `${t.name} asks for the bill`)
+      }
+      case 'rush': {
+        let n = 0
+        while (this.seat({}, 'rush')) n++
+        for (let i = 0; i < 2; i++) this.waitlist.push({ size: pick([2, 4]), since: now })
+        return say(n > 0, n ? `a rush: ${n} parties seated at once, more waiting` : 'Every table is full already.')
+      }
+    }
+  }
+
+  /** Seat a party at the smallest free table that fits; false if none is free. */
+  private seat(party: Partial<Party>, _why: string): boolean {
+    const size = party.partySize ?? pick([2, 2, 3, 4, 4])
+    const free = Object.values(this.hub.state.tables)
+      .filter((t) => t.status === 'available' && t.seats >= size)
+      .sort((a, b) => a.seats - b.seats)[0]
+    if (!free) return false
+    this.send({ type: 'table.seated', source: 'pos:sim', payload: { allergies: [], needs: [], ...party, partySize: size, tableId: free.id } })
+    return true
   }
 
   private send(e: IncomingEvent) {
@@ -179,6 +289,7 @@ export class Simulator {
           allergies: chance(0.2) ? [pick(ALLERGIES)] : [],
           vip: chance(0.12),
           needs: chance(0.22) ? [pick(NEEDS)] : [],
+          ...g.party,
         },
       })
     }
@@ -237,6 +348,21 @@ export class Simulator {
         }
       }
     }
+
+    // Showcase: stage the next key moment every few minutes (skipping any that can't happen yet).
+    if (this.showcase && now >= this.nextMoment) {
+      for (let i = 0; i < SHOWCASE.length; i++) {
+        const kind = SHOWCASE[this.momentIndex++ % SHOWCASE.length]
+        if (this.moment(kind).ok) break
+      }
+      this.nextMoment = now + rand(5, 7) * MIN
+    }
+
+    // A manager on autopilot visits a table that asked for them after a couple of minutes.
+    if (this.autoManager)
+      for (const t of Object.values(hub.state.tables))
+        if (t.managerRequestedAt && !(t.managerVisitedAt && t.managerVisitedAt >= t.managerRequestedAt) && now > t.managerRequestedAt + 2.5 * MIN)
+          this.send({ type: 'manager.visited', source: 'manager', payload: { tableId: t.id } })
 
     // Kitchen.
     if (this.autoKitchen) {

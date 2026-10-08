@@ -1,4 +1,4 @@
-import { Accessibility, BookOpen, CakeSlice, ChefHat, HeartPulse, LayoutDashboard, Monitor, Moon, Settings, Star, Sun, Users } from 'lucide-react'
+import { Accessibility, BookOpen, CakeSlice, ChefHat, Clapperboard, HeartPulse, LayoutDashboard, Monitor, Moon, Settings, Star, Sun, Users } from 'lucide-react'
 import { Mark, Wordmark } from '../brand/marks.tsx'
 import type { ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
@@ -153,6 +153,7 @@ function navFor(role: Role | null): NavItem[] {
       { to: '/manager', label: 'nav.overview', Icon: LayoutDashboard },
       { to: '/', label: 'nav.floorStaff', Icon: Users, end: true },
       { to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat },
+      { to: '/demo', label: 'nav.demo', Icon: Clapperboard },
       { to: '/setup', label: 'nav.setup', Icon: Settings },
       { to: '/about', label: 'nav.how', Icon: BookOpen },
     ]
@@ -163,6 +164,7 @@ const SHELL_NAV: NavItem[] = [
   { to: '/', label: 'nav.floorStaff', Icon: Users, end: true },
   { to: '/manager', label: 'nav.overview', Icon: LayoutDashboard },
   { to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat },
+  { to: '/demo', label: 'nav.demo', Icon: Clapperboard },
   { to: '/setup', label: 'nav.setup', Icon: Settings },
   { to: '/about', label: 'nav.how', Icon: BookOpen },
 ]

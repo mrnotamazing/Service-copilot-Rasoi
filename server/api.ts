@@ -11,7 +11,7 @@ import type { RestaurantConfig } from '../shared/types.ts'
 import { CATALOG } from './adapters/index.ts'
 import { AiError, createAi, type AiKind, type AiRequest, type DifyOptions } from './ai.ts'
 import type { Hub } from './hub.ts'
-import type { Simulator } from './simulator.ts'
+import { MOMENTS, type Simulator } from './simulator.ts'
 
 export type ApiBody = Record<string, unknown>
 
@@ -62,7 +62,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         },
       }
     }
-    if (role === 'manager') return { ...base, analytics: analytics(hub.state, hub.config), integrations: integrations(), openTasks }
+    if (role === 'manager') return { ...base, analytics: analytics(hub.state, hub.config), integrations: integrations(), openTasks, feed: hub.feed.slice(-40) }
     return { ...base, openTasks }
   }
 
@@ -75,11 +75,21 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     '/api/sim/start': () => (sim.start(), sim.status()),
     '/api/sim/pause': () => (sim.pause(), sim.status()),
     '/api/sim/reset': () => (sim.reset(), sim.status()),
+    // Stage a moment for a presentation: an allergy guest, the kitchen falling behind, a rush…
+    '/api/sim/moment': (body) => {
+      const kind = MOMENTS.find((m) => m === body.kind)
+      if (!kind) throw new Error('Unknown moment.')
+      return { ...sim.moment(kind), status: sim.status() }
+    },
     '/api/sim/settings': (body) => {
       if (typeof body.speed === 'number') sim.setSpeed(body.speed)
       if (typeof body.intensity === 'number') sim.intensity = Math.max(0.3, Math.min(3, body.intensity))
       if (typeof body.autoKitchen === 'boolean') sim.autoKitchen = body.autoKitchen
       if (typeof body.staffId === 'string' && typeof body.autopilot === 'boolean') sim.setAutopilot(body.staffId, body.autopilot)
+      // Everyone at once (the demo page's "all servers on autopilot").
+      if (body.allServers === true || body.allServers === false) for (const st of hub.config.staff) if (st.role === 'server') sim.setAutopilot(st.id, body.allServers)
+      if (typeof body.autoManager === 'boolean') sim.autoManager = body.autoManager
+      if (typeof body.showcase === 'boolean') sim.setShowcase(body.showcase)
       hub.emit()
       return sim.status()
     },

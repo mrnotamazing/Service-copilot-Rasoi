@@ -10,6 +10,7 @@ export const en = {
   'nav.floorStaff': 'Floor staff',
   'nav.overview': 'Overview',
   'nav.setup': 'Setup',
+  'nav.demo': "Demo control",
   'nav.how': 'How it works',
 
   // Header

@@ -10,6 +10,7 @@ import KitchenView from './pages/KitchenView.tsx'
 import ManagerView from './pages/ManagerView.tsx'
 import ServerView from './pages/ServerView.tsx'
 import SetupView from './pages/SetupView.tsx'
+import DemoView from './pages/DemoView.tsx'
 
 const Router = STANDALONE ? HashRouter : BrowserRouter
 
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/kitchen" element={<KitchenView />} />
             <Route path="/manager" element={<ManagerView />} />
             <Route path="/setup" element={<SetupView />} />
+            <Route path="/demo" element={<DemoView />} />
             <Route path="/about" element={<AboutView />} />
           </Routes>
         </Router>

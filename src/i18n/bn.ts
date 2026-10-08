@@ -9,6 +9,7 @@ export const bn: Record<Key, string> = {
   'nav.floorStaff': 'ফ্লোর স্টাফ',
   'nav.overview': 'সারসংক্ষেপ',
   'nav.setup': 'সেটআপ',
+  'nav.demo': "ডেমো নিয়ন্ত্রণ",
   'nav.how': 'এটি কীভাবে কাজ করে',
   'hdr.back': 'সব স্ক্রিনে ফিরে যান',
   'hdr.ask': 'TableMate-কে জিজ্ঞাসা করুন',

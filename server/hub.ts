@@ -5,6 +5,7 @@ import { DEMO_CONFIG } from '../shared/config.ts'
 import { applyEvent, deriveTasks, initialState, type EngineState } from '../shared/engine.ts'
 import { EVENT_TYPES, newId, type CopilotEvent, type IncomingEvent } from '../shared/events.ts'
 import { afterEvent, beforeEvent, initialGame, type GameState } from '../shared/game.ts'
+import { narrate, type FeedItem } from '../shared/narrate.ts'
 import type { RestaurantConfig, Task } from '../shared/types.ts'
 import { Clock } from './clock.ts'
 
@@ -30,6 +31,8 @@ export class Hub {
   state: EngineState
   game: GameState
   events: CopilotEvent[] = []
+  /** What's been happening, in plain words (newest last), for the demo control page. */
+  feed: FeedItem[] = []
   readonly clock = new Clock()
   private listeners = new Set<() => void>()
   private sourceStats = new Map<string, { count: number; last: number }>()
@@ -52,6 +55,12 @@ export class Hub {
 
   /** Engine and game advance together; the game reads timings from the state before the event. */
   private apply(ev: CopilotEvent) {
+    // Narrate before the event changes the state, so the table and its server are still known.
+    const said = narrate(ev, this.state, this.config)
+    if (said) {
+      this.feed.push(said)
+      if (this.feed.length > 80) this.feed.splice(0, this.feed.length - 80)
+    }
     const closed = this.state.visits.length
     beforeEvent(this.game, ev, this.state, this.config)
     applyEvent(this.state, ev, this.config)
@@ -96,6 +105,7 @@ export class Hub {
   /** Clears the service (new shift / new simulation). */
   reset() {
     this.events = []
+    this.feed = []
     this.sourceStats.clear()
     this.state = initialState(this.config)
     this.game = initialGame(this.config)
