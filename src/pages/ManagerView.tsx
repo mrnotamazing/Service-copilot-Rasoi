@@ -5,7 +5,7 @@ import { AppShell, LiveClock, ShellSkeleton, PanelTitle } from '../components/ki
 import { Avatar } from '../components/Avatar.tsx'
 import { FloorPlan } from '../components/FloorPlan.tsx'
 import { IncidentSheet, NextFifteen, WhatIfCard, WhyTonight } from '../components/ManagerIntel.tsx'
-import { TeamCard } from '../components/ManagerTeam.tsx'
+import { TeamCard } from '../components/TeamCard.tsx'
 import { liveVisit, reconstructVisit, type Reconstruction } from '../../shared/intel.ts'
 import { AssistantDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
@@ -68,7 +68,7 @@ export default function ManagerView() {
       <div className="space-y-5">
         <NeedsYou snap={snap} />
         <Pulse snap={snap} />
-        <TeamCard snap={snap} managerId={managerId} />
+        <TeamCard snap={snap} meId={managerId} />
         {snap.intel && snap.forecast && (
           <div className="grid gap-5 lg:grid-cols-2">
             <WhyTonight intel={snap.intel} />

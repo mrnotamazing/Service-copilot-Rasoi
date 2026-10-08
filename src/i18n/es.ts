@@ -644,4 +644,6 @@ export const es: Record<Key, string> = {
   "t.instruction": "{name}:",
   "h.instruction": "Toca “Entendido” para que sepan que lo viste",
   "action.instruction": "Entendido",
+  "kitchen.seen": "Visto",
+  "kudos.r6": "Comida excelente, rápida y cuidada",
 }

@@ -21,6 +21,26 @@ describe('manager notes and kudos', () => {
     expect(s.instructions[0].acks.s_meera).toBeUndefined()
   })
 
+  it('the kitchen and the manager can send each other notes; only servers get cards', () => {
+    const s = initialState(DEMO_CONFIG)
+    applyEvent(s, ev('manager.instruction', { instructionId: 'n2', from: 'k_pass', to: ['m_floor', 's_kabir'], text: 'Grill is backed up' }), DEMO_CONFIG)
+    const cards = deriveTasks(s, DEMO_CONFIG, 2000).filter((t) => t.kind === 'instruction')
+    expect(cards.map((c) => c.staffId)).toEqual(['s_kabir'])
+    expect(cards[0].title).toBe('Chef Vikram: Grill is backed up')
+    applyEvent(s, ev('instruction.acked', { instructionId: 'n2', staffId: 'm_floor' }, 3000), DEMO_CONFIG)
+    expect(s.instructions[0].acks).toEqual({ m_floor: 3000 })
+  })
+
+  it('anyone can thank the kitchen; it shows on the team board without XP', () => {
+    const s = initialState(DEMO_CONFIG)
+    const g = initialGame(DEMO_CONFIG)
+    const e = ev('kudos.sent', { from: 's_aisha', to: 'k_pass', reason: 'Great food, fast and careful' })
+    beforeEvent(g, e, s, DEMO_CONFIG)
+    expect(g.kudos.at(-1)).toMatchObject({ from: 's_aisha', to: 'k_pass' })
+    expect(g.players.k_pass).toBeUndefined()
+    expect(g.players.s_aisha.xp).toBeGreaterThan(0)
+  })
+
   it('kudos from the manager give the server XP and show on the team board', () => {
     const s = initialState(DEMO_CONFIG)
     const g = initialGame(DEMO_CONFIG)

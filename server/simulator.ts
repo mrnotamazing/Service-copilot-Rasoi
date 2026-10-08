@@ -397,6 +397,12 @@ export class Simulator {
         if (t.managerRequestedAt && !(t.managerVisitedAt && t.managerVisitedAt >= t.managerRequestedAt) && now > t.managerRequestedAt + 2.5 * MIN)
           this.send({ type: 'manager.visited', source: 'manager', payload: { tableId: t.id } })
 
+    // Notes: the kitchen (and the manager on autopilot) tap "Got it" a minute or so after a note arrives.
+    const reader = (id: string) => (this.autoKitchen && hub.config.staff.find((s) => s.id === id)?.role === 'kitchen') || (this.autoManager && hub.config.staff.find((s) => s.id === id)?.role === 'manager')
+    for (const n of hub.state.instructions)
+      for (const id of n.to) if (!n.acks[id] && reader(id) && now > n.at + 1.2 * MIN) this.send({ type: 'instruction.acked', source: 'kitchen', payload: { instructionId: n.id, staffId: id } })
+    if (this.autoKitchen) for (const n of hub.state.notes) if (n.direction === 'to_kitchen' && !n.ackAt && now > n.at + 1 * MIN) this.send({ type: 'note.acked', source: 'kitchen', payload: { noteId: n.id } })
+
     // Kitchen.
     if (this.autoKitchen) {
       const due: string[] = []

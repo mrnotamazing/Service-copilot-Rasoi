@@ -6,12 +6,13 @@ import { safetyIssues } from '../../shared/safety.ts'
 import type { OrderLine, Station, TableState } from '../../shared/types.ts'
 import { Avatar } from '../components/Avatar.tsx'
 import { AppShell, LiveClock, ShellSkeleton } from '../components/kit.tsx'
+import { TeamCard } from '../components/TeamCard.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { minutesAgo, mmss } from '../lib/format.ts'
+import { mmss } from '../lib/format.ts'
 import { act, noteId, post, useSnapshot } from '../lib/live.ts'
 import { useRolePage } from '../lib/role.ts'
 
@@ -115,7 +116,7 @@ export default function KitchenView() {
 
         <div className="min-w-0 space-y-4">
           <AllDay tickets={tickets.line} station={station} />
-          <FloorNotes snap={snap} />
+          <TeamCard snap={snap} meId={snap.config.staff.find((s) => s.role === 'kitchen')?.id ?? 'k_pass'} compact />
           <TellFloor snap={snap} />
           <EightySix snap={snap} />
           {snap.sim.startedAt !== null && (
@@ -289,30 +290,6 @@ function AllDay({ tickets, station }: { tickets: Ticket[]; station: Station | 'a
   )
 }
 
-function FloorNotes({ snap }: { snap: Snap }) {
-  const notes = snap.notes.filter((n) => n.direction === 'to_kitchen').slice(-10).reverse()
-  return (
-    <section className="rounded-2xl border bg-card p-4">
-      <h2 className="mb-2 text-sm font-semibold">From the floor</h2>
-      <ul className="space-y-2">
-        {notes.length === 0 && <li className="text-sm text-muted-foreground">Notes from servers will appear here.</li>}
-        {notes.map((n) => {
-          const urgent = n.text.startsWith('ALLERGY') || n.text.startsWith('SAFETY')
-          return (
-            <li key={n.id} className={cn('rounded-lg p-2.5 text-sm', urgent ? 'bg-warn/15 font-medium text-warn' : 'bg-muted')}>
-              <div className="text-[11px] font-normal text-muted-foreground">
-                {snap.config.staff.find((s) => s.id === n.from)?.name ?? n.from}
-                {n.tableId ? `, ${n.tableId}` : ''}, {minutesAgo(n.at, snap.now) < 1 ? 'just now' : `${minutesAgo(n.at, snap.now)} min ago`}
-              </div>
-              {n.text}
-            </li>
-          )
-        })}
-      </ul>
-    </section>
-  )
-}
-
 function TellFloor({ snap }: { snap: Snap }) {
   const [text, setText] = useState('')
   const [table, setTable] = useState(FLOOR)
@@ -325,7 +302,7 @@ function TellFloor({ snap }: { snap: Snap }) {
   }
   return (
     <section className="rounded-2xl border bg-card p-4">
-      <h2 className="mb-2 text-sm font-semibold">Tell the floor</h2>
+      <h2 className="mb-2 text-sm font-semibold">Quick update to the floor</h2>
       <div className="mb-2 flex flex-wrap gap-1.5">
         {['Mains in 5 min', 'Grill is backed up', 'Ready to fire', 'Running low on bread'].map((q) => (
           <button key={q} type="button" onClick={() => void send(q)} className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">

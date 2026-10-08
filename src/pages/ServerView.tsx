@@ -673,7 +673,10 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
               <div className={cn('max-w-[80%] rounded-2xl px-3 py-2 text-sm', mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary', n.text.startsWith('ALLERGY') && 'ring-2 ring-warn')}>
                 {n.tableId && <span className={cn('mr-1 text-xs font-semibold', mine ? 'opacity-80' : 'text-muted-foreground')}>{n.tableId}</span>}
                 {n.text}
-                <div className={cn('mt-0.5 text-right text-[10px] tabular', mine ? 'opacity-70' : 'text-muted-foreground')}>{ago(snap.now, n.at)}</div>
+                <div className={cn('mt-0.5 text-right text-[10px] tabular', mine ? 'opacity-70' : 'text-muted-foreground')}>
+                  {ago(snap.now, n.at)}
+                  {mine && n.ackAt ? ` · ${tr('kitchen.seen')}` : ''}
+                </div>
               </div>
             </li>
           )
@@ -729,7 +732,7 @@ function Chip({ children, active, onClick }: { children: ReactNode; active?: boo
 
 // ---------------------------------------------------------------------------
 
-const KUDOS_REASONS: Key[] = ['kudos.r1', 'kudos.r2', 'kudos.r3', 'kudos.r4', 'kudos.r5']
+const KUDOS_REASONS: Key[] = ['kudos.r1', 'kudos.r2', 'kudos.r3', 'kudos.r4', 'kudos.r5', 'kudos.r6']
 /** Kudos are stored in English so everyone can read them; shown back in each person's language. */
 const REASON_KEY = new Map<string, Key>(KUDOS_REASONS.map((k) => [en[k], k]))
 
@@ -741,7 +744,8 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
   const words = useAwardText()
   if (!game) return null
   const { level, player, quests, badges } = game
-  const teammates = snap.config.staff.filter((s) => s.role === 'server' && s.id !== staffId)
+  // Everyone can be thanked: fellow servers, the kitchen and the manager.
+  const teammates = snap.config.staff.filter((s) => s.id !== staffId)
   const earned = badges.filter((b) => b.earnedAt !== null).length
 
   return (

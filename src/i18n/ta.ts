@@ -644,4 +644,6 @@ export const ta: Record<Key, string> = {
   "t.instruction": "{name}:",
   "h.instruction": "நீங்கள் பார்த்தீர்கள் என அவர்களுக்குத் தெரிய “புரிந்தது” தட்டுங்கள்",
   "action.instruction": "புரிந்தது",
+  "kitchen.seen": "பார்த்தது",
+  "kudos.r6": "அருமையான உணவு, வேகமாகவும் கவனமாகவும்",
 }

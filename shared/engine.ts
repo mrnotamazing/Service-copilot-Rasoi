@@ -753,12 +753,13 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       })
   }
 
-  // Notes from the manager: one card per server it was sent to, until they've seen it.
+  // Team notes (from the manager or the kitchen): one card per server it was sent to, until they've seen it.
   for (const i of state.instructions) {
     const t = i.tableId ? state.tables[i.tableId] : undefined
     const who = config.staff.find((s) => s.id === i.from)?.name ?? 'The manager'
     for (const staffId of i.to) {
-      if (i.acks[staffId]) continue
+      // Servers get a card; the manager and the kitchen see their notes on their own screens.
+      if (i.acks[staffId] || !servers.some((s) => s.id === staffId)) continue
       tasks.push({
         id: `instruction:${i.id}:${staffId}`,
         kind: 'instruction',

@@ -54,7 +54,7 @@ export interface Snapshot {
   integrations?: IntegrationStatus[]
   /** manager/kitchen: how many open cards each server has (load, not performance) */
   openTasks?: Record<string, number>
-  /** manager: notes sent to servers, newest first, with who has seen each. */
+  /** manager and kitchen: team notes, newest first, with who has seen each. */
   instructions?: Instruction[]
   /** Manager / demo control: what's been happening, in plain words (newest last). */
   feed?: FeedItem[]

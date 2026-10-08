@@ -179,14 +179,15 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
   const sop = config.sop
   if (ev.type === 'kudos.sent') {
     const { from, to, reason } = ev.payload
-    if (!game.players[to] || from === to) return
+    // Anyone on the team can be thanked (the kitchen too); XP goes to people who play the game.
+    if (from === to || !config.staff.some((s) => s.id === to)) return
     game.kudos.push({ id: ev.id, at: ev.at, from, to, reason })
     if (game.kudos.length > 50) game.kudos.splice(0, game.kudos.length - 50)
     if (game.players[from]) {
       bump(game, from, 'kudosSent', ev.at, config)
       award(game, from, ev.at, 5, 'xp', 'Kudos sent', `to ${name(config, to)}`, config, { k: 'a.kudosSent', dk: 'd.to', dp: { name: name(config, to) } })
     }
-    award(game, to, ev.at, 10, 'kudos', `Kudos from ${name(config, from)}`, reason, config, { k: 'a.kudosFrom', p: { name: name(config, from) } })
+    if (game.players[to]) award(game, to, ev.at, 10, 'kudos', `Kudos from ${name(config, from)}`, reason, config, { k: 'a.kudosFrom', p: { name: name(config, from) } })
     return
   }
   // Only staff taps earn XP; POS events and manager overrides don't.

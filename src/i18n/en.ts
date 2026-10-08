@@ -665,6 +665,8 @@ export const en = {
   "t.instruction": "{name}:",
   "h.instruction": "Tap “Got it” so they know you’ve seen it",
   "action.instruction": "Got it",
+  "kitchen.seen": "Seen",
+  "kudos.r6": "Great food, fast and careful",
 } as const
 
 export type Key = keyof typeof en

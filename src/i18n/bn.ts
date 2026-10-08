@@ -644,4 +644,6 @@ export const bn: Record<Key, string> = {
   "t.instruction": "{name}:",
   "h.instruction": "“বুঝেছি” চাপুন, যাতে তাঁরা জানেন আপনি দেখেছেন",
   "action.instruction": "বুঝেছি",
+  "kitchen.seen": "দেখেছে",
+  "kudos.r6": "দারুণ খাবার, দ্রুত আর যত্নে",
 }
