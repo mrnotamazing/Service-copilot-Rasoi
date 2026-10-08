@@ -613,7 +613,7 @@ export const en = {
   'why.soon': "Due in the next 2 minutes",
   'why.waiting': "No one has been to this table for {min} min",
   'why.regular': "Regular guests",
-  'why.bundle': "{n} more jobs on the same trip",
+  'why.bundle': "+{n} on the same trip",
   'why.restCanWait': "Your other {n} can wait a few minutes",
   'up.crunch': "Busy patch in about {min} min: {n} things land close together",
   'up.crunchQuick': "Busy patch in about {min} min: {n} things land together. Do the quick jobs now",
@@ -647,6 +647,19 @@ export const en = {
   'learn.focus.pickup': "Food waited at the pass {n} of {of} times. When a card says food is coming, stay near the pass for that minute.",
   'learn.focus.bill': "Bills ran late {n} of {of} times. Print the bill as dessert is cleared.",
   'learn.focus.reset': "Resets ran late {n} of {of} times. Reset right after the goodbye, before taking a new job.",
+  "nav.servers": "Servers",
+  "nav.manager": "Manager",
+  "nav.menu": "Menu",
+  "nav.main": "Main menu",
+  "start.title": "Choose a screen",
+  "start.sub": "Each part of TableMate has its own screen. Open the one for your job.",
+  "start.serversSub": "The phone app each server carries: next three moves, tables, kitchen chat, progress",
+  "start.managerSub": "Live floor, forecasts, what happened and why, what-if planning",
+  "start.kitchenSub": "Tickets with timers, food at the pass, notes to the floor, 86 board",
+  "start.demoSub": "Run a simulated service, stage moments, and set standards, AI and POS",
+  "start.present": "Presenting? Start a service in Demo & setup, then open the other screens.",
+  "servers.title": "Servers",
+  "srv.switch": "Switch server",
 } as const
 
 export type Key = keyof typeof en

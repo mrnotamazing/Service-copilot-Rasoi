@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, ChefHat, HeartHandshake, LayoutDashboard, Play, Sparkles, Users } from 'lucide-react'
+import { ArrowRight, HeartHandshake, Play, Sparkles, Users } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import { Mascot } from '../brand/marks.tsx'
@@ -29,7 +29,7 @@ export default function Home() {
   }
 
   return (
-    <AppShell title={t('home.title')} sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />} wide={false}>
+    <AppShell title={t('servers.title')} sub={t('home.title')} right={<LiveClock now={snap.now} ok={connected} />} wide={false}>
       <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="relative overflow-hidden rounded-3xl bg-hero p-5 text-hero-foreground">
         <Mascot className="pointer-events-none absolute right-5 top-1/2 w-44 -translate-y-1/2 max-sm:hidden" speed="var(--hero-foreground)" />
         <div className="relative flex flex-wrap items-center justify-between gap-3 sm:pr-48">
@@ -114,22 +114,6 @@ export default function Home() {
         </>
       )}
 
-      <div className="mt-8">
-        <SectionTitle>{t('home.other')}</SectionTitle>
-      </div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-3">
-        {[
-          { to: '/kitchen', label: t('home.kitchenLabel'), sub: t('home.kitchenSub'), Icon: ChefHat },
-          { to: '/manager', label: t('home.managerLabel'), sub: t('home.managerSub'), Icon: LayoutDashboard },
-          { to: '/about', label: t('nav.how'), sub: t('home.howSub'), Icon: BookOpen },
-        ].map(({ to, label, sub, Icon }) => (
-          <Link key={to} to={to} className="group rounded-2xl border bg-card p-4 transition-shadow hover:shadow-md hover:ring-1 hover:ring-primary/40">
-            <Icon className="size-5 text-primary" />
-            <div className="mt-2 font-medium">{label}</div>
-            <div className="text-xs text-muted-foreground">{sub}</div>
-          </Link>
-        ))}
-      </div>
     </AppShell>
   )
 }

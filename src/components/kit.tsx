@@ -1,17 +1,16 @@
-import { Accessibility, BookOpen, CakeSlice, ChefHat, Clapperboard, HeartPulse, LayoutDashboard, Monitor, Moon, Star, Sun, Users } from 'lucide-react'
+import { Accessibility, BookOpen, CakeSlice, ChefHat, Clapperboard, HeartPulse, LayoutDashboard, Menu, Monitor, Moon, Star, Sun, Users } from 'lucide-react'
 import { Mark, Wordmark } from '../brand/marks.tsx'
-import type { ReactNode } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { useState, type ReactNode } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { STATUS_LABEL, STATUS_PROGRESS, clock, useWallClock } from '../lib/format.ts'
 import { useTheme, type ThemeChoice } from '../lib/theme.ts'
 import { cn } from '@/lib/utils'
 import { useT, type Key } from '../i18n/index.ts'
 import { AccessButton } from './AccessPanel.tsx'
-import { RoleSwitcher } from './RoleSwitcher.tsx'
-import { useRole, type Role } from '../lib/role.ts'
 
 export function Brand() {
   return (
@@ -42,6 +41,27 @@ export function ThemeToggle() {
       </TooltipTrigger>
       <TooltipContent>Theme: {label}</TooltipContent>
     </Tooltip>
+  )
+}
+
+/** Light, dark or match the device, as three plain buttons (used in the phone menu). */
+function ThemeChoices() {
+  const { choice, setTheme } = useTheme()
+  return (
+    <div role="group" aria-label="Theme" className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+      {THEMES.map(({ c, Icon, label }) => (
+        <button
+          key={c}
+          type="button"
+          aria-pressed={choice === c}
+          onClick={() => setTheme(c)}
+          className={cn('flex min-h-10 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px]', choice === c ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+        >
+          <Icon className="size-4" />
+          {label}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -142,126 +162,128 @@ export function PanelTitle({ children, className }: { children: ReactNode; class
   return <h2 className={cn('font-sans text-sm font-medium', className)}>{children}</h2>
 }
 
-type NavItem = { to: string; label: Key; Icon: typeof Users; end?: boolean }
-
-/** Each role sees its own screens: the manager runs the floor, the kitchen runs the pass. */
-function navFor(role: Role | null): NavItem[] {
-  if (role?.kind === 'kitchen') return [{ to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat }, { to: '/about', label: 'nav.how', Icon: BookOpen }]
-  if (role?.kind === 'server') return [{ to: `/server/${role.staffId}`, label: 'nav.myShift', Icon: Users }, { to: '/about', label: 'nav.how', Icon: BookOpen }]
-  if (role?.kind === 'manager')
-    return [
-      { to: '/manager', label: 'nav.overview', Icon: LayoutDashboard },
-      { to: '/', label: 'nav.floorStaff', Icon: Users, end: true },
-      { to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat },
-      { to: '/demo', label: 'nav.demo', Icon: Clapperboard },
-      { to: '/about', label: 'nav.how', Icon: BookOpen },
-    ]
-  return SHELL_NAV
-}
-
-const SHELL_NAV: NavItem[] = [
-  { to: '/', label: 'nav.floorStaff', Icon: Users, end: true },
-  { to: '/manager', label: 'nav.overview', Icon: LayoutDashboard },
-  { to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat },
-  { to: '/demo', label: 'nav.demo', Icon: Clapperboard },
-  { to: '/about', label: 'nav.how', Icon: BookOpen },
+/** The four parts of TableMate. The same menu on every screen, in the same order. */
+export const SECTIONS: { to: string; label: Key; Icon: typeof Users; match: (path: string) => boolean }[] = [
+  { to: '/servers', label: 'nav.servers', Icon: Users, match: (p) => p === '/servers' || p.startsWith('/server/') },
+  { to: '/manager', label: 'nav.manager', Icon: LayoutDashboard, match: (p) => p.startsWith('/manager') },
+  { to: '/kitchen', label: 'nav.kitchen', Icon: ChefHat, match: (p) => p.startsWith('/kitchen') },
+  { to: '/demo', label: 'nav.demo', Icon: Clapperboard, match: (p) => p.startsWith('/demo') },
 ]
 
 /**
- * The frame every non-phone screen lives in: a sidebar on desktop, a top bar and
- * bottom tabs on phones, so it navigates like an installed app rather than a website.
+ * The main menu: logo, the four sections, "How it works", then language, access and theme.
+ * On phones the sections fold into a menu button.
  */
-export function AppShell({ title, sub, right, children, wide = true, bare = false }: { title?: ReactNode; sub?: ReactNode; right?: ReactNode; children: ReactNode; wide?: boolean; bare?: boolean }) {
+export function TopNav() {
   const t = useT()
-  const role = useRole()
-  const nav = navFor(role)
+  const { pathname } = useLocation()
+  const [open, setOpen] = useState(false)
+  const current = SECTIONS.find((x) => x.match(pathname))
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[232px_1fr]">
+    <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
         Skip to main content
       </a>
-      {/* The column carries the background to the bottom of long pages; the sidebar inside stays put. */}
-      <div className="hidden border-r bg-sidebar md:block">
-      <aside className="sticky top-0 flex h-dvh flex-col px-3 py-4">
-        <div className="px-2">
-          <Brand />
-        </div>
-        <nav aria-label="Screens" className="mt-6 grid gap-0.5">
-          {nav.map(({ to, label, Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors',
-                  isActive ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground' : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
-                )
-              }
-            >
-              <Icon className="size-4" />
-              {t(label)}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="mt-auto space-y-2 rounded-2xl border bg-background/60 p-2">
-          {/* Signed in as: switch between a server's app, the kitchen display and the manager console. */}
-          <RoleSwitcher />
-          <div className="flex items-center justify-between border-t px-1 pt-2">
-            <span className="text-[11px] text-muted-foreground">Saffron House</span>
-            <span className="flex items-center gap-1">
-              <AccessButton />
-              <ThemeToggle />
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 md:gap-6 md:px-6">
+        <Brand />
+        {current && (
+          <span className="flex min-w-0 items-center gap-1.5 text-sm font-medium md:hidden">
+            <span className="text-muted-foreground" aria-hidden>
+              /
             </span>
-          </div>
+            <span className="truncate">{t(current.label)}</span>
+          </span>
+        )}
+        <nav aria-label={t('nav.main')} className="hidden items-center gap-1 md:flex">
+          {SECTIONS.map(({ to, label, Icon, match }) => {
+            const active = match(pathname)
+            return (
+              <Link
+                key={to}
+                to={to}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition-colors',
+                  active ? 'bg-secondary font-medium text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+                )}
+              >
+                <Icon className={cn('size-4', active && 'text-primary')} />
+                {t(label)}
+              </Link>
+            )
+          })}
+        </nav>
+        <div className="ml-auto flex items-center gap-1">
+          <Link
+            to="/about"
+            aria-current={pathname.startsWith('/about') ? 'page' : undefined}
+            className={cn('hidden h-9 items-center rounded-lg px-3 text-sm transition-colors lg:inline-flex', pathname.startsWith('/about') ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground')}
+          >
+            {t('nav.how')}
+          </Link>
+          <AccessButton />
+          <span className="hidden sm:inline-flex">
+            <ThemeToggle />
+          </span>
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label={t('nav.menu')}>
+                <Menu />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72">
+              <SheetHeader>
+                <SheetTitle>{t('nav.menu')}</SheetTitle>
+              </SheetHeader>
+              <nav aria-label={t('nav.main')} className="grid gap-1 px-3">
+                {SECTIONS.map(({ to, label, Icon, match }) => {
+                  const active = match(pathname)
+                  return (
+                    <Link
+                      key={to}
+                      to={to}
+                      onClick={() => setOpen(false)}
+                      aria-current={active ? 'page' : undefined}
+                      className={cn('flex h-12 items-center gap-3 rounded-xl px-3 text-base', active ? 'bg-secondary font-medium' : 'hover:bg-secondary/60')}
+                    >
+                      <Icon className="size-5 text-primary" />
+                      {t(label)}
+                    </Link>
+                  )
+                })}
+                <div className="my-2 border-t" role="separator" />
+                <Link to="/about" onClick={() => setOpen(false)} className="flex h-12 items-center gap-3 rounded-xl px-3 text-base text-muted-foreground hover:bg-secondary/60">
+                  <BookOpen className="size-5" />
+                  {t('nav.how')}
+                </Link>
+                <ThemeChoices />
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
-      </aside>
       </div>
+    </header>
+  )
+}
 
-      <div className="flex min-w-0 flex-col pb-[calc(env(safe-area-inset-bottom,0px)+64px)] md:pb-0">
-        <header className="sticky top-0 z-20 border-b bg-background/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/70">
-          <div className={cn('mx-auto flex items-center gap-3 px-4 py-3 md:px-8', wide ? 'max-w-6xl' : 'max-w-3xl')}>
-            <div className="md:hidden">
-              <Brand />
+/** Every screen except the server's phone app: the main menu, a page heading, and the page. */
+export function AppShell({ title, sub, right, children, wide = true, bare = false }: { title?: ReactNode; sub?: ReactNode; right?: ReactNode; children: ReactNode; wide?: boolean; bare?: boolean }) {
+  const width = wide ? 'max-w-7xl' : 'max-w-4xl'
+  return (
+    <div className="min-h-dvh bg-background">
+      <TopNav />
+      <main id="main" className="w-full">
+        {(title || right) && (
+          <div className={cn('mx-auto flex flex-wrap items-end justify-between gap-3 px-4 pt-6 md:px-6', width)}>
+            <div className="min-w-0">
+              {title && <h1 className="font-display text-2xl leading-tight md:text-3xl">{title}</h1>}
+              {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
             </div>
-            <div className="hidden min-w-0 md:block">
-              {title && <h1 className="truncate font-display text-xl leading-tight">{title}</h1>}
-              {sub && <p className="truncate text-xs text-muted-foreground">{sub}</p>}
-            </div>
-            <div className="ml-auto flex items-center gap-2">
-              {right}
-              <span className="flex items-center md:hidden">
-                <RoleSwitcher compact className="size-10" />
-                <AccessButton />
-                <ThemeToggle />
-              </span>
-            </div>
-          </div>
-        </header>
-        {title && (
-          <div className="mx-auto w-full max-w-6xl px-4 pt-4 md:hidden">
-            <h1 className="font-display text-2xl leading-tight">{title}</h1>
-            {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
+            {right && <div className="flex items-center gap-2">{right}</div>}
           </div>
         )}
-        <main id="main" className={cn('w-full flex-1', !bare && 'mx-auto px-4 py-5 md:px-8 md:py-8', !bare && (wide ? 'max-w-6xl' : 'max-w-3xl'))}>
-          {children}
-        </main>
-      </div>
-
-      <nav aria-label="Screens" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }} className="fixed inset-x-0 bottom-0 z-30 grid border-t bg-background/95 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] pt-1.5 backdrop-blur md:hidden">
-        {nav.map(({ to, label, Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) => cn('flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium', isActive ? 'text-primary' : 'text-muted-foreground')}
-          >
-            <Icon className="size-5" />
-            <span className="max-w-full truncate px-0.5">{t(label)}</span>
-          </NavLink>
-        ))}
-      </nav>
+        <div className={cn(!bare && 'mx-auto px-4 py-5 md:px-6 md:py-6', !bare && width)}>{children}</div>
+      </main>
     </div>
   )
 }
@@ -269,11 +291,9 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
 /** Shown while the first snapshot arrives, in the shape of the page. */
 export function ShellSkeleton() {
   return (
-    <div className="min-h-dvh md:grid md:grid-cols-[232px_1fr]" aria-busy="true" aria-label="Loading">
-      <div className="hidden border-r bg-sidebar p-5 md:block">
-        <Mark className="h-6 w-auto text-primary pulse-soft" />
-      </div>
-      <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-6 md:px-8">
+    <div className="min-h-dvh" aria-busy="true" aria-label="Loading">
+      <div className="h-14 border-b" />
+      <div className="mx-auto w-full max-w-7xl space-y-4 px-4 py-6 md:px-6">
         <div className="h-7 w-48 animate-pulse rounded-md bg-muted" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (

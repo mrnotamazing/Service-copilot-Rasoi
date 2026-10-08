@@ -59,8 +59,6 @@ export async function localPost(path: string, body: ApiBody, onText?: (text: str
   return handled.result
 }
 
-// The shared demo opens on the project explainer; every screen is one click away from there.
-if (!location.hash || location.hash === '#/') history.replaceState(null, '', '#/about')
 
 // Open straight into a running service so there is something to see.
 sim.intensity = 1.6

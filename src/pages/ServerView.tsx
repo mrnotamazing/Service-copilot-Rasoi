@@ -1,14 +1,13 @@
-import { Accessibility, Armchair, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, ChevronLeft, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { Accessibility, Armchair, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { Snapshot } from '../../shared/snapshot.ts'
 import { AccessButton } from '../components/AccessPanel.tsx'
 import { Avatar } from '../components/Avatar.tsx'
 import { ProfileCard } from '../components/ProfileEditor.tsx'
-import { RoleSwitcher } from '../components/RoleSwitcher.tsx'
 import { ShiftRecap } from '../components/ShiftRecap.tsx'
 import { useRolePage } from '../lib/role.ts'
 import { MOOD_TONE, Reaction } from '../components/Reaction.tsx'
@@ -19,11 +18,12 @@ import { safetyIssues } from '../../shared/safety.ts'
 import { tableTimeline } from '../../shared/timeline.ts'
 import { FloorPlan } from '../components/FloorPlan.tsx'
 import { BadgeTile, Celebrations, LevelRing, StreakChip, useAwardText } from '../components/game.tsx'
-import { ThemeToggle } from '../components/kit.tsx'
+import { TopNav } from '../components/kit.tsx'
 import { TaskCard, useTaskWords } from '../components/TaskCard.tsx'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
@@ -97,12 +97,11 @@ export default function ServerView() {
 
   if (tablet)
     return (
-      <div className="relative grid h-dvh grid-cols-[88px_1fr] grid-rows-[minmax(0,1fr)] overflow-hidden bg-background">
+      <div className="flex h-dvh flex-col bg-background">
+      <TopNav />
+      <div className="relative grid min-h-0 flex-1 grid-cols-[88px_1fr] grid-rows-[minmax(0,1fr)] overflow-hidden">
         {/* Side rail: the tablet's tab bar */}
-        <nav aria-label={t('srv.sections')} className="flex min-h-0 flex-col items-center gap-1 overflow-y-auto border-r bg-sidebar py-4 pt-[calc(env(safe-area-inset-top,0px)+16px)]">
-          <Link to="/" aria-label={t('hdr.back')} className="mb-4 rounded-xl p-2 text-tomato hover:bg-sidebar-accent">
-            <Mark className="h-7 w-auto" />
-          </Link>
+        <nav aria-label={t('srv.sections')} className="flex min-h-0 flex-col items-center gap-1 overflow-y-auto border-r bg-sidebar py-4">
           {TABS.map(({ id, label, Icon }) => {
             const active = tab === id
             const dot = id === 'kitchen' && unread > 0
@@ -126,19 +125,16 @@ export default function ServerView() {
               <Sparkles className="size-5" />
               {liveDot}
             </Button>
-            <RoleSwitcher compact />
-            <AccessButton className="h-10" />
-            <ThemeToggle />
           </div>
         </nav>
 
         <div className="flex min-h-0 min-w-0 flex-col">
           {/* Top bar: me, my rank and progress, my streak, the team goal */}
-          <header className="flex items-center gap-4 border-b bg-background/90 px-6 pb-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] backdrop-blur">
+          <header className="flex items-center gap-4 border-b bg-background/90 px-6 py-3 backdrop-blur">
             {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} size={48} />}
             <div className="min-w-0">
-              <div className="truncate text-lg font-semibold leading-tight">
-                {me.name} <Pronouns value={me.pronouns} />
+              <div className="flex items-center gap-1 text-lg font-semibold leading-tight">
+                <ServerSwitch snap={snap} staffId={staffId} /> <Pronouns value={me.pronouns} />
               </div>
               <div className="truncate text-xs text-muted-foreground">
                 {rank}, <span className="tabular">{game?.player.xp} XP</span>
@@ -215,27 +211,26 @@ export default function ServerView() {
         </div>
         {overlays}
       </div>
+      </div>
     )
 
   return (
-    <div className="min-h-dvh md:flex md:flex-col md:items-center md:justify-center md:bg-[radial-gradient(ellipse_at_top,var(--accent),var(--background)_60%)] md:py-6">
-      <div className="relative mx-auto flex h-dvh w-full max-w-[440px] flex-col overflow-hidden bg-background md:h-[min(880px,calc(100dvh-5rem))] md:rounded-[2.75rem] md:border-[10px] md:border-foreground/85 md:shadow-2xl">
+    <div className="flex h-dvh flex-col md:h-auto md:min-h-dvh">
+    <TopNav />
+    <div className="min-h-0 flex-1 md:flex md:flex-col md:items-center md:justify-center md:bg-[radial-gradient(ellipse_at_top,var(--accent),var(--background)_60%)] md:py-6">
+      <div className="relative mx-auto flex h-full w-full max-w-[440px] flex-col overflow-hidden bg-background md:h-[min(860px,calc(100dvh-9rem))] md:rounded-[2.75rem] md:border-[10px] md:border-foreground/85 md:shadow-2xl">
         {/* Top bar: who I am, my rank, my streak */}
-        <header className="z-10 flex items-center gap-3 border-b bg-background/90 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] backdrop-blur">
-          <Link to="/" aria-label={t('hdr.back')} className="-ml-1 rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground">
-            <ChevronLeft className="size-5" />
-          </Link>
+        <header className="z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-2.5 backdrop-blur">
           {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} />}
           <div className="min-w-0 flex-1">
-            <div className="truncate font-semibold leading-tight">
-              {me.name} <Pronouns value={me.pronouns} />
+            <div className="flex min-w-0 items-center gap-1 font-semibold leading-tight">
+              <ServerSwitch snap={snap} staffId={staffId} /> <Pronouns value={me.pronouns} />
             </div>
             <div className="truncate text-xs text-muted-foreground">
               {rank} <span className="tabular">{game?.player.xp} XP</span>
             </div>
           </div>
           {game && <StreakChip streak={game.player.streak} shields={game.player.shields} />}
-          <AccessButton />
           <Button size="icon" variant="ghost" className="relative text-primary" aria-label={t('hdr.ask')} onClick={() => setAssist(true)}>
             <Sparkles />
             {liveDot}
@@ -285,13 +280,40 @@ export default function ServerView() {
               {t('hdr.tabletView')}
             </button>
           )}
-          <Link to="/manager" className="underline-offset-4 hover:text-foreground hover:underline">
-            {t('srv.manager')}
-          </Link>
-          <ThemeToggle />
         </span>
       </aside>
     </div>
+    </div>
+  )
+}
+
+/** Switch between the servers on tonight's floor without leaving the server app (keeps the tab). */
+function ServerSwitch({ snap, staffId }: { snap: Snapshot; staffId: string }) {
+  const t = useT()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const servers = snap.config.staff.filter((s) => s.role === 'server')
+  return (
+    <Select
+      value={staffId}
+      onValueChange={(id) => {
+        const next = new URLSearchParams(params)
+        next.delete('table')
+        const q = next.toString()
+        navigate(`/server/${id}${q ? `?${q}` : ''}`)
+      }}
+    >
+      <SelectTrigger aria-label={t('srv.switch')} className="h-8 min-w-0 gap-1 border-transparent bg-transparent px-1.5 text-[length:inherit] font-semibold shadow-none hover:bg-secondary">
+        <SelectValue>{servers.find((s) => s.id === staffId)?.name}</SelectValue>
+      </SelectTrigger>
+      <SelectContent position="popper" align="start">
+        {servers.map((s) => (
+          <SelectItem key={s.id} value={s.id}>
+            <Avatar staff={s} className="size-6 text-xs" /> {s.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -724,9 +746,6 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
 
   return (
     <div className={cn(wide ? 'columns-2 gap-6 [&>*]:mb-6 [&>*]:break-inside-avoid' : 'space-y-6')}>
-      <div className="rounded-2xl border bg-card p-1.5">
-        <RoleSwitcher />
-      </div>
       <ProfileCard me={snap.config.staff.find((s) => s.id === staffId)!} />
       <AccessButton variant="row" />
       {/* Rank */}

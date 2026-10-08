@@ -148,10 +148,11 @@ Every source (a real POS, the kitchen screen, a server's tap, the simulator) pro
 
 ## 5. Every feature, screen by screen
 
-### 5.1 Getting in: roles and the start page
+### 5.1 Getting around: one menu, four sections
 
-- **Floor staff (the start page)** lists tonight's servers with how many tables and open tasks each has. Tap a name to open their app.
-- **Signed in as** (bottom of the sidebar, or the Profile tab on a phone) switches the device between a server's app, the kitchen display and the manager console. Each role gets its own home and navigation, all in the same TableMate theme.
+- **The same menu on every screen**, in the same order: **Servers**, **Manager**, **Kitchen**, **Demo & setup**, with **How it works**, language and comfort settings, and the theme on the right. On a phone the sections fold into a **Menu** button, and the bar shows which section you're in.
+- **The start page** (the logo) shows the four sections as cards, with a tip for presenters: start a service in Demo & setup, then open the other screens.
+- **Servers** lists tonight's servers with how many tables and open tasks each has. Tap a name to open their app; inside it, tap the name at the top to **switch server** without leaving the screen you're on.
 - **First launch** shows a short onboarding for servers.
 
 ### 5.2 The server app (phone or tablet)
@@ -352,7 +353,7 @@ In short: it **helps** people do the job well, **protects** them from unfair bla
 
 ### Servers
 
-1. **Before service**: open your app (tap your name on Floor staff). Set your language and comfort settings once. Tap **Brief me** for your section.
+1. **Before service**: open your app (Servers → tap your name). Set your language and comfort settings once. Tap **Brief me** for your section.
 2. **During service**: look at **Next up**. Do the top card; it closes itself or swipe it done. Swipe left for "Later". Use **What do I say?** for a delay or a dish that has run out. Tap a table on the floor plan for its full picture. Read kitchen notes in the **Kitchen** tab.
 3. **When something's wrong**: a safety card means a dish clashes with a guest's allergy or diet; tell the kitchen in one tap. A "not happy" check-in opens recovery; you can call the manager.
 4. **Between tables**: ask TableMate anything ("How do I explain this dish to a first-timer?").
