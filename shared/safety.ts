@@ -8,6 +8,8 @@ export const DIET_RULES: Record<string, string[]> = {
   vegan: ['meat', 'fish', 'shellfish', 'dairy', 'egg', 'honey'],
   jain: ['meat', 'fish', 'shellfish', 'egg', 'root'],
   halal: ['pork', 'alcohol', 'nonhalal'],
+  no_beef: ['beef'],
+  no_pork: ['pork'],
 }
 
 export interface SafetyIssue {

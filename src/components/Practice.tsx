@@ -4,7 +4,7 @@ import type { AiAnswer } from '../../server/ai.ts'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { useT } from '../i18n/index.ts'
-import { Assistant } from './Assistant.tsx'
+import { Assistant, type AssistantRole } from './Assistant.tsx'
 
 /** Entry card on the Profile tab: opens the assistant straight into the practice room. */
 export function PracticeCard({ staffId, provider }: { staffId: string; provider: AiAnswer['source'] }) {
@@ -32,6 +32,7 @@ export function AssistantDrawer({
   provider,
   initialMode = 'ask',
   wide,
+  role = 'server',
 }: {
   open: boolean
   onOpenChange: (o: boolean) => void
@@ -39,6 +40,7 @@ export function AssistantDrawer({
   provider: AiAnswer['source']
   initialMode?: 'ask' | 'practice'
   wide?: boolean
+  role?: AssistantRole
 }) {
   const t = useT()
   return (
@@ -46,11 +48,11 @@ export function AssistantDrawer({
       <DrawerContent className={wide ? 'mx-auto h-[88dvh] max-w-xl' : 'mx-auto h-[88dvh] max-w-[440px]'}>
         <DrawerHeader className="pb-2">
           <DrawerTitle className="font-display text-2xl">{t('hdr.ask')}</DrawerTitle>
-          <DrawerDescription>{t('chat.sub')}</DrawerDescription>
+          <DrawerDescription>{t(role === 'manager' ? 'chat.subMgr' : 'chat.sub')}</DrawerDescription>
         </DrawerHeader>
         {open && (
           <div className="min-h-0 flex-1">
-            <Assistant staffId={staffId} provider={provider} initialMode={initialMode} />
+            <Assistant staffId={staffId} provider={provider} initialMode={initialMode} role={role} />
           </div>
         )}
       </DrawerContent>

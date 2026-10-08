@@ -137,7 +137,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
             .map((m) => ({ role: m.role, text: m.text.slice(0, 1500) }))
         : undefined
       const mode = body.mode === 'practice' ? 'practice' : body.mode === 'ask' ? 'ask' : undefined
-      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true })
+      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true })
     },
     /** Returns undefined when the path isn't one of the app routes. */
     post(path: string, body: ApiBody): { result: unknown } | undefined {

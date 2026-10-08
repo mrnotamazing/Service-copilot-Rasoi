@@ -1,8 +1,8 @@
-import { ChevronLeft, CircleCheck, Drama, Flag, Lightbulb, Loader2, Mic, RotateCcw, Send, Sparkles, Star, Volume2 } from 'lucide-react'
+import { BookOpenText, ChevronLeft, CircleCheck, Drama, Flag, Lightbulb, Loader2, Mic, RotateCcw, Send, Sparkles, Star, Volume2 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { AiAnswer, ChatTurn } from '../../server/ai.ts'
-import { SCENARIOS } from '../../shared/practice.ts'
+import { SCENARIOS, scenariosFor } from '../../shared/practice.ts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,10 +10,11 @@ import { cn } from '@/lib/utils'
 import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { en } from '../i18n/en.ts'
 import { post } from '../lib/live.ts'
-import { getPrefs, usePrefs } from '../lib/prefs.ts'
+import { getPrefs, setPrefs, usePrefs } from '../lib/prefs.ts'
 import { speak } from '../lib/speech.ts'
 
 type Mode = 'ask' | 'practice'
+export type AssistantRole = 'server' | 'manager'
 
 interface Message extends ChatTurn {
   source?: AiAnswer['source']
@@ -25,14 +26,18 @@ interface Message extends ChatTurn {
   debrief?: boolean
 }
 
-const STARTERS: Key[] = ['chat.s1', 'chat.s2', 'chat.s3', 'chat.s4', 'chat.s5']
+const STARTERS: Record<AssistantRole, Key[]> = {
+  server: ['chat.s1', 'chat.s2', 'chat.s3', 'chat.s4', 'chat.s5'],
+  manager: ['chat.m1', 'chat.m2', 'chat.m3', 'chat.m4', 'chat.m5'],
+}
 
 /**
  * TableMate's assistant: a chat that knows the restaurant's standards, tonight's menu and the
- * server's own tables (Ask), and a practice room where it plays a guest and coaches each reply
- * (Practice). Answers come in the server's language when an AI model is connected.
+ * asker's tables or floor (Ask), and a practice room where it plays a guest or a team member and
+ * coaches each reply (Practice). Servers and managers each get their own training and situations.
+ * Answers come in the person's language when an AI model is connected.
  */
-export function Assistant({ staffId, provider, initialMode = 'ask' }: { staffId: string; provider: AiAnswer['source']; initialMode?: Mode }) {
+export function Assistant({ staffId, provider, initialMode = 'ask', role = 'server' }: { staffId: string; provider: AiAnswer['source']; initialMode?: Mode; role?: AssistantRole }) {
   const t = useT()
   const [mode, setMode] = useState<Mode>(initialMode)
   return (
@@ -59,25 +64,25 @@ export function Assistant({ staffId, provider, initialMode = 'ask' }: { staffId:
       </div>
       {/* Each mode keeps its own conversation while you switch back and forth. */}
       <div className={cn('min-h-0 flex-1', mode !== 'ask' && 'hidden')}>
-        <Chat staffId={staffId} provider={provider} mode="ask" />
+        <Chat staffId={staffId} provider={provider} mode="ask" role={role} />
       </div>
       <div className={cn('min-h-0 flex-1', mode !== 'practice' && 'hidden')}>
-        <PracticeRoom staffId={staffId} provider={provider} />
+        <PracticeRoom staffId={staffId} provider={provider} role={role} />
       </div>
     </div>
   )
 }
 
 /** Practice: pick a situation, then role-play it in the chat. */
-function PracticeRoom({ staffId, provider }: { staffId: string; provider: AiAnswer['source'] }) {
+function PracticeRoom({ staffId, provider, role }: { staffId: string; provider: AiAnswer['source']; role: AssistantRole }) {
   const t = useT()
   const [scenario, setScenario] = useState<string | null>(null)
   if (!scenario)
     return (
       <div className="h-full overflow-y-auto px-4 pb-6">
-        <p className="mb-3 text-sm text-muted-foreground">{t('practice.pick')}</p>
+        <p className="mb-3 text-sm text-muted-foreground">{t(role === 'manager' ? 'practice.pickMgr' : 'practice.pick')}</p>
         <div className="grid grid-cols-2 gap-2">
-          {SCENARIOS.map((s) => (
+          {scenariosFor(role).map((s) => (
             <button key={s.id} type="button" onClick={() => setScenario(s.id)} className="min-h-20 rounded-2xl border bg-card p-3 text-left transition-colors hover:bg-accent">
               <span className="block font-medium">{t(`sc.${s.id}` as Key)}</span>
               <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{t(`sc.${s.id}.d` as Key)}</span>
@@ -94,14 +99,14 @@ function PracticeRoom({ staffId, provider }: { staffId: string; provider: AiAnsw
         </Button>
         <span className="truncate text-sm font-medium">{t(`sc.${scenario}` as Key)}</span>
       </div>
-      <Chat key={scenario} staffId={staffId} provider={provider} mode="practice" scenario={scenario} />
+      <Chat key={scenario} staffId={staffId} provider={provider} mode="practice" scenario={scenario} role={role} />
     </div>
   )
 }
 
-function Chat({ staffId, provider, mode, scenario }: { staffId: string; provider: AiAnswer['source']; mode: Mode; scenario?: string }) {
+function Chat({ staffId, provider, mode, scenario, role }: { staffId: string; provider: AiAnswer['source']; mode: Mode; scenario?: string; role: AssistantRole }) {
   const t = useT()
-  const { readAloud } = usePrefs()
+  const { readAloud, simpleWords } = usePrefs()
   const [messages, setMessages] = useState<Message[]>([])
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
@@ -109,6 +114,8 @@ function Chat({ staffId, provider, mode, scenario }: { staffId: string; provider
   const [error, setError] = useState<string | null>(null)
   const end = useRef<HTMLDivElement>(null)
   const practice = mode === 'practice'
+  // Who the other side of a role-play is: a guest, or (for some manager situations) a team member.
+  const other: Key = SCENARIOS.find((x) => x.id === scenario)?.plays === 'staff' ? 'practice.staff' : 'practice.guest'
 
   useEffect(() => end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }), [messages, busy])
 
@@ -123,6 +130,7 @@ function Chat({ staffId, provider, mode, scenario }: { staffId: string; provider
         staffId,
         lang: getPrefs().lang,
         finish,
+        simple: getPrefs().simpleWords,
         messages: history.filter((m) => !m.debrief).map(({ role, text: x }) => ({ role, text: x })),
       })
       // In practice, coaching belongs under the reply it is about.
@@ -162,9 +170,9 @@ function Chat({ staffId, provider, mode, scenario }: { staffId: string; provider
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-3" aria-live="polite">
         {!practice && messages.length === 0 && (
           <div className="rounded-2xl bg-secondary/60 p-4">
-            <p className="text-sm">{t('chat.hello')}</p>
+            <p className="text-sm">{t(role === 'manager' ? 'chat.helloMgr' : 'chat.hello')}</p>
             <div className="mt-3 flex flex-wrap gap-1.5">
-              {STARTERS.map((k) => (
+              {STARTERS[role].map((k) => (
                 <Suggestion key={k} onClick={() => send(starter(k))}>
                   {t(k)}
                 </Suggestion>
@@ -173,7 +181,7 @@ function Chat({ staffId, provider, mode, scenario }: { staffId: string; provider
           </div>
         )}
         {messages.map((m, i) => (
-          <Bubble key={i} m={m} practice={practice} />
+          <Bubble key={i} m={m} practice={practice} other={other} />
         ))}
         {busy && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -227,11 +235,22 @@ function Chat({ staffId, provider, mode, scenario }: { staffId: string; provider
                 <Send />
               </Button>
             </form>
-            {!practice && messages.length > 0 && (
-              <button type="button" onClick={() => setMessages([])} className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                <RotateCcw className="size-3" /> {t('chat.new')}
+            <div className="mt-2 flex items-center gap-3">
+              {!practice && messages.length > 0 && (
+                <button type="button" onClick={() => setMessages([])} className="inline-flex min-h-6 items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                  <RotateCcw className="size-3" /> {t('chat.new')}
+                </button>
+              )}
+              {/* Plain language on request: for anyone still learning the language, tired, or who just prefers it. */}
+              <button
+                type="button"
+                aria-pressed={simpleWords}
+                onClick={() => setPrefs({ simpleWords: !simpleWords })}
+                className={cn('ml-auto inline-flex min-h-6 items-center gap-1 rounded-full px-2 text-xs transition-colors', simpleWords ? 'bg-accent text-accent-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <BookOpenText className="size-3.5" /> {t('acc.simple')}
               </button>
-            )}
+            </div>
           </>
         )}
       </div>
@@ -239,7 +258,7 @@ function Chat({ staffId, provider, mode, scenario }: { staffId: string; provider
   )
 }
 
-function Bubble({ m, practice }: { m: Message; practice: boolean }) {
+function Bubble({ m, practice, other }: { m: Message; practice: boolean; other: Key }) {
   const t = useT()
   const mine = m.role === 'user'
   const builtIn = m.source === 'built-in'
@@ -255,7 +274,7 @@ function Bubble({ m, practice }: { m: Message; practice: boolean }) {
     )
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
-      {practice && <span className="mb-0.5 text-[11px] text-muted-foreground">{mine ? t('practice.you') : t('practice.guest')}</span>}
+      {practice && <span className="mb-0.5 text-[11px] text-muted-foreground">{mine ? t('practice.you') : t(other)}</span>}
       <div className={cn('max-w-[88%] rounded-2xl px-3 py-2 text-sm', mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary')}>
         <Lines text={m.text} lang={!mine && builtIn ? 'en' : undefined} />
         {!mine && (

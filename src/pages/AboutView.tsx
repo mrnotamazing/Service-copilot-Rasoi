@@ -213,7 +213,7 @@ export default function AboutView() {
               The assistant uses gender-neutral language: no “sir/madam”, guests addressed by name or “you”, they/them when unknown. Staff can add their own pronouns, shown next to their name.
             </Point>
             <Point icon={<HeartPulse />} title="Guests’ needs, ready in advance">
-              Access and dietary needs from the booking (wheelchair, hearing, vision, high chair, Jain, halal, vegan) appear on the greeting card and in the briefing as what to do, so guests never have to ask twice.
+              Access, sensory, dietary and faith needs from the booking (wheelchair, hearing, vision, high chair, quiet table, assistance animal, Jain, halal, vegan, no beef, no pork, fasting) appear on the greeting card and in the briefing as what to do, so guests never have to ask twice.
             </Point>
             <Point icon={<ShieldCheck />} title="Nothing extra is collected">
               Comfort settings stay on the device. Pronouns are optional and chosen by the person. Speech is made on the phone, so no audio leaves it.
@@ -304,7 +304,7 @@ export default function AboutView() {
             {[
               [<Sparkles key="a" />, 'What do I say?', 'A gracious line for a delay, a dish that has run out, a greeting or a goodbye.'],
               [<Smartphone key="b" />, 'Brief me', 'Your section at a glance: allergies, regulars, occasions and anything the kitchen is behind on.'],
-              [<HeartPulse key="c" />, 'Ask and practise', 'A chat trainer that knows the standards, the menu and the guests tonight, and plays a tough guest so staff can rehearse.'],
+              [<HeartPulse key="c" />, 'Ask and practise', 'A trainer for servers and a coach for managers: it knows the standards, the menu and tonight’s floor, teaches inclusive service, and plays a tough guest or team member so people can rehearse.'],
               [<ShieldCheck key="d" />, 'Shift summary', 'Tonight’s bottlenecks in plain English for the manager, never ranking individuals.'],
             ].map(([icon, t, d]) => (
               <div key={t as string} className="rounded-2xl border bg-card p-5">

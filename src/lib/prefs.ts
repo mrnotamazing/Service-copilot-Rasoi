@@ -21,6 +21,8 @@ export interface Prefs {
   flash: boolean
   focusMode: boolean
   leftHanded: boolean
+  /** The assistant answers in short sentences and everyday words. */
+  simpleWords: boolean
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -37,6 +39,7 @@ export const DEFAULT_PREFS: Prefs = {
   flash: false,
   focusMode: false,
   leftHanded: false,
+  simpleWords: false,
 }
 
 const KEY = 'tablemate-prefs'

@@ -7,8 +7,9 @@ import { dishesNamed } from '../shared/dishNames.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
 import { SCENARIOS, scoreReply } from '../shared/practice.ts'
 import { predictReady } from '../shared/predict.ts'
+import { safetyIssues } from '../shared/safety.ts'
 import { istClock } from '../shared/time.ts'
-import { findLessons, LESSONS, STARTERS } from '../shared/training.ts'
+import { type Audience, findLessons, lessonsFor, MANAGER_STARTERS, STARTERS } from '../shared/training.ts'
 import type { Hub } from './hub.ts'
 
 export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat'
@@ -53,6 +54,8 @@ export interface AiRequest {
   messages?: ChatTurn[]
   mode?: 'ask' | 'practice'
   finish?: boolean
+  /** The person asked for simple, everyday words. */
+  simple?: boolean
 }
 
 /** Language names for the prompt; unknown codes fall back to English. */
@@ -213,42 +216,49 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     if (practice && !sc) throw new AiError('Pick a situation to practise.')
     if (!practice && turns.at(-1)?.role !== 'user') throw new AiError('Type a message first.')
     const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
-    const mine = Object.values(hub.state.tables).filter((t) => t.serverId === req.staffId)
+    // Who is asking decides the voice and the knowledge: the staff list marks managers.
+    const audience: Audience = sc?.for ?? (cfg.staff.find((x) => x.id === req.staffId)?.role === 'manager' ? 'manager' : 'server')
+    const manager = audience === 'manager'
+    const asker = manager ? 'the manager' : 'the server'
+    const other = sc?.plays === 'staff' ? 'team member' : 'guest'
+    const mine = Object.values(hub.state.tables).filter((t) => (manager ? !!t.visitId : t.serverId === req.staffId))
     const live = [
       'Live context (changes every message):',
-      `- Asking: ${name(req.staffId)}${pronouns(req.staffId) ? ` (${pronouns(req.staffId)})` : ''}, a server`,
+      `- Asking: ${name(req.staffId)}${pronouns(req.staffId) ? ` (${pronouns(req.staffId)})` : ''}, ${manager ? 'the floor manager' : 'a server'}`,
       `- Their app language: ${language}. Reply in the language they write in; if unclear, use ${language}. Keep dish names as on the menu.`,
+      ...(req.simple ? ['- They asked for simple words: short sentences, everyday words, one idea per sentence; explain any restaurant term.'] : []),
       `- Time: ${istClock(now)} IST`,
       ...(practice
         ? [
-            `- Mode: PRACTICE. You play a guest in this situation: "${sc!.guest[0]}" Stay in character; be realistic, not cartoonish; calm down when the server handles it well.`,
+            `- Mode: PRACTICE. You play a ${other} in this situation: "${sc!.guest[0]}" Stay in character; be realistic, not cartoonish; respond like a real person would when ${asker} handles it well or badly.`,
             req.finish
-              ? '- The server asked to finish. Step out of character and give a short debrief: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).'
-              : `- After each server reply, first coach it in 1-2 short lines starting with ✓ (what worked) and → (one improvement), using the practice rubric. Then reply as the guest. Format exactly:\nCOACH: <coaching, or - before the server has spoken>\nGUEST: <the guest's next line>\nIf the situation is resolved, end the guest line with [END].`,
+              ? `- ${manager ? 'The manager' : 'The server'} asked to finish. Step out of character and give a short debrief: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).`
+              : `- After each reply from ${asker}, first coach it in 1-2 short lines starting with ✓ (what worked) and → (one improvement), using the practice rubric. Then reply as the ${other}. Format exactly:\nCOACH: <coaching, or - before they have spoken>\nGUEST: <the ${other}'s next line>\nIf the situation is resolved, end the ${other}'s line with [END].`,
           ]
-        : ['- Mode: ASK. Answer as their expert trainer and colleague.']),
-      '- Their section right now:',
+        : [manager ? '- Mode: ASK. Answer as their operations coach and peer.' : '- Mode: ASK. Answer as their expert trainer and colleague.']),
+      manager ? '- The floor right now (seated tables):' : '- Their section right now:',
       ...briefingFacts(mine, cfg, hub.state.unavailable, now),
+      ...(manager ? floorFacts(hub, now) : []),
     ].join('\n')
     // The API needs the conversation to start with the server; a practice opens with the guest.
-    const apiTurns: ChatTurn[] = turns[0]?.role === 'user' ? [...turns] : [{ role: 'user', text: practice ? '(Start the role-play with the guest’s opening line.)' : '(Start.)' }, ...turns]
+    const apiTurns: ChatTurn[] = turns[0]?.role === 'user' ? [...turns] : [{ role: 'user', text: practice ? `(Start the role-play with the ${other}’s opening line.)` : '(Start.)' }, ...turns]
     if (practice && req.finish) apiTurns.push({ role: 'user', text: '(Finish the practice and give me my debrief.)' })
     else if (practice && apiTurns.at(-1)?.role === 'assistant') apiTurns.push({ role: 'user', text: '(Continue.)' })
-    const builtIn = practice ? practiceBuiltIn(sc!.id, turns, !!req.finish) : askBuiltIn(turns.at(-1)!.text, req, now)
+    const builtIn = practice ? practiceBuiltIn(sc!.id, turns, !!req.finish) : askBuiltIn(turns.at(-1)!.text, req, now, audience)
     const facts = practice ? [] : dishesNamed(turns.at(-1)!.text, cfg.menu).slice(0, 2).map(dishFacts)
     return {
       facts,
-      prompt: `${stableSystem(cfg)}\n\n${live}\n\nConversation so far:\n${apiTurns.map((t) => `${t.role === 'user' ? 'SERVER' : practice ? 'GUEST' : 'TABLEMATE'}: ${t.text}`).join('\n')}`,
+      prompt: `${stableSystem(cfg, audience)}\n\n${live}\n\nConversation so far:\n${apiTurns.map((t) => `${t.role === 'user' ? (manager ? 'MANAGER' : 'SERVER') : practice ? other.toUpperCase() : 'TABLEMATE'}: ${t.text}`).join('\n')}`,
       fallback: builtIn.text,
       extra: { feedback: builtIn.feedback, stars: builtIn.stars, done: builtIn.done, suggestions: builtIn.suggestions },
       system: {
-        stable: stableSystem(cfg),
+        stable: stableSystem(cfg, audience),
         live,
         reminder: practice
           ? req.finish
             ? 'Step out of character: two things I did well, one thing to practise, then a last line "STARS: n" (1-3).'
-            : 'Reply in exactly this format, nothing else:\nCOACH: ✓ <what worked> → <one improvement>\nGUEST: <the guest’s next line, in character>'
-          : `You are TableMate, my trainer. Answer my last message directly in 2-5 short sentences or bullets, no headings, no thinking out loud. Use ${language} unless I wrote in another language.`,
+            : `Reply in exactly this format, nothing else:\nCOACH: ✓ <what worked> → <one improvement>\nGUEST: <the ${other}’s next line, in character>`
+          : `You are TableMate, my ${manager ? 'management coach' : 'trainer'}${req.simple ? '; use simple everyday words' : ''}. Answer my last message directly in 2-5 short sentences or bullets, no headings, no thinking out loud. Use ${language} unless I wrote in another language.`,
       },
       turns: apiTurns,
       parse: practice
@@ -280,10 +290,20 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
   }
 
   /** Built-in expert: today's section, the menu, the standards and the training notes. */
-  function askBuiltIn(question: string, req: AiRequest, now: number): { text: string; suggestions: string[]; feedback?: string; stars?: number; done?: boolean } {
+  function askBuiltIn(question: string, req: AiRequest, now: number, audience: Audience = 'server'): { text: string; suggestions: string[]; feedback?: string; stars?: number; done?: boolean } {
     const cfg = hub.config
     const q = question.toLowerCase()
-    if (/brief|my section|my tables|section|tables right now/.test(q)) {
+    const starters = audience === 'manager' ? MANAGER_STARTERS : STARTERS
+    if (audience === 'manager' && /brief|line-?up|huddle|the floor right now/.test(q)) {
+      const seated = Object.values(hub.state.tables).filter((t) => t.visitId)
+      const facts = [...briefingFacts(seated, cfg, hub.state.unavailable, now).slice(1), ...floorFacts(hub, now)]
+      const how = findLessons('pre-shift briefing', 1, 'manager')[0]
+      return {
+        text: [`Tonight so far: ${seated.length} of ${Object.keys(hub.state.tables).length} tables seated.`, ...facts.map((f) => `• ${f.replace(/^- /, '')}`), '', how.answer].join('\n'),
+        suggestions: how.next,
+      }
+    }
+    if (audience === 'server' && /brief|my section|my tables|section|tables right now/.test(q)) {
       const facts = briefingFacts(Object.values(hub.state.tables).filter((t) => t.serverId === req.staffId), cfg, hub.state.unavailable, now)
       return { text: facts.map((f) => `• ${f.replace(/^- /, '')}`).join('\n'), suggestions: ['How do I warn guests about a delay?', 'Explain Jain food'] }
     }
@@ -299,13 +319,16 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
         suggestions: ['Explain Jain food', 'How do I handle allergies?'],
       }
     }
-    const lessons = findLessons(question)
+    const lessons = findLessons(question, 2, audience)
     if (lessons.length) return { text: lessons.map((l, i) => (i === 0 ? l.answer : `Also: ${l.answer}`)).join('\n\n'), suggestions: lessons[0].next }
     const sop = sopFallback(question, cfg)
-    if (!sop.startsWith('I can only')) return { text: sop, suggestions: STARTERS.slice(1, 3) }
+    if (!sop.startsWith('I can only')) return { text: sop, suggestions: starters.slice(1, 3) }
     return {
-      text: 'That one needs the AI trainer, which isn’t connected right now, so I can only answer from the built-in notes: service standards, tonight’s menu and what’s in each dish, allergies and diets, complaints, access needs and your section. Try one of these, or ask your manager to connect Claude in Setup.',
-      suggestions: STARTERS,
+      text:
+        audience === 'manager'
+          ? 'That one needs the AI coach, which isn’t connected right now, so I can only answer from the built-in notes: briefings, escalations and comps, feedback and recognition, rushes, staff support, conflict, emergencies, inclusion and harassment reports. Try one of these, or connect Ollama or Claude in Setup.'
+          : 'That one needs the AI trainer, which isn’t connected right now, so I can only answer from the built-in notes: service standards, tonight’s menu and what’s in each dish, allergies and diets, complaints, access and inclusion, and your section. Try one of these, or ask your manager to connect AI in Setup.',
+      suggestions: starters,
     }
   }
 
@@ -388,29 +411,40 @@ interface Built {
  * menu with what each dish contains, and the training notes. Identical on every request for a
  * given config, so it caches.
  */
-export function stableSystem(cfg: RestaurantConfig): string {
+export function stableSystem(cfg: RestaurantConfig, audience: Audience = 'server'): string {
+  const manager = audience === 'manager'
   return [
-    `You are TableMate, the assistant inside the floor team's app at ${cfg.name}, a fine-dining restaurant in India. You are an expert service trainer and a friendly colleague: hospitality standards, guest recovery, allergens and dietary practice (vegan, Jain, halal), accessibility etiquette, recommending with care, teamwork and staying calm in a rush.`,
+    manager
+      ? `You are TableMate, the assistant inside the floor team's app at ${cfg.name}, a fine-dining restaurant in India, talking to a floor manager. You are an experienced restaurant operations coach and a supportive peer: running service, guest recovery and escalations, comps, pre-shift briefings and debriefs, coaching and feedback, fair and inclusive team leadership, wellbeing and safety, and Indian workplace norms (including the POSH Act).`
+      : `You are TableMate, the assistant inside the floor team's app at ${cfg.name}, a fine-dining restaurant in India. You are an expert service trainer and a friendly colleague: hospitality standards, guest recovery, allergens and dietary practice (vegan, Jain, halal, religious fasting), accessibility etiquette, inclusive service, recommending with care, teamwork and staying calm in a rush.`,
     '',
     'How to answer:',
-    '- You are talking to a busy server between tables. Lead with the answer. Short, practical and warm: 1-4 short sentences, or a few bullets.',
-    '- Use the restaurant’s standards and menu below. If something isn’t covered, say so and suggest asking the manager or the chef.',
-    '- Safety first: never say a dish is safe for an allergy or diet from memory. Use the ingredient tags below and always tell the server to confirm with the kitchen.',
-    '- Never blame the kitchen or colleagues. Kitchen delays are the kitchen’s, not the server’s. Personal stats are private; never compare people.',
+    manager
+      ? '- You are talking to a busy manager during or around service. Lead with the decision or the next step. Short and practical: 1-5 short sentences, or a few bullets; add a ready-to-say line when it helps.'
+      : '- You are talking to a busy server between tables. Lead with the answer. Short, practical and warm: 1-4 short sentences, or a few bullets.',
+    '- Use the restaurant’s standards and menu below. If something isn’t covered, say so and suggest asking ' + (manager ? 'the owner, the chef or HR.' : 'the manager or the chef.'),
+    '- Safety first: never say a dish is safe for an allergy or diet from memory. Use the ingredient tags below and always tell them to confirm with the kitchen. In a medical emergency, say to call 112 first.',
+    manager
+      ? '- Fairness: never rank, compare or name-and-shame staff. Talk about steps, stations and load. Kitchen delays are the kitchen’s, not a server’s. Coach in private, praise in public.'
+      : '- Never blame the kitchen or colleagues. Kitchen delays are the kitchen’s, not the server’s. Personal stats are private; never compare people.',
+    '- Inclusion: every guest and every colleague gets the same respect whatever their caste, religion, region, language, accent, gender, sexuality, age, body, disability or background. Don’t assume; ask kindly. Describe needs as what to do, never as labels for people. Never repeat or endorse stereotypes, even if asked.',
     `- ${INCLUSIVE_STYLE}`,
-    '- Multilingual: reply in the language the server writes in (English, Hindi, Nepali, Bengali, Tamil, Spanish and others), in a natural, spoken register. Keep dish names as written on the menu.',
+    '- Multilingual: reply in the language the person writes in (English, Hindi, Nepali, Bengali, Tamil, Spanish and others), in a natural, spoken register. Keep dish names as written on the menu.',
+    '- If they ask for simple words, use short sentences and everyday words, one idea per sentence, and explain any restaurant term.',
     '',
     'Service standards:',
     ...sopFacts(cfg),
     '',
     'Menu (course, station, what it contains):',
     ...cfg.menu.map((m) => `- ${m.name}: ${m.course}, ${m.station}, about ${m.prepMin} min; contains ${m.contains?.join(', ') || 'not listed'}`),
-    'Diet rules: vegan avoids meat, fish, shellfish, dairy, egg, honey. Jain avoids meat, fish, shellfish, egg and root vegetables (onion, garlic, potato). Halal avoids pork, alcohol and non-halal meat.',
+    'Diet rules: vegetarian avoids meat, fish, shellfish. Vegan also avoids dairy, egg, honey. Jain avoids meat, fish, shellfish, egg and root vegetables (onion, garlic, potato). Halal avoids pork, alcohol and non-halal meat. Some guests avoid beef or pork only; religious fasts differ, so ask.',
     '',
-    'Practice rubric (for role-plays): a great reply apologises sincerely, shows understanding, gives a clear next step and a time, never blames the kitchen, and never guesses about allergens (checks with the chef).',
+    manager
+      ? 'Practice rubric (for role-plays): a great manager listens first, takes ownership, keeps feedback private and specific (situation, behaviour, impact), looks after the person (staff safety and wellbeing come before a guest’s spend), agrees a follow-up, never shames or blames, and in an emergency acts first (call 112).'
+      : 'Practice rubric (for role-plays): a great reply apologises sincerely, shows understanding, gives a clear next step and a time, never blames the kitchen, never guesses about allergens (checks with the chef), speaks to the guest directly, and asks rather than assumes.',
     '',
-    'Training notes (the house way of doing things):',
-    ...LESSONS.map((l) => `- ${l.title}: ${l.answer}`),
+    manager ? 'Training notes (the house way of managing):' : 'Training notes (the house way of doing things):',
+    ...lessonsFor(audience).map((l) => `- ${l.title}: ${l.answer}`),
   ].join('\n')
 }
 
@@ -569,6 +603,26 @@ function briefingFacts(tables: TableState[], cfg: RestaurantConfig, unavailable:
   return out
 }
 
+/** What a manager needs to know right now: load by section (never performance) and what needs them. */
+function floorFacts(hub: Hub, now: number): string[] {
+  const cfg = hub.config
+  const a = analytics(hub.state, cfg)
+  const out: string[] = []
+  for (const [section, staffId] of Object.entries(cfg.sections)) {
+    const l = a.load.find((x) => x.staffId === staffId)
+    out.push(`- Section ${section}: ${l?.activeTables ?? 0} active tables${l?.overloaded ? ` (over the limit of ${cfg.sop.maxActiveTablesPerServer})` : ''}`)
+  }
+  for (const r of a.managerRequests) out.push(`- NEEDS YOU: a server asked you to visit ${r.tableName}`)
+  for (const t of Object.values(hub.state.tables)) {
+    if (!t.visitId) continue
+    const clash = t.lines.filter((l) => !l.safetyResolvedAt && l.status !== 'served' && l.status !== 'unavailable' && safetyIssues(cfg.menu.find((m) => m.id === l.menuItemId), t.party).length)
+    if (clash.length) out.push(`- NEEDS YOU: ${t.name} allergy or diet clash on ${clash.map((l) => l.name).join(', ')}`)
+    if (t.mood?.value === 'unhappy' && !t.recoveredAt) out.push(`- ${t.name}: guests not happy, the server is putting it right`)
+    if (t.billRequestedAt && !t.billPresentedAt && now > t.billRequestedAt + cfg.sop.billPresentWithinMin * MIN) out.push(`- ${t.name}: waiting for the bill`)
+  }
+  return out
+}
+
 /** How a guest need reads in a briefing: what to do, not a label for the person. */
 const NEED_BRIEF: Record<string, string> = {
   wheelchair: 'uses a wheelchair: keep a step-free route and space at the table',
@@ -578,6 +632,11 @@ const NEED_BRIEF: Record<string, string> = {
   jain: 'Jain: no root vegetables, onion or garlic',
   halal: 'halal',
   vegan: 'vegan',
+  quiet: 'prefers a quiet table: away from speakers and the kitchen door, calm check-ins',
+  service_animal: 'has an assistance animal: room for it to lie down, a water bowl, don’t pet or feed it',
+  no_beef: 'no beef',
+  no_pork: 'no pork',
+  fasting: 'fasting: ask what they can eat tonight',
 }
 
 function shiftSummaryFallback(a: ReturnType<typeof analytics>): string {
@@ -629,7 +688,7 @@ function practiceBuiltIn(scenarioId: string, turns: ChatTurn[], finish: boolean)
   const sc = SCENARIOS.find((x) => x.id === scenarioId)!
   const replies = turns.filter((t) => t.role === 'user').map((t) => t.text)
   if (finish) {
-    if (!replies.length) return { text: 'Reply to the guest at least once, then I can give you feedback.', done: false }
+    if (!replies.length) return { text: 'Reply at least once, then I can give you feedback.', done: false }
     const scores = replies.map((r) => scoreReply(sc.id, r))
     const stars = Math.round(scores.reduce((a, s) => a + s.stars, 0) / scores.length)
     const good = [...new Set(scores.flatMap((s) => s.good))].slice(0, 2)

@@ -417,6 +417,11 @@ const NEED_WORDS: Record<string, string> = {
   jain: 'Jain',
   halal: 'halal',
   vegan: 'vegan',
+  quiet: 'prefers a quiet table',
+  service_animal: 'assistance animal',
+  no_beef: 'no beef',
+  no_pork: 'no pork',
+  fasting: 'fasting',
 }
 
 /** The party as translatable parts: size, name, regular, occasion, allergies, needs. */

@@ -118,6 +118,7 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
             </div>
             <Toggle k="readableFont" label="acc.readable" hint="acc.readableHint" />
             <Toggle k="highContrast" label="acc.contrast" />
+            <Toggle k="simpleWords" label="acc.simple" hint="acc.simpleHint" />
           </Group>
 
           <Group title={t('acc.listen')}>

@@ -11,7 +11,7 @@ import type { Hub } from './hub.ts'
 const MIN = 60_000
 // Names as a guest gives them when booking; no honorific is assumed.
 const GUEST_NAMES = ['Aarav Kapoor', 'Mx. Iyer', 'the Sharmas', 'Dr. Menon', 'Ria D’Souza', 'Sam Banerjee', 'Ms. Reddy']
-const NEEDS = ['wheelchair', 'hearing', 'vision', 'highchair', 'jain', 'halal', 'vegan']
+const NEEDS = ['wheelchair', 'hearing', 'vision', 'highchair', 'jain', 'halal', 'vegan', 'quiet', 'service_animal', 'no_beef', 'no_pork', 'fasting']
 const OCCASIONS = ['anniversary', 'birthday', 'business dinner']
 const ALLERGIES = ['nuts', 'shellfish', 'gluten', 'dairy']
 

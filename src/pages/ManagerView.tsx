@@ -4,6 +4,7 @@ import { AiAnswerBox } from '../components/AiAnswer.tsx'
 import { AppShell, LiveClock, ShellSkeleton, PanelTitle } from '../components/kit.tsx'
 import { Avatar } from '../components/Avatar.tsx'
 import { FloorPlan } from '../components/FloorPlan.tsx'
+import { AssistantDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -36,13 +37,27 @@ export default function ManagerView() {
   useRolePage({ kind: 'manager' })
   const { snap, connected } = useSnapshot('manager')
   const summary = useAi()
+  const [assist, setAssist] = useState(false)
   if (!snap || !snap.analytics) return <ShellSkeleton />
+  const managerId = snap.config.staff.find((s) => s.role === 'manager')?.id ?? 'm_floor'
   const a = snap.analytics
   const name = (id: string) => snap.config.staff.find((s) => s.id === id)?.name ?? id
   const maxMin = Math.max(1, ...a.stages.map((s) => Math.max(s.avgMin, s.avgTargetMin)))
 
   return (
-    <AppShell title="Service overview" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />}>
+    <AppShell
+      title="Service overview"
+      sub={snap.config.name}
+      right={
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" className="h-9 rounded-full" onClick={() => setAssist(true)}>
+            <Sparkles /> Ask TableMate
+          </Button>
+          <LiveClock now={snap.now} ok={connected} />
+        </div>
+      }
+    >
+      <AssistantDrawer open={assist} onOpenChange={setAssist} staffId={managerId} provider={snap.ai.provider} role="manager" wide />
       <div className="space-y-5">
         <NeedsYou snap={snap} />
         <Pulse snap={snap} />
