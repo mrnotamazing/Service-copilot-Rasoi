@@ -641,4 +641,7 @@ export const bn: Record<Key, string> = {
   "srv.switch": "সার্ভার বদলান",
   "servers.glance": "এক নজরে ফ্লোর",
   "servers.kudosEmpty": "সহকর্মীদের ধন্যবাদ এখানে দেখা যায়।",
+  "t.instruction": "{name}:",
+  "h.instruction": "“বুঝেছি” চাপুন, যাতে তাঁরা জানেন আপনি দেখেছেন",
+  "action.instruction": "বুঝেছি",
 }

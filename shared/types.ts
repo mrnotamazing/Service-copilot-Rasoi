@@ -178,6 +178,7 @@ export type TaskKind =
   | 'farewell'
   | 'reset'
   | 'kitchen_message'
+  | 'instruction'
   | 'safety_check'
   | 'recovery'
 
@@ -232,6 +233,18 @@ export interface Task {
   actions: TaskAction[]
   /** Filled for the top cards: tasks worth doing on the same trip. */
   related?: RelatedTask[]
+}
+
+/** A note from the manager to one or more servers; each server acknowledges it on their own card. */
+export interface Instruction {
+  id: string
+  at: number
+  from: string
+  to: string[]
+  text: string
+  tableId?: string
+  /** staffId -> when they tapped "Got it". */
+  acks: Record<string, number>
 }
 
 export interface Note {

@@ -662,6 +662,9 @@ export const en = {
   "srv.switch": "Switch server",
   "servers.glance": "Floor at a glance",
   "servers.kudosEmpty": "Thank-yous between teammates show up here.",
+  "t.instruction": "{name}:",
+  "h.instruction": "Tap “Got it” so they know you’ve seen it",
+  "action.instruction": "Got it",
 } as const
 
 export type Key = keyof typeof en

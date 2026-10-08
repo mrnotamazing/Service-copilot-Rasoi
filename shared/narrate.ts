@@ -98,6 +98,12 @@ export function narrate(ev: CopilotEvent, state: EngineState, config: Restaurant
       return item('staff', `${tname(ev.payload.tableId)} reset and ready`)
     case 'note.sent':
       return item(ev.payload.direction === 'to_floor' ? 'kitchen' : 'staff', `${ev.payload.direction === 'to_floor' ? 'Kitchen → floor' : `${staff(ev.payload.from)} → kitchen`}: ${ev.payload.text}`)
+    case 'manager.instruction': {
+      const to = ev.payload.to.length === config.staff.filter((s) => s.role === 'server').length ? 'everyone' : ev.payload.to.map((id) => staff(id)).join(', ')
+      return item('staff', `${staff(ev.payload.from)} → ${to}: ${ev.payload.text}`)
+    }
+    case 'instruction.acked':
+      return null
     case 'kudos.sent':
       return item('staff', `${staff(ev.payload.from)} sent kudos to ${staff(ev.payload.to)}`)
     case 'practice.scored':

@@ -73,7 +73,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       }
     }
     if (role === 'manager')
-      return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40) }
+      return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40), instructions: hub.state.instructions.slice(-15).reverse() }
     return { ...base, openTasks }
   }
 

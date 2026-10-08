@@ -641,4 +641,7 @@ export const hi: Record<Key, string> = {
   "srv.switch": "सर्वर बदलें",
   "servers.glance": "फ़्लोर एक नज़र में",
   "servers.kudosEmpty": "साथियों के धन्यवाद यहाँ दिखते हैं।",
+  "t.instruction": "{name}:",
+  "h.instruction": "“समझ गया” दबाएँ ताकि उन्हें पता चले कि आपने देख लिया",
+  "action.instruction": "समझ गया",
 }

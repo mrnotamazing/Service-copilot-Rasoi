@@ -47,6 +47,9 @@ export type CopilotEvent =
   // Two-way notes between floor and kitchen
   | Base<'note.sent', { noteId: string; direction: 'to_kitchen' | 'to_floor'; tableId?: string; text: string; from: string }>
   | Base<'note.acked', { noteId: string }>
+  // The manager to one or more servers: a note to act on, acknowledged by each server
+  | Base<'manager.instruction', { instructionId: string; from: string; to: string[]; text: string; tableId?: string }>
+  | Base<'instruction.acked', { instructionId: string; staffId: string }>
   // Peer recognition between staff (feeds the team layer of the game)
   | Base<'kudos.sent', { from: string; to: string; reason: string }>
   // Training: a scored practice reply, or the end of a practice (feeds XP, never the floor)
@@ -65,7 +68,7 @@ export const EVENT_TYPES: EventType[] = [
   'table.reset', 'table.assigned', 'server.greeted', 'item.served', 'guest.informed',
   'server.checkback', 'course.cleared', 'bill.presented', 'guest.farewelled', 'allergy.confirmed',
   'task.snoozed', 'note.sent', 'note.acked', 'kudos.sent', 'safety.resolved', 'guest.recovered', 'manager.visited',
-  'practice.scored',
+  'practice.scored', 'manager.instruction', 'instruction.acked',
 ]
 
 let counter = 0

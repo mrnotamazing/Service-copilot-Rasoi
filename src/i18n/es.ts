@@ -641,4 +641,7 @@ export const es: Record<Key, string> = {
   "srv.switch": "Cambiar de mesero",
   "servers.glance": "La sala de un vistazo",
   "servers.kudosEmpty": "Aquí aparecen los agradecimientos entre compañeros.",
+  "t.instruction": "{name}:",
+  "h.instruction": "Toca “Entendido” para que sepan que lo viste",
+  "action.instruction": "Entendido",
 }

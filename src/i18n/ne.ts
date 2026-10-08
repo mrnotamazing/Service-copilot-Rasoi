@@ -641,4 +641,7 @@ export const ne: Record<Key, string> = {
   "srv.switch": "सर्भर बदल्नुहोस्",
   "servers.glance": "फ्लोर एक नजरमा",
   "servers.kudosEmpty": "साथीहरूबीचको धन्यवाद यहाँ देखिन्छ।",
+  "t.instruction": "{name}:",
+  "h.instruction": "“बुझें” थिच्नुहोस्, ताकि तपाईंले हेर्नुभयो भनेर थाहा होस्",
+  "action.instruction": "बुझें",
 }

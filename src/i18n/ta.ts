@@ -641,4 +641,7 @@ export const ta: Record<Key, string> = {
   "srv.switch": "சர்வரை மாற்று",
   "servers.glance": "தளம் ஒரே பார்வையில்",
   "servers.kudosEmpty": "சக ஊழியர்களின் நன்றிகள் இங்கே தோன்றும்.",
+  "t.instruction": "{name}:",
+  "h.instruction": "நீங்கள் பார்த்தீர்கள் என அவர்களுக்குத் தெரிய “புரிந்தது” தட்டுங்கள்",
+  "action.instruction": "புரிந்தது",
 }

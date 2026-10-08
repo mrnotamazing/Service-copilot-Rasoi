@@ -1,4 +1,4 @@
-import { ArrowRight, BellRing, Check, ChefHat, HeartHandshake, ShieldAlert, CircleDollarSign, Clock, Hand, HandPlatter, HeartPulse, Loader2, MessageCircle, Sparkles, TimerReset, Utensils, UtensilsCrossed, Volume2, Wand2 } from 'lucide-react'
+import { Megaphone, ArrowRight, BellRing, Check, ChefHat, HeartHandshake, ShieldAlert, CircleDollarSign, Clock, Hand, HandPlatter, HeartPulse, Loader2, MessageCircle, Sparkles, TimerReset, Utensils, UtensilsCrossed, Volume2, Wand2 } from 'lucide-react'
 import { motion, useMotionValue, useTransform } from 'motion/react'
 import { forwardRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -30,6 +30,7 @@ const ICON: Record<TaskKind, typeof Hand> = {
   farewell: Hand,
   reset: Sparkles,
   kitchen_message: BellRing,
+  instruction: Megaphone,
   safety_check: ShieldAlert,
   recovery: HeartHandshake,
 }

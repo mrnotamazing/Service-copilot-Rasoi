@@ -2,7 +2,7 @@ import type { FeedItem } from './narrate.ts'
 import type { Forecast, LearningPlan, ShiftIntel } from './intel.ts'
 import type { Analytics } from './engine.ts'
 import type { PlayerView, teamView } from './game.ts'
-import type { Note, RestaurantConfig, StaffStats, TableState, Task, TaskText, Upcoming, VisitRecord } from './types.ts'
+import type { Instruction, Note, RestaurantConfig, StaffStats, TableState, Task, TaskText, Upcoming, VisitRecord } from './types.ts'
 
 export type Role = 'server' | 'kitchen' | 'manager'
 
@@ -54,6 +54,8 @@ export interface Snapshot {
   integrations?: IntegrationStatus[]
   /** manager/kitchen: how many open cards each server has (load, not performance) */
   openTasks?: Record<string, number>
+  /** manager: notes sent to servers, newest first, with who has seen each. */
+  instructions?: Instruction[]
   /** Manager / demo control: what's been happening, in plain words (newest last). */
   feed?: FeedItem[]
 }
