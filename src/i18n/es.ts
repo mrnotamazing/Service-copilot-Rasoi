@@ -639,4 +639,6 @@ export const es: Record<Key, string> = {
   "start.present": "¿Vas a presentar? Inicia un servicio en Demo y ajustes y luego abre las otras pantallas.",
   "servers.title": "Meseros",
   "srv.switch": "Cambiar de mesero",
+  "servers.glance": "La sala de un vistazo",
+  "servers.kudosEmpty": "Aquí aparecen los agradecimientos entre compañeros.",
 }

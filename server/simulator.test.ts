@@ -49,7 +49,7 @@ describe('demo control', () => {
     const { hub, sim, post, run } = setup()
     const status = post('/api/sim/settings', { showcase: true }) as { showcase: boolean; running: boolean; autoManager: boolean; autopilot: string[] }
     expect(status).toMatchObject({ showcase: true, running: true, autoManager: true })
-    expect(status.autopilot).toHaveLength(3)
+    expect(status.autopilot).toHaveLength(6)
     run(120)
     const staged = hub.feed.filter((f) => f.kind === 'demo')
     expect(staged.length).toBeGreaterThanOrEqual(3)

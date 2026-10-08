@@ -231,12 +231,17 @@ export class Simulator {
     }
   }
 
+  /** Like a host: the smallest free table that fits, in the section with the fewest guests right now. */
+  private freeTable(size: number): TableState | undefined {
+    const tables = Object.values(this.hub.state.tables)
+    const load = (section: string) => tables.filter((t) => t.section === section && t.visitId).length
+    return tables.filter((t) => t.status === 'available' && t.seats >= size).sort((a, b) => a.seats - b.seats || load(a.section) - load(b.section))[0]
+  }
+
   /** Seat a party at the smallest free table that fits; false if none is free. */
   private seat(party: Partial<Party>, _why: string): boolean {
     const size = party.partySize ?? pick([2, 2, 3, 4, 4])
-    const free = Object.values(this.hub.state.tables)
-      .filter((t) => t.status === 'available' && t.seats >= size)
-      .sort((a, b) => a.seats - b.seats)[0]
+    const free = this.freeTable(size)
     if (!free) return false
     this.send({ type: 'table.seated', source: 'pos:sim', payload: { allergies: [], needs: [], ...party, partySize: size, tableId: free.id } })
     return true
@@ -294,14 +299,16 @@ export class Simulator {
       const size = pick([2, 2, 2, 2, 3, 4, 4, 4, 5, 6])
       this.waitlist.push({ size, since: now })
       const peak = elapsed > 15 * MIN && elapsed < 70 * MIN ? 1.8 : 1
-      this.nextArrival = now + (rand(5, 10) * MIN) / (peak * this.intensity)
+      // Arrivals scale with the size of the floor (the pace was set for a 10-table room).
+      const floorSize = Math.max(0.5, tables.length / 10)
+      this.nextArrival = now + (rand(5, 10) * MIN) / (peak * this.intensity * floorSize)
     }
     // Guests who wait too long for a table leave.
     const before = this.waitlist.length
     this.waitlist = this.waitlist.filter((g) => now - g.since < 25 * MIN)
     this.walkouts += before - this.waitlist.length
     for (const g of [...this.waitlist]) {
-      const free = tables.filter((t) => t.status === 'available' && t.seats >= g.size).sort((a, b) => a.seats - b.seats)[0]
+      const free = this.freeTable(g.size)
       if (!free) continue
       this.waitlist.splice(this.waitlist.indexOf(g), 1)
       this.send({

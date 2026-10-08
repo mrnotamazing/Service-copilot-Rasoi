@@ -660,6 +660,8 @@ export const en = {
   "start.present": "Presenting? Start a service in Demo & setup, then open the other screens.",
   "servers.title": "Servers",
   "srv.switch": "Switch server",
+  "servers.glance": "Floor at a glance",
+  "servers.kudosEmpty": "Thank-yous between teammates show up here.",
 } as const
 
 export type Key = keyof typeof en

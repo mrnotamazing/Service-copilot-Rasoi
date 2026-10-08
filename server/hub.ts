@@ -138,6 +138,21 @@ export class Hub {
  * (e.g. ingredient tags for the safety check) without touching anything the restaurant set.
  */
 export function withDefaults(config: RestaurantConfig): RestaurantConfig {
+  // Still the demo restaurant (every original demo table is there): bring in servers, tables and
+  // sections added to the demo since it was saved, without changing anything already set.
+  const ORIGINAL = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10']
+  if (ORIGINAL.every((id) => config.tables.some((t) => t.id === id))) {
+    const sections = { ...config.sections }
+    const staff = [...config.staff]
+    const tables = [...config.tables]
+    for (const [sec, id] of Object.entries(DEMO_CONFIG.sections)) {
+      if (sec in sections) continue
+      sections[sec] = id
+      if (!staff.some((s) => s.id === id)) staff.splice(staff.filter((s) => s.role === 'server').length, 0, DEMO_CONFIG.staff.find((s) => s.id === id)!)
+      for (const t of DEMO_CONFIG.tables) if (t.section === sec && !tables.some((x) => x.id === t.id)) tables.push(t)
+    }
+    config = { ...config, sections, staff, tables }
+  }
   return {
     ...config,
     tables: config.tables.map((t) => {

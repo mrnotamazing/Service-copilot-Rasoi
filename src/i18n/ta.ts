@@ -639,4 +639,6 @@ export const ta: Record<Key, string> = {
   "start.present": "வழங்குகிறீர்களா? டெமோ & அமைப்பில் சேவையைத் தொடங்கி, பிற திரைகளைத் திறங்கள்.",
   "servers.title": "சர்வர்கள்",
   "srv.switch": "சர்வரை மாற்று",
+  "servers.glance": "தளம் ஒரே பார்வையில்",
+  "servers.kudosEmpty": "சக ஊழியர்களின் நன்றிகள் இங்கே தோன்றும்.",
 }

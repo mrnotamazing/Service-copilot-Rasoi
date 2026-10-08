@@ -639,4 +639,6 @@ export const hi: Record<Key, string> = {
   "start.present": "प्रस्तुति दे रहे हैं? डेमो और सेटअप में सर्विस शुरू करें, फिर बाकी स्क्रीन खोलें।",
   "servers.title": "सर्वर",
   "srv.switch": "सर्वर बदलें",
+  "servers.glance": "फ़्लोर एक नज़र में",
+  "servers.kudosEmpty": "साथियों के धन्यवाद यहाँ दिखते हैं।",
 }

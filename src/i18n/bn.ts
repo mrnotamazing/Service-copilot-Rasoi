@@ -639,4 +639,6 @@ export const bn: Record<Key, string> = {
   "start.present": "উপস্থাপনা করছেন? ডেমো ও সেটআপে সার্ভিস শুরু করুন, তারপর অন্য স্ক্রিন খুলুন।",
   "servers.title": "সার্ভার",
   "srv.switch": "সার্ভার বদলান",
+  "servers.glance": "এক নজরে ফ্লোর",
+  "servers.kudosEmpty": "সহকর্মীদের ধন্যবাদ এখানে দেখা যায়।",
 }

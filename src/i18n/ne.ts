@@ -639,4 +639,6 @@ export const ne: Record<Key, string> = {
   "start.present": "प्रस्तुति दिँदै हुनुहुन्छ? डेमो र सेटअपमा सर्भिस सुरु गर्नुहोस्, अनि अरू स्क्रिन खोल्नुहोस्।",
   "servers.title": "सर्भर",
   "srv.switch": "सर्भर बदल्नुहोस्",
+  "servers.glance": "फ्लोर एक नजरमा",
+  "servers.kudosEmpty": "साथीहरूबीचको धन्यवाद यहाँ देखिन्छ।",
 }

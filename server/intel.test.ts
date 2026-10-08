@@ -40,7 +40,7 @@ describe('predict: forecasts', () => {
     const { api } = busyNight(35)
     const snap = api.snapshot('manager') as Snapshot
     expect(snap.forecast!.stations.length).toBeGreaterThan(0)
-    expect(snap.forecast!.sections.map((s) => s.section).sort()).toEqual(['A', 'B', 'C'])
+    expect(snap.forecast!.sections.map((s) => s.section).sort()).toEqual(['A', 'B', 'C', 'D', 'E', 'F'])
     for (const s of snap.forecast!.stations) expect(s.text).toMatch(/cooking/)
     // Section load is load, never a ranking of people.
     expect(JSON.stringify(snap.forecast)).not.toMatch(/best|worst|slowest server/i)

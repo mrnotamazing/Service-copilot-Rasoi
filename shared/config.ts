@@ -15,11 +15,14 @@ export const DEFAULT_SOP: Sop = {
 
 export const DEMO_CONFIG: RestaurantConfig = {
   name: 'Saffron House',
-  sections: { A: 's_aisha', B: 's_rohan', C: 's_meera' },
+  sections: { A: 's_aisha', B: 's_rohan', C: 's_meera', D: 's_kabir', E: 's_tenzin', F: 's_priya' },
   staff: [
-    { id: 's_aisha', name: 'Aisha', role: 'server', color: '#e07a5f' },
-    { id: 's_rohan', name: 'Rohan', role: 'server', color: '#3d9a8b' },
-    { id: 's_meera', name: 'Meera', role: 'server', color: '#8d6cd1' },
+    { id: 's_aisha', name: 'Aisha', role: 'server', color: '#e07a5f', languages: ['en', 'hi', 'ur'] },
+    { id: 's_rohan', name: 'Rohan', role: 'server', color: '#3d9a8b', languages: ['en', 'hi', 'mr'] },
+    { id: 's_meera', name: 'Meera', role: 'server', color: '#8d6cd1', languages: ['en', 'ta', 'ml'] },
+    { id: 's_kabir', name: 'Kabir', role: 'server', color: '#2f6fb0', languages: ['en', 'hi', 'pa'] },
+    { id: 's_tenzin', name: 'Tenzin', role: 'server', color: '#b5762a', pronouns: 'they/them', languages: ['en', 'ne', 'hi'] },
+    { id: 's_priya', name: 'Priya', role: 'server', color: '#c2477a', languages: ['en', 'bn', 'es'] },
     { id: 'k_pass', name: 'Chef Vikram', role: 'kitchen', color: '#d4a24c' },
     { id: 'm_floor', name: 'Floor Manager', role: 'manager', color: '#6b7280' },
   ],
@@ -34,6 +37,14 @@ export const DEMO_CONFIG: RestaurantConfig = {
     { id: 'T8', name: 'T8', seats: 2, section: 'C', posTableId: '8', pos: { x: 25, y: 35 } },
     { id: 'T9', name: 'T9', seats: 4, section: 'C', posTableId: '9', pos: { x: 75, y: 35 } },
     { id: 'T10', name: 'T10', seats: 8, section: 'C', posTableId: '10', pos: { x: 50, y: 76 } },
+    { id: 'T11', name: 'T11', seats: 2, section: 'D', posTableId: '11', pos: { x: 25, y: 38 } },
+    { id: 'T12', name: 'T12', seats: 4, section: 'D', posTableId: '12', pos: { x: 75, y: 38 } },
+    { id: 'T13', name: 'T13', seats: 4, section: 'D', posTableId: '13', pos: { x: 50, y: 78 } },
+    { id: 'T14', name: 'T14', seats: 2, section: 'E', posTableId: '14', pos: { x: 25, y: 35 } },
+    { id: 'T15', name: 'T15', seats: 4, section: 'E', posTableId: '15', pos: { x: 75, y: 35 } },
+    { id: 'T16', name: 'T16', seats: 6, section: 'E', posTableId: '16', pos: { x: 50, y: 76 } },
+    { id: 'T17', name: 'T17', seats: 2, section: 'F', posTableId: '17', pos: { x: 28, y: 50 } },
+    { id: 'T18', name: 'T18', seats: 4, section: 'F', posTableId: '18', pos: { x: 72, y: 50 } },
   ],
   menu: [
     { id: 'm_burrata', name: 'Burrata & heirloom tomato', course: 'starter', station: 'cold', prepMin: 6, posItemId: '1001', contains: ['dairy'] },
