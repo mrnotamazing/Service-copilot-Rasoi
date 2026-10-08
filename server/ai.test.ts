@@ -210,3 +210,45 @@ describe('assistant chat', () => {
     expect(on).toMatchObject({ source: 'claude', text: 'From the model' })
   })
 })
+
+describe('quick buttons are fast', () => {
+  it('send a short system prompt, cap the length and stream the words', async () => {
+    const hub = new Hub(memoryStore())
+    const seen: { stable: string; maxTokens?: number }[] = []
+    const chat = {
+      name: 'ollama' as const,
+      compact: true,
+      async reply(system: { stable: string }, _t: unknown, onText?: (t: string) => void, opts?: { maxTokens?: number }) {
+        seen.push({ stable: system.stable, maxTokens: opts?.maxTokens })
+        onText?.('Good evening')
+        return 'Good evening, welcome.'
+      },
+    }
+    const ai = createAi(hub, { chat })
+    const streamed: string[] = []
+    const a = await ai.ask({ kind: 'briefing', staffId: 's_aisha' }, (t) => streamed.push(t))
+    expect(a.text).toBe('Good evening, welcome.')
+    expect(streamed).toEqual(['Good evening'])
+    expect(seen[0].stable.length).toBeLessThan(1000)
+    expect(seen[0].maxTokens).toBe(240)
+  })
+
+  it('show the built-in answer when the model says nothing for 12 seconds', async () => {
+    vi.useFakeTimers()
+    try {
+      const hub = new Hub(memoryStore())
+      const chat = {
+        name: 'ollama' as const,
+        reply: (_s: unknown, _t: unknown, _o?: unknown, opts?: { signal?: AbortSignal }) =>
+          new Promise<string>((_, reject) => opts?.signal?.addEventListener('abort', () => reject(new Error('aborted')))),
+      }
+      const pending = createAi(hub, { chat }).ask({ kind: 'briefing', staffId: 's_aisha' })
+      await vi.advanceTimersByTimeAsync(12_000)
+      const a = await pending
+      expect(a.source).toBe('built-in')
+      expect(a.notice).toMatch(/took too long/)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

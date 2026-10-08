@@ -64,6 +64,9 @@ few things to keep it quick:
 - **A compact prompt**: the model gets only the training notes that matter for your question
   (about 1,300 tokens instead of 4,300), so it starts answering several times sooner.
 - **The model is loaded as soon as TableMate finds it**, so your first question doesn't wait for it.
+- **Quick buttons send almost nothing extra**: "What do I say?", "Guest upset? Get help", briefings, the coach tip, summaries and "What happened" already carry their facts, so they send a 150-token instruction instead of the full 3,850-token manual, with a short length cap. Words start appearing in a second or two.
+- **Nobody waits forever**: if no words have arrived after 12 seconds, TableMate shows the built-in answer instead and says so.
+- **The model stays loaded for 2 hours** after it's last used, so it doesn't have to reload mid-shift.
 - **Role-plays open instantly**: the guest's first line is already written in every language.
 - **Short answers and no reloads**: answer length is capped, and the model keeps one small working-memory size, so it never has to reload between questions.
 

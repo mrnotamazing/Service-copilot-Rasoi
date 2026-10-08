@@ -85,7 +85,9 @@ export class Simulator {
     if (this.startedAt === null) {
       // Service starts now, in real time, so the app's clocks match the wall clock (IST is applied
       // when times are shown). At a demo speed above 1× service time runs ahead; clocks stay real.
-      this.hub.clock.set(Math.max(Date.now(), this.hub.events.at(-1)?.at ?? 0))
+      // A restored service picks up where it stopped (see Hub); a fresh one starts at the real time.
+      const last = this.hub.events.at(-1)?.at
+      this.hub.clock.set(last && Date.now() - last > 10 * MIN ? last : Math.max(Date.now(), last ?? 0))
       this.startedAt = this.hub.clock.now()
       this.nextArrival = this.startedAt + 0.2 * MIN
     }

@@ -19,6 +19,8 @@ export function clock(ms: number): string {
 /** "1:05" style duration. */
 export function mmss(ms: number): string {
   const s = Math.max(0, Math.round(Math.abs(ms) / 1000))
+  // Past an hour, minutes and seconds stop being readable: "2 h 15 min".
+  if (s >= 3600) return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 

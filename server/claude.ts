@@ -14,11 +14,11 @@ export function createClaude(): ChatModel {
   return {
     name: 'claude',
     label: () => MODEL,
-    async reply(system, turns: ChatTurn[], onText) {
+    async reply(system, turns: ChatTurn[], onText, opts) {
       // Streamed, so the answer appears on screen as it's written.
       const stream = client.beta.messages.stream({
         model: MODEL,
-        max_tokens: 4000,
+        max_tokens: opts?.maxTokens ?? 4000,
         // Short, practical answers for staff between tables: low effort keeps them quick.
         output_config: { effort: 'low' },
         // If the model declines a request, the API retries on a fallback model automatically.
@@ -29,7 +29,7 @@ export function createClaude(): ChatModel {
           { type: 'text', text: system.live },
         ],
         messages: turns.map((t) => ({ role: t.role, content: t.text })),
-      })
+      }, { signal: opts?.signal })
       if (onText) stream.on('text', (_delta, snapshot) => onText(snapshot))
       const response = await stream.finalMessage()
       if (response.stop_reason === 'refusal') throw new Error('The assistant can’t help with that request')

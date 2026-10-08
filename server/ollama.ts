@@ -60,7 +60,7 @@ export function createOllama(opts: { host?: string; model?: string; fetchImpl?: 
 
   /** Load the model into memory now (a request with no prompt), so the first real answer is quick. */
   function warm(name: string) {
-    void doFetch(`${host}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: name, keep_alive: '30m', options: { num_ctx: NUM_CTX } }) }).catch(() => {})
+    void doFetch(`${host}/api/generate`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model: name, keep_alive: '2h', options: { num_ctx: NUM_CTX } }) }).catch(() => {})
   }
 
   void refresh()
@@ -73,7 +73,7 @@ export function createOllama(opts: { host?: string; model?: string; fetchImpl?: 
     compact: true,
     available: () => status.running && !!status.model,
     label: () => status.model ?? undefined,
-    async reply(system, turns: ChatTurn[], onText) {
+    async reply(system, turns: ChatTurn[], onText, opts) {
       const name = status.model
       if (!name) throw new Error('No Ollama model installed')
       const messages = [
@@ -88,13 +88,13 @@ export function createOllama(opts: { host?: string; model?: string; fetchImpl?: 
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         // Local models are slower, and the first answer may also load the model into memory.
-        signal: AbortSignal.timeout(180_000),
+        signal: opts?.signal ? AbortSignal.any([AbortSignal.timeout(180_000), opts.signal]) : AbortSignal.timeout(180_000),
         body: JSON.stringify({
           model: name,
           stream: true,
-          keep_alive: '30m',
+          keep_alive: '2h',
           // Answers are short by design; the cap stops a rambling model from holding things up.
-          options: { num_ctx: NUM_CTX, num_predict: 320, temperature: 0.6 },
+          options: { num_ctx: NUM_CTX, num_predict: opts?.maxTokens ?? 320, temperature: 0.6 },
           messages,
         }),
       })

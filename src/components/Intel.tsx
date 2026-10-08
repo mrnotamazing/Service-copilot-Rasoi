@@ -64,7 +64,7 @@ export function ComplaintHelp({ tableId, staffId }: { tableId: string; staffId: 
           <Sparkles className="size-4 animate-pulse text-primary" /> {t('chat.thinking')}
         </p>
       ) : (
-        <AiAnswerBox answer={ai.answer as AiAnswer | null} error={ai.error} className="mt-2" />
+        <AiAnswerBox answer={ai.answer} error={ai.error} className="mt-2" />
       )}
     </section>
   )

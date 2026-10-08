@@ -43,8 +43,10 @@ export class Hub {
     this.state = initialState(this.config)
     this.game = initialGame(this.config)
     for (const ev of store.loadEvents()) this.ingestStored(ev)
+    // A saved service resumes where it stopped: if the app was off for a while, that gap isn't
+    // counted against open tables (otherwise every card would read hours late after a restart).
     const last = this.events.at(-1)
-    if (last) this.clock.set(Math.max(last.at, Date.now()))
+    if (last) this.clock.set(Date.now() - last.at > 10 * 60_000 ? last.at : Math.max(last.at, Date.now()))
   }
 
   private ingestStored(ev: CopilotEvent) {

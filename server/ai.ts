@@ -39,7 +39,8 @@ export interface ChatModel {
   label?(): string | undefined
   /** `reminder` restates the format and length in one line; small local models follow it far better than the long system prompt. */
   /** `onText`, when given, receives the whole answer so far as it's written (for streaming to the screen). */
-  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[], onText?: (text: string) => void): Promise<string>
+  /** `opts.maxTokens` caps the answer's length; `opts.signal` cancels a request that is taking too long. */
+  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[], onText?: (text: string) => void, opts?: { maxTokens?: number; signal?: AbortSignal }): Promise<string>
 }
 
 export interface PracticeTurn {
@@ -491,16 +492,25 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       if (built.instant) return { text: fallback, source: 'built-in', ...built.extra }
       let notice: string | undefined
       if (model && modelReady()) {
+        // Quick buttons ("What do I say?", briefings, summaries…) carry their facts in the prompt, so they
+        // get a short system prompt, a length cap, streaming, and a deadline for the first words.
+        const quick = !built.system
+        const ctrl = new AbortController()
+        let started = false
+        const deadline = quick ? setTimeout(() => !started && ctrl.abort(), QUICK_FIRST_WORDS_MS) : undefined
         try {
-          const full = built.system ?? { stable: stableSystem(hub.config), live: `Reply in ${language}.` }
+          const full = built.system ?? { stable: quickSystem(hub.config), live: `Reply in ${language}.` }
           const system = model.compact && built.compact ? { ...built.compact, reminder: full.reminder } : full
-          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], built.streamable ? onText : undefined)
+          const stream = quick || built.streamable ? (t: string) => ((started = true), onText?.(t)) : undefined
+          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], stream, { maxTokens: quick ? (QUICK_TOKENS[req.kind] ?? 240) : undefined, signal: ctrl.signal })
           const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name }
           if (model.checkFacts && built.facts?.length) out.text = `${out.text}\n\nFrom the menu: ${built.facts.join('\n')}`
           return out
         } catch (e) {
-          notice = `${opts.chatErrorReason?.(e) ?? (e instanceof Error ? e.message : String(e))}. Showing the built-in answer.`
+          notice = ctrl.signal.aborted ? 'The AI took too long, so this is the built-in answer.' : `${opts.chatErrorReason?.(e) ?? (e instanceof Error ? e.message : String(e))}. Showing the built-in answer.`
           if (!dify) return { text: fallback, source: 'built-in', notice, ...built.extra }
+        } finally {
+          clearTimeout(deadline)
         }
       }
       if (!dify) return { text: fallback, source: 'built-in', ...built.extra }
@@ -516,6 +526,16 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
 }
 
 export class AiError extends Error {}
+
+/** No words from the model by then: show the built-in answer instead of keeping someone waiting. */
+const QUICK_FIRST_WORDS_MS = 12_000
+/** Rough answer lengths for the quick buttons (tokens): a line to say is short, a summary longer. */
+const QUICK_TOKENS: Partial<Record<AiKind, number>> = { guest_script: 140, coach: 180, briefing: 240, complaint: 240, ask_sop: 180, incident: 280, shift_summary: 320 }
+
+/** The whole system prompt for a quick button: the facts are in the request itself. */
+export function quickSystem(cfg: RestaurantConfig): string {
+  return `You are TableMate, the assistant inside the floor team's app at ${cfg.name}, a fine-dining restaurant in India. Write only what is asked, using only the facts given: short, warm and natural, no headings, no preamble. Never blame the kitchen or colleagues and never guess about allergens. ${INCLUSIVE_STYLE}`
+}
 
 interface Built {
   prompt: string
