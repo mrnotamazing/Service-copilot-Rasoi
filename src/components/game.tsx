@@ -1,5 +1,5 @@
 import confetti from 'canvas-confetti'
-import { Crown, Flame, Hand, HeartHandshake, Lock, Megaphone, Shield, ShieldCheck, Sparkles, Star, Sun, Timer, Trophy } from 'lucide-react'
+import { Crown, Drama, Flame, GraduationCap, Hand, HeartHandshake, Lock, Megaphone, MessageCircleHeart, Shield, ShieldCheck, Sparkles, Star, Sun, Timer, Trophy } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { Award, PlayerView } from '../../shared/game.ts'
@@ -23,7 +23,7 @@ export function useAwardText() {
   }
 }
 
-export const BADGE_ICONS: Record<string, typeof Hand> = { Hand, Sun, ShieldCheck, Megaphone, Flame, Timer, Sparkles, HeartHandshake, Crown }
+export const BADGE_ICONS: Record<string, typeof Hand> = { Hand, Sun, ShieldCheck, Megaphone, Flame, Timer, Sparkles, HeartHandshake, Crown, Drama, MessageCircleHeart, GraduationCap }
 
 /** Avatar wrapped in a ring that fills toward the next rank. */
 export function LevelRing({ name, color, avatar, progress, level, size = 44 }: { name: string; color: string; avatar?: string; progress: number; level: number; size?: number }) {

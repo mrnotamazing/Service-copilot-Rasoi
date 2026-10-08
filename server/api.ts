@@ -9,7 +9,7 @@ import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
 import type { RestaurantConfig } from '../shared/types.ts'
 import { CATALOG } from './adapters/index.ts'
-import { AiError, createAi, type AiKind, type DifyOptions } from './ai.ts'
+import { AiError, createAi, type AiKind, type AiRequest, type DifyOptions } from './ai.ts'
 import type { Hub } from './hub.ts'
 import type { Simulator } from './simulator.ts'
 
@@ -133,11 +133,19 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       const messages = Array.isArray(body.messages)
         ? body.messages
             .slice(-16)
-            .filter((m): m is { role: 'user' | 'assistant'; text: string } => !!m && typeof m === 'object' && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string')
-            .map((m) => ({ role: m.role, text: m.text.slice(0, 1500) }))
+            .filter((m): m is { role: 'user' | 'assistant'; text: string; score?: unknown } => !!m && typeof m === 'object' && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string')
+            .map((m) => ({ role: m.role, text: m.text.slice(0, 1500), ...(typeof m.score === 'number' && m.score >= 0 && m.score <= 100 ? { score: m.score } : {}) }))
         : undefined
       const mode = body.mode === 'practice' ? 'practice' : body.mode === 'ask' ? 'ask' : undefined
-      return ai.ask({ kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true })
+      const req: AiRequest = { kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true }
+      const answer = await ai.ask(req)
+      // Practice is training: each scored reply, and the finish, earns XP (capped per day by the game).
+      if (kind === 'chat' && mode === 'practice' && req.staffId && req.scenario && typeof answer.score === 'number' && hub.game.players[req.staffId]) {
+        const before = hub.game.players[req.staffId].xp
+        hub.ingest({ type: 'practice.scored', source: 'app', payload: { staffId: req.staffId, scenario: req.scenario, score: answer.score, final: req.finish || undefined, outcome: answer.outcome } })
+        answer.xp = hub.game.players[req.staffId].xp - before
+      }
+      return answer
     },
     /** Returns undefined when the path isn't one of the app routes. */
     post(path: string, body: ApiBody): { result: unknown } | undefined {

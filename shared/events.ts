@@ -49,6 +49,8 @@ export type CopilotEvent =
   | Base<'note.acked', { noteId: string }>
   // Peer recognition between staff (feeds the team layer of the game)
   | Base<'kudos.sent', { from: string; to: string; reason: string }>
+  // Training: a scored practice reply, or the end of a practice (feeds XP, never the floor)
+  | Base<'practice.scored', { staffId: string; scenario: string; score: number; final?: boolean; outcome?: 'won' | 'lost' | 'ok' }>
 
 export type EventType = CopilotEvent['type']
 export type PayloadOf<T extends EventType> = Extract<CopilotEvent, { type: T }>['payload']
@@ -63,6 +65,7 @@ export const EVENT_TYPES: EventType[] = [
   'table.reset', 'table.assigned', 'server.greeted', 'item.served', 'guest.informed',
   'server.checkback', 'course.cleared', 'bill.presented', 'guest.farewelled', 'allergy.confirmed',
   'task.snoozed', 'note.sent', 'note.acked', 'kudos.sent', 'safety.resolved', 'guest.recovered', 'manager.visited',
+  'practice.scored',
 ]
 
 let counter = 0

@@ -5,7 +5,7 @@
 import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
 import { dishesNamed } from '../shared/dishNames.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
-import { SCENARIOS, scoreReply } from '../shared/practice.ts'
+import { MAX_REPLIES, moodFor, type Mood, type Outcome, patienceAfter, PATIENCE_MAX, practiceDebrief, practiceStep, scenarioById, scenarioOpening, type Score, scoreReply, starsFor } from '../shared/practice.ts'
 import { predictReady } from '../shared/predict.ts'
 import { safetyIssues } from '../shared/safety.ts'
 import { istClock } from '../shared/time.ts'
@@ -20,6 +20,8 @@ export type AiProvider = 'claude' | 'ollama' | 'dify' | 'built-in'
 export interface ChatTurn {
   role: 'user' | 'assistant'
   text: string
+  /** Practice: the score (0–100) this reply already got, so the other side's patience carries over. */
+  score?: number
 }
 
 /** A conversational language model (Claude, or a local Ollama model). `stable` is cacheable; `live` changes every message. */
@@ -81,6 +83,18 @@ export interface AiAnswer {
   done?: boolean
   /** Chat: good next questions to offer. */
   suggestions?: string[]
+  /** Practice: the reply's score out of 100, what it did and missed, and an ideal reply to learn from. */
+  score?: number
+  criteria?: Score['criteria']
+  ideal?: string
+  /** Practice: how the other side took it, their patience (0–4) and, at the end, how it went. */
+  mood?: Mood
+  patience?: number
+  outcome?: Outcome
+  /** Practice: XP earned by this turn (added by the API, which records it). */
+  xp?: number
+  /** Language of `text` when it isn't the app's language (the built-in trainer answers in English). */
+  lang?: string
 }
 
 export interface DifyOptions {
@@ -177,28 +191,25 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     }
   }
 
-  /** Practice role-play: the guest's next line plus coaching on the server's last reply. */
+  /** Practice role-play (older single-shot kind): the guest's next line plus coaching on the server's last reply. */
   function practiceTurn(req: AiRequest): Built {
-    const sc = SCENARIOS.find((x) => x.id === req.scenario)
+    const sc = scenarioById(req.scenario)
     if (!sc) throw new AiError('Pick a situation to practise.')
     const history = req.history ?? []
-    const replies = history.filter((h) => h.role === 'server')
-    const last = replies.at(-1)?.text ?? ''
-    const done = replies.length >= 2
-    const score = last ? scoreReply(sc.id, last) : null
-    const builtFeedback = score ? [...score.good.map((g) => `✓ ${g}`), ...score.tips.slice(0, 2).map((t) => `→ ${t}`)].join('\n') : undefined
-    const nextGuest = done ? 'Thank you. That helped.' : sc.guest[replies.length]
+    const replies = history.filter((h) => h.role === 'server').map((h) => h.text)
+    const step = practiceStep(sc.id, replies, req.lang)
+    const builtFeedback = step.scored ? coachLines(step.scored) : undefined
     return {
       prompt:
-        `Role-play to train a fine-dining server. You play a guest in this situation: "${sc.guest[0]}". ` +
+        `Role-play to train a fine-dining server. You play a guest in this situation: "${scenarioOpening(sc.id)}". ` +
         `Conversation so far:\n${history.map((h) => `${h.role === 'guest' ? 'GUEST' : 'SERVER'}: ${h.text}`).join('\n') || '(none yet)'}\n\n` +
-        (last
+        (replies.length
           ? `First, coach the server's last reply in 2 short lines starting with ✓ for what worked and → for one improvement (apology, empathy, a clear next step, a time, no blaming the kitchen, never guessing about allergens). `
           : '') +
-        (done ? 'Then end the role-play kindly as the guest.' : 'Then reply as the guest, in one or two natural sentences, staying in character.') +
+        (step.done ? 'Then end the role-play as the guest.' : 'Then reply as the guest, in one or two natural sentences, staying in character.') +
         `\nFormat exactly:\nCOACH: <coaching or "-">\nGUEST: <guest line>`,
-      fallback: nextGuest,
-      extra: { feedback: builtFeedback, stars: score?.stars, done },
+      fallback: step.text,
+      extra: { feedback: builtFeedback, stars: step.scored?.stars, done: step.done },
       parse: (answer: string) => {
         const coach = answer.match(/COACH:\s*([\s\S]*?)(?:\n\s*GUEST:|$)/i)?.[1]?.trim()
         const guest = answer.match(/GUEST:\s*([\s\S]*)$/i)?.[1]?.trim()
@@ -212,7 +223,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     const cfg = hub.config
     const turns = (req.messages ?? []).filter((t) => t.text.trim()).slice(-16)
     const practice = req.mode === 'practice'
-    const sc = practice ? SCENARIOS.find((x) => x.id === req.scenario) : undefined
+    const sc = practice ? scenarioById(req.scenario) : undefined
     if (practice && !sc) throw new AiError('Pick a situation to practise.')
     if (!practice && turns.at(-1)?.role !== 'user') throw new AiError('Type a message first.')
     const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
@@ -222,6 +233,12 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     const asker = manager ? 'the manager' : 'the server'
     const other = sc?.plays === 'staff' ? 'team member' : 'guest'
     const mine = Object.values(hub.state.tables).filter((t) => (manager ? !!t.visitId : t.serverId === req.staffId))
+    // Practice: every reply so far, its score (the app sends back what each one got) and the other side's patience.
+    const replies = turns.filter((t) => t.role === 'user')
+    const rubric = sc ? replies.map((t) => scoreReply(sc.id, t.text, req.lang)) : []
+    const past = replies.slice(0, -1).map((t, i) => ({ score: t.score ?? rubric[i].score, penalty: rubric[i].penalty }))
+    const patienceBefore = patienceAfter(past).patience
+    const opening = practice && !replies.length
     const live = [
       'Live context (changes every message):',
       `- Asking: ${name(req.staffId)}${pronouns(req.staffId) ? ` (${pronouns(req.staffId)})` : ''}, ${manager ? 'the floor manager' : 'a server'}`,
@@ -230,10 +247,14 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       `- Time: ${istClock(now)} IST`,
       ...(practice
         ? [
-            `- Mode: PRACTICE. You play a ${other} in this situation: "${sc!.guest[0]}" Stay in character; be realistic, not cartoonish; respond like a real person would when ${asker} handles it well or badly.`,
+            `- Mode: PRACTICE. You play a ${other} in this situation (their opening line, to say in ${language}): "${scenarioOpening(sc!.id)}"`,
+            `- Play them like a real person, not a pushover: react to exactly what ${asker} said. One polite sentence doesn't fix things. If they're vague, push for specifics (what exactly, how long). If they apologise, act and give a time, soften a little but raise a real follow-up worry. Excuses, blame, guesses about safety or judging you make you more upset. Natural spoken ${language}, 1-2 short sentences, real emotion, no stage directions, never abusive or cartoonish.`,
+            `- The ${other}'s patience right now: ${patienceBefore}/${PATIENCE_MAX} (0 = gives up and leaves or asks for the manager, ${PATIENCE_MAX} = won over). A strong reply (score 75+) raises it by 1, a weak one (under 45) lowers it by 1, and two strong replies in total win them over. If it reaches ${PATIENCE_MAX}, close warmly and add [END]; if it reaches 0, leave or ask for the manager and add [END]. After ${MAX_REPLIES} replies, wrap up either way with [END].`,
             req.finish
-              ? `- ${manager ? 'The manager' : 'The server'} asked to finish. Step out of character and give a short debrief: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).`
-              : `- After each reply from ${asker}, first coach it in 1-2 short lines starting with ✓ (what worked) and → (one improvement), using the practice rubric. Then reply as the ${other}. Format exactly:\nCOACH: <coaching, or - before they have spoken>\nGUEST: <the ${other}'s next line>\nIf the situation is resolved, end the ${other}'s line with [END].`,
+              ? `- ${manager ? 'The manager' : 'The server'} asked to finish. Step out of character and give a short debrief in ${language}: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).`
+              : opening
+                ? `- Start the role-play: say the opening line in ${language}, in character. Format exactly:\nCOACH: -\nGUEST: <the ${other}'s opening line>`
+                : `- Score ${asker}'s last reply against the practice rubric, then answer as the ${other}. Write COACH, IDEAL and GUEST in ${language}; keep the labels in English. Format exactly:\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <what an excellent ${manager ? 'manager' : 'server'} would have said instead, 1-2 sentences>\nGUEST: <the ${other}'s next line, in character>`,
           ]
         : [manager ? '- Mode: ASK. Answer as their operations coach and peer.' : '- Mode: ASK. Answer as their expert trainer and colleague.']),
       manager ? '- The floor right now (seated tables):' : '- Their section right now:',
@@ -244,46 +265,71 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     const apiTurns: ChatTurn[] = turns[0]?.role === 'user' ? [...turns] : [{ role: 'user', text: practice ? `(Start the role-play with the ${other}’s opening line.)` : '(Start.)' }, ...turns]
     if (practice && req.finish) apiTurns.push({ role: 'user', text: '(Finish the practice and give me my debrief.)' })
     else if (practice && apiTurns.at(-1)?.role === 'assistant') apiTurns.push({ role: 'user', text: '(Continue.)' })
-    const builtIn = practice ? practiceBuiltIn(sc!.id, turns, !!req.finish) : askBuiltIn(turns.at(-1)!.text, req, now, audience)
+    const builtIn = practice ? practiceBuiltIn(sc!.id, replies, req.lang, !!req.finish) : askBuiltIn(turns.at(-1)!.text, req, now, audience)
     const facts = practice ? [] : dishesNamed(turns.at(-1)!.text, cfg.menu).slice(0, 2).map(dishFacts)
     return {
       facts,
       prompt: `${stableSystem(cfg, audience)}\n\n${live}\n\nConversation so far:\n${apiTurns.map((t) => `${t.role === 'user' ? (manager ? 'MANAGER' : 'SERVER') : practice ? other.toUpperCase() : 'TABLEMATE'}: ${t.text}`).join('\n')}`,
       fallback: builtIn.text,
-      extra: { feedback: builtIn.feedback, stars: builtIn.stars, done: builtIn.done, suggestions: builtIn.suggestions },
+      // Everything the built-in answer knows (score, ideal, mood…) except its text, which is the fallback.
+      extra: Object.fromEntries(Object.entries(builtIn).filter(([k]) => k !== 'text')) as Partial<AiAnswer>,
       system: {
         stable: stableSystem(cfg, audience),
         live,
         reminder: practice
           ? req.finish
-            ? 'Step out of character: two things I did well, one thing to practise, then a last line "STARS: n" (1-3).'
-            : `Reply in exactly this format, nothing else:\nCOACH: ✓ <what worked> → <one improvement>\nGUEST: <the ${other}’s next line, in character>`
+            ? `Step out of character, in ${language}: two things I did well, one thing to practise, then a last line "STARS: n" (1-3).`
+            : opening
+              ? `Say the ${other}'s opening line in ${language}. Format exactly:\nCOACH: -\nGUEST: <line>`
+              : `Reply in exactly this format, nothing else (text in ${language}, labels in English):\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <a better reply I could have given>\nGUEST: <the ${other}’s next line, in character>`
           : `You are TableMate, my ${manager ? 'management coach' : 'trainer'}${req.simple ? '; use simple everyday words' : ''}. Answer my last message directly in 2-5 short sentences or bullets, no headings, no thinking out loud. Use ${language} unless I wrote in another language.`,
       },
       turns: apiTurns,
       parse: practice
         ? (raw: string) => {
             // Smaller models often bold the labels (**COACH:**); read them either way.
-            const answer = raw.replace(/\*\*\s*(COACH|GUEST|STARS)\s*:?\s*\*\*\s*:?/gi, '$1:')
+            const answer = raw.replace(/\*\*\s*(COACH|GUEST|STARS|SCORE|IDEAL)\s*:?\s*\*\*\s*:?/gi, '$1:')
+            const field = (label: string) => answer.match(new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n\\s*(?:COACH|SCORE|IDEAL|GUEST|STARS):|$)`, 'i'))?.[1]?.trim()
             if (req.finish) {
-              const stars = Number(answer.match(/STARS:\s*([1-3])/i)?.[1]) || builtIn.stars
-              return { text: answer.replace(/STARS:\s*[1-3]\s*$/i, '').trim(), stars, done: true, feedback: undefined }
+              // Stars follow the scores the replies actually got, so the debrief and the XP agree.
+              return { ...builtIn, text: answer.replace(/STARS:\s*[1-3]\s*$/i, '').trim(), feedback: undefined }
             }
-            const coach = answer.match(/COACH:\s*([\s\S]*?)(?:\n\s*GUEST:|$)/i)?.[1]?.trim()
-            // Without labels, keep the guest's words and drop any stray coaching lines.
+            if (opening) {
+              const line = field('GUEST') ?? answer.split('\n').filter((l) => !/^\s*COACH:/i.test(l)).join('\n').trim()
+              return { text: line.replace(/\[END\]/gi, '').trim() || builtIn.text, lang: undefined }
+            }
+            const coach = field('COACH')
+            // Without labels, keep the other side's words and drop any stray coaching lines.
             let guest =
-              answer.match(/GUEST:\s*([\s\S]*)$/i)?.[1]?.trim() ??
+              field('GUEST') ??
               answer
                 .split('\n')
-                .filter((l) => !/^\s*(✓|→|COACH:)/i.test(l))
+                .filter((l) => !/^\s*(✓|→|COACH:|SCORE:|IDEAL:)/i.test(l))
                 .join('\n')
                 .trim()
-            const done = /\[END\]/i.test(guest)
+            const ended = /\[END\]/i.test(guest)
             guest = guest.replace(/\[END\]/gi, '').trim()
-            const last = [...turns].reverse().find((t) => t.role === 'user')?.text
-            // If the model skipped the coaching, the rubric's own coaching stands in.
-            // No usable guest line (e.g. only coaching came back): the scripted guest line stands in.
-            return { text: guest || builtIn.text, feedback: coach && coach !== '-' ? coach : builtIn.feedback, stars: last ? scoreReply(sc!.id, last).stars : undefined, done }
+            // The model's score, held back where the rubric caught blame, judgement or a safety guess.
+            const own = rubric.at(-1)!
+            const modelScore = Number(field('SCORE')?.match(/\d{1,3}/)?.[0])
+            const score = Math.max(0, Math.min(own.penalty ? 40 : 100, Number.isFinite(modelScore) ? modelScore : own.score))
+            const state = patienceAfter([...past, { score, penalty: own.penalty }])
+            const done = ended || !!state.outcome
+            const outcome = state.outcome ?? (done ? (state.patience >= 3 ? 'won' : state.patience <= 1 ? 'lost' : 'ok') : undefined)
+            return {
+              // No usable line (e.g. only coaching came back): the scripted line stands in.
+              text: guest || builtIn.text,
+              feedback: coach && coach !== '-' ? coach : builtIn.feedback,
+              score,
+              stars: starsFor(score),
+              criteria: undefined,
+              ideal: field("IDEAL") || (builtIn as PracticeAnswer).ideal,
+              mood: moodFor(score, own.penalty),
+              patience: state.patience,
+              outcome,
+              done,
+              lang: undefined,
+            }
           }
         : (answer: string) => ({ text: answer, suggestions: builtIn.suggestions }),
     }
@@ -684,20 +730,40 @@ function sopFallback(q: string, cfg: RestaurantConfig): string {
 }
 
 /** Built-in role-play: scripted guest lines and rubric coaching, with a debrief on finish. */
-function practiceBuiltIn(scenarioId: string, turns: ChatTurn[], finish: boolean): { text: string; feedback?: string; stars?: number; done?: boolean; suggestions?: string[] } {
-  const sc = SCENARIOS.find((x) => x.id === scenarioId)!
-  const replies = turns.filter((t) => t.role === 'user').map((t) => t.text)
+/** Coaching lines for a scored reply: what worked (✓) and up to two things to try (→). */
+function coachLines(sc: Score): string {
+  return [...sc.good.map((g) => `✓ ${g}`), ...sc.tips.slice(0, 2).map((t) => `→ ${t}`)].join('\n')
+}
+
+type PracticeAnswer = Partial<AiAnswer> & { text: string }
+
+/** Built-in role-play in the app's language: a realistic next line, a score, an ideal reply, or the debrief. */
+function practiceBuiltIn(scenarioId: string, replies: ChatTurn[], lang: string | undefined, finish: boolean): PracticeAnswer {
   if (finish) {
-    if (!replies.length) return { text: 'Reply at least once, then I can give you feedback.', done: false }
-    const scores = replies.map((r) => scoreReply(sc.id, r))
-    const stars = Math.round(scores.reduce((a, s) => a + s.stars, 0) / scores.length)
-    const good = [...new Set(scores.flatMap((s) => s.good))].slice(0, 2)
-    const tip = scores.flatMap((s) => s.tips)[0]
-    return { text: [good.length ? `What worked: ${good.join(' ')}` : '', tip ? `To practise: ${tip}` : 'To practise: keep doing exactly this.'].filter(Boolean).join('\n'), stars, done: true }
+    if (!replies.length) return { text: practiceDebrief(scenarioId, [], lang).text.split('\n')[0], done: false }
+    const d = practiceDebrief(
+      scenarioId,
+      replies.map((r) => r.text),
+      lang,
+      replies.map((r) => r.score ?? NaN).map((x) => (Number.isFinite(x) ? x : undefined)) as number[],
+    )
+    return { text: d.text, score: d.score, stars: d.stars, outcome: d.outcome, done: true }
   }
-  const last = replies.at(-1)
-  const score = last ? scoreReply(sc.id, last) : null
-  const feedback = score ? [...score.good.map((g) => `✓ ${g}`), ...score.tips.slice(0, 2).map((t) => `→ ${t}`)].join('\n') : undefined
-  const line = replies.length < sc.guest.length ? sc.guest[replies.length] : 'Alright. Thank you for sorting that out.'
-  return { text: line, feedback, stars: score?.stars, done: replies.length >= sc.guest.length }
+  const step = practiceStep(
+    scenarioId,
+    replies.map((r) => r.text),
+    lang,
+  )
+  return {
+    text: step.text,
+    feedback: step.scored ? coachLines(step.scored) : undefined,
+    score: step.scored?.score,
+    stars: step.scored?.stars,
+    criteria: step.scored?.criteria,
+    ideal: step.ideal,
+    mood: step.mood,
+    patience: step.patience,
+    outcome: step.outcome,
+    done: step.done,
+  }
 }

@@ -1,4 +1,4 @@
-import { BookOpenText, ChevronLeft, CircleCheck, Drama, Flag, Lightbulb, Loader2, Mic, RotateCcw, Send, Sparkles, Star, Volume2 } from 'lucide-react'
+import { BookOpenText, ChevronLeft, CircleCheck, Drama, Flag, Lightbulb, Loader2, Mic, Minus, RotateCcw, Send, Sparkles, Star, TrendingDown, TrendingUp, Volume2 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { AiAnswer, ChatTurn } from '../../server/ai.ts'
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
 import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { en } from '../i18n/en.ts'
 import { post } from '../lib/live.ts'
-import { getPrefs, setPrefs, usePrefs } from '../lib/prefs.ts'
+import { getPrefs, setPrefs, usePrefs, type Lang } from '../lib/prefs.ts'
 import { speak } from '../lib/speech.ts'
 
 type Mode = 'ask' | 'practice'
@@ -24,6 +24,15 @@ interface Message extends ChatTurn {
   suggestions?: string[]
   /** Practice debrief shown as a summary card. */
   debrief?: boolean
+  /** Practice, on your replies: what this one did and missed, an ideal version and the XP it earned. */
+  criteria?: AiAnswer['criteria']
+  ideal?: string
+  xp?: number
+  /** Practice, on their lines: how they took your last reply. */
+  mood?: AiAnswer['mood']
+  patience?: number
+  /** Language of the text, when it differs from the app's (for the right voice and font). */
+  lang?: Lang
 }
 
 const STARTERS: Record<AssistantRole, Key[]> = {
@@ -99,12 +108,12 @@ function PracticeRoom({ staffId, provider, role }: { staffId: string; provider: 
         </Button>
         <span className="truncate text-sm font-medium">{t(`sc.${scenario}` as Key)}</span>
       </div>
-      <Chat key={scenario} staffId={staffId} provider={provider} mode="practice" scenario={scenario} role={role} />
+      <Chat key={scenario} staffId={staffId} provider={provider} mode="practice" scenario={scenario} role={role} onExit={() => setScenario(null)} />
     </div>
   )
 }
 
-function Chat({ staffId, provider, mode, scenario, role }: { staffId: string; provider: AiAnswer['source']; mode: Mode; scenario?: string; role: AssistantRole }) {
+function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: string; provider: AiAnswer['source']; mode: Mode; scenario?: string; role: AssistantRole; onExit?: () => void }) {
   const t = useT()
   const { readAloud, simpleWords } = usePrefs()
   const [messages, setMessages] = useState<Message[]>([])
@@ -131,13 +140,25 @@ function Chat({ staffId, provider, mode, scenario, role }: { staffId: string; pr
         lang: getPrefs().lang,
         finish,
         simple: getPrefs().simpleWords,
-        messages: history.filter((m) => !m.debrief).map(({ role, text: x }) => ({ role, text: x })),
+        // Each reply carries the score it got, so the other side's patience carries over between turns.
+        messages: history.filter((m) => !m.debrief).map(({ role, text: x, score }) => ({ role, text: x, score })),
       })
-      // In practice, coaching belongs under the reply it is about.
-      const withCoach = practice && !finish ? history.map((m, i) => (i === history.length - 1 && m.role === 'user' ? { ...m, feedback: a.feedback, stars: a.stars } : m)) : history
-      setMessages([...withCoach, { role: 'assistant', text: a.text, source: a.source, notice: a.notice, suggestions: a.suggestions, debrief: finish, stars: finish ? a.stars : undefined }])
-      if (finish || a.done) setDone(true)
-      if (readAloud) speak(a.text, { lang: a.source === 'built-in' ? 'en' : undefined })
+      // The built-in trainer answers questions in English; role-plays come in the app's language.
+      const lang = (a.lang as Lang | undefined) ?? (a.source === 'built-in' && !practice ? 'en' : undefined)
+      // In practice, the score, coaching, ideal reply and XP belong under the reply they are about.
+      const scored = practice && !finish && a.score !== undefined
+      const withCoach = scored
+        ? history.map((m, i) => (i === history.length - 1 && m.role === 'user' ? { ...m, feedback: a.feedback, stars: a.stars, score: a.score, criteria: a.criteria, ideal: a.ideal, xp: a.xp } : m))
+        : history
+      const reply: Message = finish
+        ? { role: 'assistant', text: a.text, source: a.source, debrief: true, stars: a.stars, score: a.score, xp: a.xp, lang }
+        : { role: 'assistant', text: a.text, source: a.source, notice: a.notice, suggestions: a.suggestions, mood: a.mood, patience: a.patience, lang }
+      const next = [...withCoach, reply]
+      setMessages(next)
+      if (finish) setDone(true)
+      if (readAloud) speak(a.text, { lang })
+      // When they've been won over (or lost), the summary follows on its own.
+      if (practice && !finish && a.done) void call(next, true)
     } catch (e) {
       setError(e instanceof Error ? e.message : t('toast.error'))
     } finally {
@@ -167,6 +188,7 @@ function Chat({ staffId, provider, mode, scenario, role }: { staffId: string; pr
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {practice && <PatienceMeter messages={messages} other={other} />}
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-3" aria-live="polite">
         {!practice && messages.length === 0 && (
           <div className="rounded-2xl bg-secondary/60 p-4">
@@ -181,7 +203,7 @@ function Chat({ staffId, provider, mode, scenario, role }: { staffId: string; pr
           </div>
         )}
         {messages.map((m, i) => (
-          <Bubble key={i} m={m} practice={practice} other={other} />
+          <Bubble key={i} m={m} practice={practice} other={other} all={messages} />
         ))}
         {busy && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -198,15 +220,21 @@ function Chat({ staffId, provider, mode, scenario, role }: { staffId: string; pr
             ))}
           </div>
         ) : null}
-        {provider !== 'built-in' || t.lang === 'en' ? null : messages.length > 0 && <p className="text-[11px] text-muted-foreground">{t('assist.englishNote')}</p>}
+        {/* Only questions fall back to English; role-plays are written in every app language. */}
+        {practice || provider !== 'built-in' || t.lang === 'en' ? null : messages.length > 0 && <p className="text-[11px] text-muted-foreground">{t('assist.englishNote')}</p>}
         <div ref={end} />
       </div>
 
       <div className="border-t px-4 pb-4 pt-3">
         {practice && done ? (
-          <Button className="h-11 w-full rounded-xl" onClick={() => (setMessages([]), setDone(false), void call([]))}>
-            <RotateCcw /> {t('practice.again')}
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" className="h-11 rounded-xl" onClick={() => (setMessages([]), setDone(false), void call([]))}>
+              <RotateCcw /> {t('practice.retry')}
+            </Button>
+            <Button className="h-11 rounded-xl" onClick={onExit}>
+              <Drama /> {t('practice.again')}
+            </Button>
+          </div>
         ) : (
           <>
             {practice && messages.some((m) => m.role === 'user') && (
@@ -258,54 +286,162 @@ function Chat({ staffId, provider, mode, scenario, role }: { staffId: string; pr
   )
 }
 
-function Bubble({ m, practice, other }: { m: Message; practice: boolean; other: Key }) {
+function Bubble({ m, practice, other, all }: { m: Message; practice: boolean; other: Key; all: Message[] }) {
   const t = useT()
   const mine = m.role === 'user'
-  const builtIn = m.source === 'built-in'
-  if (m.debrief)
-    return (
-      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-primary/30 bg-accent/60 p-4">
-        <div className="mb-1 flex items-center justify-between">
-          <span className="text-sm font-semibold">{t('chat.debrief')}</span>
-          {m.stars ? <Stars n={m.stars} /> : null}
-        </div>
-        <Lines text={m.text} lang={builtIn ? 'en' : undefined} />
-      </motion.div>
-    )
+  if (m.debrief) return <Debrief m={m} all={all} />
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
-      {practice && <span className="mb-0.5 text-[11px] text-muted-foreground">{mine ? t('practice.you') : t(other)}</span>}
+      {practice && (
+        <span className="mb-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          {mine ? t('practice.you') : t(other)}
+          {!mine && m.mood && <MoodChip mood={m.mood} />}
+        </span>
+      )}
       <div className={cn('max-w-[88%] rounded-2xl px-3 py-2 text-sm', mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary')}>
-        <Lines text={m.text} lang={!mine && builtIn ? 'en' : undefined} />
+        <Lines text={m.text} lang={!mine ? m.lang : undefined} />
         {!mine && (
-          <button type="button" onClick={() => speak(m.text, { lang: builtIn ? 'en' : undefined })} className="mt-1 inline-flex items-center gap-1 rounded-full text-[11px] text-muted-foreground hover:text-foreground" aria-label={t('card.read')}>
+          <button type="button" onClick={() => speak(m.text, { lang: m.lang })} className="mt-1 inline-flex items-center gap-1 rounded-full text-[11px] text-muted-foreground hover:text-foreground" aria-label={t('card.read')}>
             <Volume2 className="size-3.5" /> {t('card.read')}
           </button>
         )}
       </div>
       {m.notice && <span className="mt-1 text-[11px] text-warn">{m.notice}</span>}
-      {m.feedback && (
-        <div className="mt-1.5 max-w-[92%] rounded-xl border border-primary/30 bg-accent/60 px-3 py-2 text-sm">
-          {m.stars ? <Stars n={m.stars} className="mb-1" /> : null}
-          <ul className="space-y-1">
-            {m.feedback
-              .split('\n')
-              .filter(Boolean)
-              .map((line, j) => {
-                const good = line.startsWith('✓')
-                const tip = line.startsWith('→')
-                const Icon = good ? CircleCheck : tip ? Lightbulb : null
-                return (
-                  <li key={j} className="flex items-start gap-1.5">
-                    {Icon && <Icon className={cn('mt-0.5 size-4 shrink-0', good ? 'text-good' : 'text-primary')} aria-hidden />}
-                    <span>{good || tip ? line.slice(1).trim() : line}</span>
-                  </li>
-                )
-              })}
-          </ul>
+      {(m.feedback || m.score !== undefined) && <ScoreCard m={m} />}
+    </motion.div>
+  )
+}
+
+/** Under each practice reply: stars, the score, XP earned, what it did and missed, and an ideal reply. */
+function ScoreCard({ m }: { m: Message }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="mt-1.5 w-full max-w-[92%] rounded-xl border border-primary/30 bg-accent/60 px-3 py-2 text-sm">
+      {m.score !== undefined && (
+        <div className="mb-1.5 flex items-center gap-2">
+          {m.stars ? <Stars n={m.stars} /> : null}
+          <span className="font-display text-base tabular">{t('practice.score', { n: m.score })}</span>
+          <ScoreBar score={m.score} />
+          {m.xp ? (
+            <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground tabular">{t('practice.xp', { n: m.xp })}</span>
+          ) : m.xp === 0 ? (
+            <span className="sr-only">{t('practice.capped')}</span>
+          ) : null}
+        </div>
+      )}
+      {m.criteria?.length ? (
+        <ul className="space-y-1" aria-label={t('practice.checks')}>
+          {m.criteria.map((c) => (
+            <li key={c.id} className="flex items-start gap-1.5">
+              {c.met ? <CircleCheck className="mt-0.5 size-4 shrink-0 text-good" aria-hidden /> : <Lightbulb className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />}
+              <span>{c.label}</span>
+            </li>
+          ))}
+        </ul>
+      ) : m.feedback ? (
+        <ul className="space-y-1">
+          {m.feedback
+            .split('\n')
+            .filter(Boolean)
+            .map((line, j) => {
+              const good = line.startsWith('✓')
+              const tip = line.startsWith('→')
+              const Icon = good ? CircleCheck : tip ? Lightbulb : null
+              return (
+                <li key={j} className="flex items-start gap-1.5">
+                  {Icon && <Icon className={cn('mt-0.5 size-4 shrink-0', good ? 'text-good' : 'text-primary')} aria-hidden />}
+                  <span>{good || tip ? line.slice(1).trim() : line}</span>
+                </li>
+              )
+            })}
+        </ul>
+      ) : null}
+      {m.xp === 0 && m.score !== undefined && <p className="mt-1.5 text-[11px] text-muted-foreground">{t('practice.capped')}</p>}
+      {m.ideal && (
+        <div className="mt-2 border-t border-primary/20 pt-2">
+          <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="inline-flex min-h-6 items-center gap-1 text-xs font-medium text-primary">
+            <Sparkles className="size-3.5" /> {t('practice.showIdeal')}
+          </button>
+          {open && (
+            <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-1.5 rounded-lg bg-background/80 p-2">
+              <div className="mb-0.5 text-[11px] text-muted-foreground">{t('practice.ideal')}</div>
+              <p className="leading-relaxed">{m.ideal}</p>
+              <button type="button" onClick={() => speak(m.ideal!)} className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground" aria-label={t('card.read')}>
+                <Volume2 className="size-3.5" /> {t('card.read')}
+              </button>
+            </motion.div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** The end of a practice: how it went, the average score, total XP, and the ideal replies to learn from. */
+function Debrief({ m, all }: { m: Message; all: Message[] }) {
+  const t = useT()
+  const replies = all.filter((x) => x.role === 'user' && x.score !== undefined)
+  const xp = replies.reduce((n, x) => n + (x.xp ?? 0), 0) + (m.xp ?? 0)
+  const ideals = [...new Set(replies.map((x) => x.ideal).filter((x): x is string => !!x))]
+  return (
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-primary/30 bg-accent/60 p-4">
+      <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-sm font-semibold">{t('chat.debrief')}</span>
+        {m.stars ? <Stars n={m.stars} /> : null}
+        {m.score !== undefined && <span className="text-sm tabular text-muted-foreground">{t('practice.avg', { n: m.score })}</span>}
+        {xp > 0 && <span className="ml-auto rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground tabular">{t('practice.xpTotal', { n: xp })}</span>}
+      </div>
+      <Lines text={m.text} lang={m.lang} />
+      {ideals.length > 0 && (
+        <div className="mt-3 border-t border-primary/20 pt-2">
+          <div className="mb-1 text-xs font-medium text-muted-foreground">{t('practice.idealsTitle')}</div>
+          <ol className="list-decimal space-y-1 pl-5 text-sm">
+            {ideals.map((x, i) => (
+              <li key={i}>{x}</li>
+            ))}
+          </ol>
         </div>
       )}
     </motion.div>
+  )
+}
+
+/** How the other side feels right now: patience from 0 (leaving) to 4 (won over). */
+function PatienceMeter({ messages, other }: { messages: Message[]; other: Key }) {
+  const t = useT()
+  const last = [...messages].reverse().find((m) => m.role === 'assistant' && m.patience !== undefined)
+  const p = last?.patience ?? 2
+  return (
+    <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl bg-muted/70 px-3 py-1.5 text-xs">
+      <span className="text-muted-foreground">
+        {t('practice.feel')} <span className="sr-only">({t(other)})</span>
+      </span>
+      <div className="flex flex-1 gap-1" role="meter" aria-valuemin={0} aria-valuemax={4} aria-valuenow={p} aria-label={t('practice.feel')}>
+        {[1, 2, 3, 4].map((k) => (
+          <span key={k} className={cn('h-1.5 flex-1 rounded-full transition-colors', k <= p ? (p >= 3 ? 'bg-good' : p <= 1 ? 'bg-destructive' : 'bg-warn') : 'bg-border')} />
+        ))}
+      </div>
+      {last?.mood && <MoodChip mood={last.mood} />}
+    </div>
+  )
+}
+
+function MoodChip({ mood }: { mood: NonNullable<Message['mood']> }) {
+  const t = useT()
+  const Icon = mood === 'better' ? TrendingUp : mood === 'worse' ? TrendingDown : Minus
+  return (
+    <span className={cn('inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[10px] font-medium', mood === 'better' ? 'bg-good/15 text-good' : mood === 'worse' ? 'bg-destructive/10 text-destructive' : 'bg-warn/15 text-warn')}>
+      <Icon className="size-3" aria-hidden /> {t(`practice.mood.${mood}` as Key)}
+    </span>
+  )
+}
+
+function ScoreBar({ score }: { score: number }) {
+  return (
+    <span className="h-1.5 w-16 overflow-hidden rounded-full bg-border" aria-hidden>
+      <span className={cn('block h-full rounded-full', score >= 80 ? 'bg-good' : score >= 50 ? 'bg-warn' : 'bg-destructive')} style={{ width: `${score}%` }} />
+    </span>
   )
 }
 

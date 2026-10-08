@@ -6,6 +6,8 @@
 // - Badges reward meaningful accomplishments, several reachable on the first shift.
 // - The social layer is cooperative: a team goal and kudos between staff.
 //   There are no leaderboards; personal progress is private to each server.
+// - Practice counts too: rehearsing a tough moment earns XP for each scored reply and a bonus for
+//   finishing, capped per day so it rewards learning rather than grinding.
 //
 // Pure and deterministic: fed the same events, it produces the same game.
 
@@ -107,6 +109,9 @@ export const BADGES: BadgeDef[] = [
   { id: 'team_player', title: 'Team player', description: 'Send 3 kudos to teammates', icon: 'HeartHandshake', counter: 'kudosSent', target: 3 },
   { id: 'safety_first', title: 'Safety first', description: 'Catch 2 dishes that clash with an allergy or diet', icon: 'ShieldCheck', counter: 'safety', target: 2 },
   { id: 'perfect_evening', title: 'Perfect evening', description: 'Reach a streak of 8 tables to standard', icon: 'Crown', counter: 'bestStreak', target: 8 },
+  { id: 'first_rehearsal', title: 'First rehearsal', description: 'Finish a practice role-play', icon: 'Drama', counter: 'practices', target: 1 },
+  { id: 'smooth_talker', title: 'Smooth talker', description: 'Score 80 or more on 10 practice replies', icon: 'MessageCircleHeart', counter: 'greatReplies', target: 10 },
+  { id: 'well_rehearsed', title: 'Well rehearsed', description: 'Practise 5 different situations', icon: 'GraduationCap', counter: 'scenariosPractised', target: 5 },
 ]
 
 export interface QuestDef {
@@ -122,7 +127,18 @@ export const QUESTS: QuestDef[] = [
   { id: 'q_greet', title: 'Greet 3 tables in under a minute', counter: 'fastGreets', target: 3, xp: 40 },
   { id: 'q_heads_up', title: 'Give 2 guests a heads-up before they ask', counter: 'informs', target: 2, xp: 40 },
   { id: 'q_smooth', title: 'Serve 3 tables fully to standard', counter: 'smooth', target: 3, xp: 60 },
+  { id: 'q_practice', title: 'Practise one tough moment', counter: 'practices', target: 1, xp: 20 },
 ]
+
+/** Most XP practice can earn in one day (IST), so it rewards learning rather than grinding. */
+export const PRACTICE_DAILY_XP = 150
+
+/** XP for a practice turn: up to 10 per reply (score ÷ 10); at the end, 10 per star and 10 more for winning them over. */
+export function practiceXp(score: number, final?: boolean, outcome?: 'won' | 'lost' | 'ok'): number {
+  if (!final) return Math.round(Math.max(0, Math.min(100, score)) / 10)
+  const stars = score >= 80 ? 3 : score >= 50 ? 2 : 1
+  return stars * 10 + (outcome === 'won' ? 10 : 0)
+}
 
 /** Cooperative goal for the whole floor. */
 export const TEAM_GOAL = 12
@@ -132,7 +148,8 @@ export const TEAM_GOAL = 12
 
 export function initialGame(config: RestaurantConfig): GameState {
   const players: Record<string, PlayerState> = {}
-  for (const s of config.staff) if (s.role === 'server') players[s.id] = blankPlayer(s.id)
+  // Managers train too: they earn practice XP, though they have no service tasks.
+  for (const s of config.staff) if (s.role === 'server' || s.role === 'manager') players[s.id] = blankPlayer(s.id)
   return { players, awards: [], kudos: [], teamSmooth: 0, seq: 0 }
 }
 
@@ -172,6 +189,27 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
   }
   // Only staff taps earn XP; POS events and manager overrides don't.
   if (ev.source !== 'app') return
+
+  if (ev.type === 'practice.scored') {
+    const { staffId, scenario, score, final, outcome } = ev.payload
+    const p = game.players[staffId]
+    if (!p) return
+    const dayKey = `practiceXp:${new Date(ev.at + 5.5 * 60 * MIN).toISOString().slice(0, 10)}`
+    const used = p.counters[dayKey] ?? 0
+    const xp = Math.max(0, Math.min(practiceXp(score, final, outcome), PRACTICE_DAILY_XP - used))
+    p.counters[dayKey] = used + xp
+    if (final) {
+      p.counters[`sc:${scenario}`] = 1
+      bump(game, staffId, 'practices', ev.at, config)
+      setCounter(game, staffId, 'scenariosPractised', Object.keys(p.counters).filter((k) => k.startsWith('sc:')).length, ev.at, config)
+    } else if (score >= 80) bump(game, staffId, 'greatReplies', ev.at, config)
+    if (xp > 0)
+      award(game, staffId, ev.at, xp, 'xp', final ? 'Practice complete' : 'Practice reply', `${Math.round(score)}/100`, config, {
+        k: final ? 'a.practiceDone' : 'a.practiceReply',
+        dk: `sc.${scenario}`,
+      })
+    return
+  }
 
   const tableOf = (id: string) => state.tables[id]
   const credit = (staffId: string | undefined, xp: number, title: string, detail: string | undefined, g?: Grade, key?: string) => {
