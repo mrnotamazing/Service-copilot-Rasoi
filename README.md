@@ -3,6 +3,7 @@
 **The right service. At the right time.**
 
 > **New here?** Start with [docs/getting-started.md](docs/getting-started.md): install, run and use it, step by step.
+> **The full picture** (problem, objective, every feature, why it's employee-centric, how to use and present it, limitations, roadmap): [docs/TableMate-project-guide.md](docs/TableMate-project-guide.md).
 > **Free AI chat:** install [Ollama](https://ollama.com), run `ollama pull gemma3:4b`, then `npm run dev`. No key, nothing leaves your computer. Step by step: [docs/ollama-setup.md](docs/ollama-setup.md). For the best answers, put `ANTHROPIC_API_KEY=...` in `.env` instead (see `.env.example`). Dify is still supported: [docs/dify-setup.md](docs/dify-setup.md).
 
 An AI service copilot for fine-dining floor staff. It reads what the restaurant's
