@@ -223,9 +223,25 @@ function ExportCard() {
       const cols = Object.keys(rows[0])
       const cell = (v: string | number) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v))
       const csv = [cols.join(','), ...rows.map((r) => cols.map((c) => cell(r[c] ?? '')).join(','))].join('\n')
+      const filename = `tablemate-visits-${new Date().toISOString().slice(0, 10)}.csv`
+      if (STANDALONE) {
+        // The shared demo on claude.ai saves through the viewer's own confirmation, not a plain link.
+        const w = window as unknown as { claude?: { use(name: 'downloads'): Promise<{ save(r: { filename: string; data: string }): Promise<unknown> } | null> } }
+        const downloads = (await w.claude?.use('downloads')) ?? null
+        if (downloads) {
+          try {
+            await downloads.save({ filename, data: csv })
+            toast.success(`Saved ${rows.length} steps`)
+          } catch (e) {
+            const code = (e as { code?: string }).code
+            if (code !== 'declined') toast.error(code === 'rate_limited' ? 'A save is already waiting for you.' : 'Saving isn’t available in this view.')
+          }
+          return
+        }
+      }
       const a = document.createElement('a')
       a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-      a.download = `tablemate-visits-${new Date().toISOString().slice(0, 10)}.csv`
+      a.download = filename
       a.click()
       URL.revokeObjectURL(a.href)
       toast.success(`Downloaded ${rows.length} steps`)
