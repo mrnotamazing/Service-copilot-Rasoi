@@ -63,7 +63,11 @@ export interface RestaurantConfig {
   tables: TableDef[]
   menu: MenuItem[]
   sop: Sop
+  /** Alerts sent out to a webhook (Zapier, n8n…) for WhatsApp, Slack, email or Sheets. */
+  alerts?: { url: string; kinds: AlertKind[] }
 }
+
+export type AlertKind = 'manager' | 'unhappy' | 'sold_out' | 'kitchen' | 'note' | 'kudos'
 
 export type TableStatus =
   | 'available'

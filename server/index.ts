@@ -140,7 +140,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       }
       if (req.method === 'POST') {
         const handled = api.post(url.pathname, body as Record<string, unknown>)
-        if (handled) return send(res, 200, handled.result)
+        if (handled) return send(res, 200, await handled.result)
       }
       const handler = routes[`${req.method} ${url.pathname}`]
       if (!handler) return send(res, 404, { error: 'Not found' })

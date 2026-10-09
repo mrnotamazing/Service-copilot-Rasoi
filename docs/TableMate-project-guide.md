@@ -283,7 +283,19 @@ Opened with the sparkle button (servers) or **Ask TableMate** on the manager con
 **Setup** tab
 - **Service standards (SOPs)**: greet within, order nudge, kitchen-delay tolerance, pick-up time, check-back, course check, bill, goodbye, reset, max tables per server. Saving re-scores the whole service.
 - **AI assistance**: which AI is connected, with step-by-step instructions for Ollama (free, local) or Claude (paid).
-- **POS integrations**: a generic event API (ready), Petpooja (needs partner access for dine-in), Restroworks, Toast and Square (planned), the simulator (ready), with event counts.
+- **POS and other systems**: a pointer to the Integrations tab.
+
+**Integrations** tab (also linked from "Connected" on the Manager page)
+- **Try it: data coming in**: "Send a test booking" sends a booking through the open endpoint exactly as a POS or booking app would; it is seated straight away and shows on the server's phone and the manager screen, and the event count goes up.
+- **Alerts to WhatsApp, Slack or email**: paste a webhook from Zapier, n8n or Make, pick the alerts (a table asks for the manager, guests unhappy, a dish runs out, kitchen updates, team notes, kudos) and send a test. Each alert is one line in plain words, e.g. "Saffron House: T4 asked to see the manager".
+- **Data out**: "Download tonight as CSV" gives every finished visit step by step (time against standard, floor or kitchen, station, guest mood), with no names or per-person scores, for Excel, Google Sheets or Tally. The raw event log is at `GET /api/events/export`.
+- **Every system a restaurant uses, grouped**, each saying what TableMate does with it and whether it's ready, needs partner access, or planned:
+  - POS and billing: any POS or middleware (ready), Petpooja (partner access), Restroworks/Posist, DotPe, Toast, Square, Lightspeed.
+  - Bookings and waitlist: Swiggy Dineout, EazyDiner, Zomato reservations, OpenTable/SevenRooms (allergies and occasions reach the greeting card before the guest does).
+  - Online orders: UrbanPiper for Swiggy/Zomato delivery (keeps dine-in ETAs honest at peak).
+  - Staff rosters: 7shifts, Deputy, greytHR (sections and cover for the what-if planner).
+  - Stock: inventory systems (warn before a dish is 86'd).
+  - Alerts and messaging (ready), reviews (Google, Zomato → training), data out (ready).
 
 ### 5.10 How it works (the explainer page)
 

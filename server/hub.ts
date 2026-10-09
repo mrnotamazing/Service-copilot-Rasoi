@@ -35,6 +35,7 @@ export class Hub {
   feed: FeedItem[] = []
   readonly clock = new Clock()
   private listeners = new Set<() => void>()
+  private eventListeners = new Set<(ev: CopilotEvent, said: FeedItem | null) => void>()
   private sourceStats = new Map<string, { count: number; last: number }>()
 
   constructor(private store: HubStore) {
@@ -96,6 +97,9 @@ export class Hub {
     this.apply(ev)
     this.track(ev)
     this.store.append(ev)
+    // The plain-words line for this event, if it has one (the feed item shares the event's id).
+    const said = this.feed.at(-1)?.id === ev.id ? this.feed.at(-1)! : null
+    for (const fn of this.eventListeners) fn(ev, said)
     this.emit()
     return ev
   }
@@ -123,6 +127,12 @@ export class Hub {
     this.game = initialGame(this.config)
     for (const ev of this.events) this.apply(ev)
     this.emit()
+  }
+
+  /** Called for each new event as it arrives (not for events replayed from storage). */
+  onEvent(fn: (ev: CopilotEvent, said: FeedItem | null) => void) {
+    this.eventListeners.add(fn)
+    return () => this.eventListeners.delete(fn)
   }
 
   onChange(fn: () => void) {

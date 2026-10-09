@@ -1,4 +1,5 @@
-import { Sparkles } from 'lucide-react'
+import { Plug, Sparkles } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type { Snapshot } from '../../shared/snapshot.ts'
@@ -8,12 +9,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { cn } from '@/lib/utils'
-import { clock } from '../lib/format.ts'
 import { STANDALONE, post } from '../lib/live.ts'
 
 // The restaurant's setup, shown on the Demo & setup page: service standards, the AI behind the
-// assistant, and POS integrations. (Running the simulated service lives on the same page.)
+// assistant, and a pointer to the Integrations tab. (Running the simulated service lives on the same page.)
 
 const SOP_FIELDS: { key: keyof Sop; label: string; unit: string }[] = [
   { key: 'greetWithinMin', label: 'Greet a seated table within', unit: 'min' },
@@ -32,7 +31,7 @@ function Heading({ children }: { children: React.ReactNode }) {
   return <CardTitle className="font-display text-lg">{children}</CardTitle>
 }
 
-/** Service standards, AI assistance and POS integrations. */
+/** Service standards and AI assistance (integrations have their own tab). */
 export function SetupPanels({ snap }: { snap: Snapshot }) {
   const [sop, setSop] = useState<Sop | null>(null)
   useEffect(() => {
@@ -136,34 +135,16 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
 
       <Card className="lg:col-span-2">
         <CardHeader>
-          <Heading>POS integrations</Heading>
+          <Heading>POS and other systems</Heading>
+          <CardDescription>Petpooja and other POS, booking apps, online orders, rosters, alerts to WhatsApp or Slack, and data exports are on the Integrations tab.</CardDescription>
+          <CardAction>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/demo?tab=integrations">
+                <Plug /> Open Integrations
+              </Link>
+            </Button>
+          </CardAction>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2">
-          {snap.integrations?.map((i) => (
-            <div key={i.id} className="rounded-xl border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-medium">{i.name}</span>
-                <Badge variant={i.mode === 'live' ? 'default' : i.mode === 'needs-partner-access' ? 'outline' : 'secondary'} className={cn(i.mode === 'live' && 'bg-good text-background')}>
-                  {i.mode === 'live' ? 'Ready' : i.mode === 'needs-partner-access' ? 'Needs partner access' : 'Planned'}
-                </Badge>
-              </div>
-              <p className="mt-1 text-xs text-muted-foreground">{i.note}</p>
-              {i.endpoints.length > 0 && (
-                <ul className="mt-2 space-y-1.5">
-                  {i.endpoints.map((e) => (
-                    <li key={e.path} className="text-xs">
-                      <code className="break-all rounded bg-muted px-1.5 py-0.5 text-[11px] text-primary">
-                        {e.method} {e.path}
-                      </code>
-                      <div className="mt-0.5 text-muted-foreground">{e.purpose}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="mt-2 text-[11px] text-muted-foreground">{i.eventCount ? `${i.eventCount} events, last at ${i.lastEventAt ? clock(i.lastEventAt) : '—'}` : 'No events received yet'}</div>
-            </div>
-          ))}
-        </CardContent>
       </Card>
     </div>
   )

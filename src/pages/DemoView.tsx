@@ -1,4 +1,4 @@
-import {
+import { Plug,
   Accessibility,
   BellRing,
   ChefHat,
@@ -30,6 +30,7 @@ import type { FeedItem, FeedKind } from '../../shared/narrate.ts'
 import type { Snapshot } from '../../shared/snapshot.ts'
 import { Avatar } from '../components/Avatar.tsx'
 import { SetupPanels } from '../components/SetupPanels.tsx'
+import { IntegrationsPanel } from '../components/IntegrationsPanel.tsx'
 import { AppShell, LiveClock, ShellSkeleton } from '../components/kit.tsx'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -54,10 +55,11 @@ const MOMENTS: { kind: Kind; title: string; shows: string; Icon: LucideIcon }[] 
   { kind: 'rush', title: 'Sudden rush', shows: 'Fills every free table at once.', Icon: Users },
 ]
 
-type Tab = 'run' | 'setup'
-const TABS: { id: Tab; label: string; Icon: LucideIcon }[] = [
-  { id: 'run', label: 'Run the demo', Icon: Clapperboard },
+type Tab = 'run' | 'setup' | 'integrations'
+const TABS: { id: Tab; label: string; short?: string; Icon: LucideIcon }[] = [
+  { id: 'run', label: 'Run the demo', short: 'Run', Icon: Clapperboard },
   { id: 'setup', label: 'Setup', Icon: Settings },
+  { id: 'integrations', label: 'Integrations', Icon: Plug },
 ]
 
 const SPEEDS = [1, 2, 5, 10, 20, 30]
@@ -80,12 +82,12 @@ export default function DemoView() {
   const { snap, connected } = useSnapshot('manager')
   // The tab lives in the address, so /setup (and bookmarks to it) open the Setup tab.
   const [params, setParams] = useSearchParams()
-  const tab: Tab = params.get('tab') === 'setup' ? 'setup' : 'run'
+  const tab: Tab = TABS.find((x) => x.id === params.get('tab'))?.id ?? 'run'
   if (!snap) return <ShellSkeleton />
   return (
     <AppShell title="Demo & setup" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />}>
-      <div role="tablist" aria-label="Demo and setup" className="mb-5 inline-grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
-        {TABS.map(({ id, label, Icon }) => (
+      <div role="tablist" aria-label="Demo and setup" className="mb-5 inline-grid grid-cols-3 gap-1 rounded-xl bg-muted p-1 max-sm:w-full">
+        {TABS.map(({ id, label, short, Icon }) => (
           <button
             key={id}
             type="button"
@@ -94,13 +96,24 @@ export default function DemoView() {
             aria-selected={tab === id}
             aria-controls={`panel-${id}`}
             onClick={() => setParams(id === 'run' ? {} : { tab: id }, { replace: true })}
-            className={cn('flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-medium transition-colors', tab === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+            className={cn('flex min-h-10 items-center justify-center gap-2 rounded-lg px-2 text-sm font-medium sm:px-4 transition-colors', tab === id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
           >
-            <Icon className="size-4" aria-hidden /> {label}
+            <Icon className="size-4" aria-hidden /> {short ? (
+              <>
+                <span className="sm:hidden">{short}</span>
+                <span className="max-sm:hidden">{label}</span>
+              </>
+            ) : (
+              label
+            )}
           </button>
         ))}
       </div>
-      {tab === 'setup' ? (
+      {tab === 'integrations' ? (
+        <div role="tabpanel" id="panel-integrations" aria-labelledby="tab-integrations">
+          <IntegrationsPanel snap={snap} />
+        </div>
+      ) : tab === 'setup' ? (
         <div role="tabpanel" id="panel-setup" aria-labelledby="tab-setup">
           <SetupPanels snap={snap} />
         </div>

@@ -1,4 +1,4 @@
-import { ChefHat, CircleCheck, History, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { Plug, ChefHat, CircleCheck, History, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
 import { AppShell, LiveClock, ShellSkeleton, PanelTitle } from '../components/kit.tsx'
@@ -10,6 +10,7 @@ import { liveVisit, reconstructVisit, type Reconstruction } from '../../shared/i
 import { AssistantDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -68,6 +69,7 @@ export default function ManagerView() {
       <div className="space-y-5">
         <NeedsYou snap={snap} />
         <Pulse snap={snap} />
+        <ConnectedSystems snap={snap} />
         <TeamCard snap={snap} meId={managerId} />
         {snap.intel && snap.forecast && (
           <div className="grid gap-5 lg:grid-cols-2">
@@ -516,6 +518,32 @@ function TableSummary({ snap, table: t, onReconstruct }: { snap: Snap; table: Sn
           <History /> What’s happened so far
         </Button>
       )}
+    </div>
+  )
+}
+
+/** Which outside systems are feeding TableMate (or receiving alerts) right now, with a way in. */
+function ConnectedSystems({ snap }: { snap: Snap }) {
+  const ready = (snap.integrations ?? []).filter((i) => i.mode === 'live' && i.id !== 'export')
+  const alerts = snap.config.alerts
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border bg-card px-4 py-3 text-sm">
+      <span className="inline-flex items-center gap-1.5 font-medium">
+        <Plug className="size-4 text-primary" /> Connected
+      </span>
+      {ready.map((i) => {
+        const on = i.id === 'webhook' ? !!alerts?.url : i.id === 'generic' ? i.eventCount > 0 : i.id === 'sim' ? snap.sim.startedAt !== null : i.eventCount > 0
+        return (
+          <span key={i.id} className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <span className={cn('size-2 rounded-full', on ? 'bg-good' : 'bg-muted-foreground/40')} aria-hidden />
+            {i.id === 'webhook' ? 'Alerts out' : i.id === 'generic' ? 'POS / booking feed' : i.name}
+            <span className="sr-only">{on ? '(active)' : '(not active)'}</span>
+          </span>
+        )
+      })}
+      <Link to="/demo?tab=integrations" className="ml-auto font-medium text-primary underline-offset-4 hover:underline">
+        Integrations
+      </Link>
     </div>
   )
 }

@@ -14,14 +14,18 @@ import { AiError, createAi, type AiKind, type AiRequest, type DifyOptions } from
 import type { Hub } from './hub.ts'
 import { MOMENTS, type Simulator } from './simulator.ts'
 import { runWhatIf, type WhatIf } from './whatif.ts'
+import { ALERT_KINDS, createOutbound } from './outbound.ts'
+import type { AlertKind } from '../shared/types.ts'
 
 export type ApiBody = Record<string, unknown>
 
 export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
   const ai = createAi(hub, dify)
+  const outbound = createOutbound(hub)
 
   function integrations(): IntegrationStatus[] {
     return CATALOG.map((c) => {
+      if (c.id === 'webhook') return { ...c, lastEventAt: outbound.stat.lastAt, eventCount: outbound.stat.sent, note: outbound.stat.error ? `Last delivery failed: ${outbound.stat.error}` : c.note }
       const s = hub.sourceStat(c.id === 'generic' ? 'api' : c.id)
       return { ...c, lastEventAt: s?.last ?? null, eventCount: s?.count ?? 0 }
     })
@@ -113,6 +117,43 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       if (typeof body.kitchenSpeed === 'number') w.kitchenSpeed = Math.max(0.5, Math.min(1.5, body.kitchenSpeed))
       return runWhatIf(hub.config, w)
     },
+    // Integrations tab: show data arriving from an outside system, as a booking app would send it.
+    '/api/integrations/test': () => {
+      const free = Object.values(hub.state.tables).filter((t) => t.status === 'available' && t.seats >= 2).sort((a, b) => a.seats - b.seats)[0]
+      if (!free) throw new Error('Every table is taken. Free one up, or reset the demo, and try again.')
+      hub.ingest({ type: 'table.seated', source: 'pos:api', payload: { tableId: free.id, partySize: 2, guestName: 'Neha Gupta', occasion: 'anniversary', allergies: ['shellfish'], needs: [] } })
+      return { ok: true, text: `A booking for Neha Gupta (party of 2, anniversary, shellfish allergy) was seated at ${free.name}.` }
+    },
+    // Alerts out: save the webhook and which alerts to send; test the connection.
+    '/api/alerts': (body) => {
+      const url = typeof body.url === 'string' ? body.url.trim().slice(0, 500) : ''
+      if (url && !/^https:\/\/[^\s]+$/.test(url)) throw new Error('Use a full https:// webhook address.')
+      const kinds = Array.isArray(body.kinds) ? body.kinds.filter((k): k is AlertKind => ALERT_KINDS.some((a) => a.id === k)) : []
+      hub.updateConfig({ alerts: url ? { url, kinds } : undefined })
+      return hub.config.alerts ?? null
+    },
+    '/api/alerts/test': async (body) => {
+      const url = typeof body.url === 'string' ? body.url.trim() : hub.config.alerts?.url
+      if (!url || !/^https:\/\/[^\s]+$/.test(url)) throw new Error('Paste a full https:// webhook address first.')
+      return outbound.test(url)
+    },
+    // Data out: every finished visit, step by step (process data only, no per-person scores).
+    '/api/export/visits': () =>
+      hub.state.visits.flatMap((v) =>
+        v.segments.map((s) => ({
+          date: new Date(v.seatedAt + 5.5 * 3_600_000).toISOString().slice(0, 10),
+          table: v.tableName,
+          guests: v.partySize,
+          seated: new Date(v.seatedAt).toISOString(),
+          step: s.label,
+          controlled_by: s.owner,
+          station: s.station ?? '',
+          minutes: Math.round(((s.end - s.start) / 60_000) * 10) / 10,
+          standard_minutes: Math.round(s.targetMin * 10) / 10,
+          past_standard: s.lapse ? 'yes' : 'no',
+          guest_mood: v.mood ?? '',
+        })),
+      ),
     // A staff member's own profile: name, pronouns, colour, avatar, languages. Only fields sent are changed.
     '/api/staff/profile': (body) => {
       const id = typeof body.staffId === 'string' ? body.staffId : ''

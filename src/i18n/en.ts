@@ -656,7 +656,7 @@ export const en = {
   "start.serversSub": "The phone app each server carries: next three moves, tables, kitchen chat, progress",
   "start.managerSub": "Live floor, forecasts, what happened and why, what-if planning",
   "start.kitchenSub": "Tickets with timers, food at the pass, notes to the floor, 86 board",
-  "start.demoSub": "Run a simulated service, stage moments, and set standards, AI and POS",
+  "start.demoSub": "Run a simulated service, set standards and AI, and connect the POS, bookings and other apps",
   "start.present": "Presenting? Start a service in Demo & setup, then open the other screens.",
   "servers.title": "Servers",
   "srv.switch": "Switch server",

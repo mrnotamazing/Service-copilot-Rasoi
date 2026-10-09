@@ -30,6 +30,8 @@ export const petpooja: PosAdapter = {
   info: {
     id: 'petpooja',
     name: 'Petpooja',
+    category: 'pos',
+    uses: 'Tables, KOTs, food-ready, bills and the 86 list become cards, kitchen tickets and delay receipts.',
     mode: 'needs-partner-access',
     note: 'Stock and food-ready callbacks follow Petpooja’s public API. Dine-in table/KOT/bill events need Petpooja partner credentials; the endpoint accepts a proposed format until then.',
     endpoints: [

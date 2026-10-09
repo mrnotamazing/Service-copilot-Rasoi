@@ -635,7 +635,7 @@ export const es: Record<Key, string> = {
   "start.serversSub": "La app del móvil de cada mesero: tres próximas tareas, mesas, chat con cocina, progreso",
   "start.managerSub": "Sala en vivo, previsiones, qué pasó y por qué, planificación de escenarios",
   "start.kitchenSub": "Comandas con temporizador, platos en el pase, notas a sala, tablero 86",
-  "start.demoSub": "Simula un servicio, provoca momentos y ajusta estándares, IA y TPV",
+  "start.demoSub": "Simula un servicio, ajusta estándares e IA, y conecta el TPV, las reservas y otras apps",
   "start.present": "¿Vas a presentar? Inicia un servicio en Demo y ajustes y luego abre las otras pantallas.",
   "servers.title": "Meseros",
   "srv.switch": "Cambiar de mesero",

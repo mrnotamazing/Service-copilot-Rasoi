@@ -18,11 +18,16 @@ export interface SimStatus {
   startedAt: number | null
 }
 
+export type IntegrationCategory = 'pos' | 'bookings' | 'orders' | 'staff' | 'stock' | 'messaging' | 'reviews' | 'data'
+
 export interface IntegrationStatus {
   id: string
   name: string
+  category: IntegrationCategory
   mode: 'live' | 'needs-partner-access' | 'planned'
   note: string
+  /** What TableMate does with it, in one line. */
+  uses: string
   endpoints: { method: string; path: string; purpose: string }[]
   lastEventAt: number | null
   eventCount: number
