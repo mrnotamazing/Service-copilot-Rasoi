@@ -1,4 +1,6 @@
 import { BookOpen, ChefHat, Clapperboard, HeartHandshake, LayoutDashboard, ShieldCheck, Timer, Users } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
+import { useRef, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import { Mascot } from '../brand/marks.tsx'
 import { AppShell } from '../components/kit.tsx'
@@ -22,6 +24,7 @@ const PROMISE: { title: Key; sub: Key; Icon: typeof Users }[] = [
 export default function Start() {
   useRolePage(null)
   const t = useT()
+  const runner = useRef<() => void>(null)
   return (
     <AppShell wide={false}>
       <section className="relative overflow-hidden rounded-3xl bg-hero p-6 text-hero-foreground md:p-8">
@@ -45,9 +48,9 @@ export default function Start() {
         ))}
       </ul>
       {/* The brand promise: quick and correct, and shared across the team. */}
-      <section aria-labelledby="promise" className="relative mt-12 border-t pt-6">
+      <section aria-labelledby="promise" className="relative mt-12 border-t pt-6" onPointerEnter={() => runner.current?.()}>
         {/* The chef runs along the rule: the service line, kept moving. */}
-        <Mascot className="absolute -top-[36px] left-0 w-[60px]" speed="var(--muted-foreground)" />
+        <RunningChef trigger={runner} />
         <h2 id="promise" className="font-display text-2xl text-balance md:text-3xl">
           {t('start.promise')}
         </h2>
@@ -67,5 +70,42 @@ export default function Start() {
         <BookOpen className="size-4" /> {t('nav.how')}
       </Link>
     </AppShell>
+  )
+}
+
+/**
+ * The chef dashes along the rule when it comes into view, and runs to the other end (turning to
+ * face the way it's going) whenever the pointer moves over the section. Still for reduced motion.
+ */
+function RunningChef({ trigger }: { trigger: RefObject<(() => void) | null> }) {
+  const still = useReducedMotion()
+  const [end, setEnd] = useState<0 | 1>(0)
+  const [running, setRunning] = useState(false)
+  const [facing, setFacing] = useState<1 | -1>(1)
+  trigger.current = () => {
+    if (still || running) return
+    setFacing(end === 0 ? 1 : -1)
+    setRunning(true)
+    setEnd(end === 0 ? 1 : 0)
+  }
+  return (
+    // The track is the rule minus the chef's own width, so x: 100% lands exactly at the far end.
+    <motion.div
+      className="pointer-events-none absolute -top-[36px] left-0 w-[calc(100%-60px)]"
+      initial={false}
+      animate={{ x: `${end * 100}%` }}
+      transition={{ duration: 2.2, ease: [0.45, 0, 0.25, 1] }}
+      onViewportEnter={() => end === 0 && !running && trigger.current?.()}
+      viewport={{ once: true, amount: 1 }}
+      onAnimationComplete={() => {
+        setRunning(false)
+        // Back home on the left, it turns to face the page again.
+        if (end === 0) setFacing(1)
+      }}
+    >
+      <div className="w-[60px] transition-transform duration-200" style={{ transform: `scaleX(${facing})` }}>
+        <Mascot running={running} className="w-[60px]" speed="var(--muted-foreground)" />
+      </div>
+    </motion.div>
   )
 }
