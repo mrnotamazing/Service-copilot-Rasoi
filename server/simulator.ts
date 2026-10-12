@@ -253,11 +253,11 @@ export class Simulator {
     return chance(0.15) || !spoken.length ? pick(['fr', 'ar', 'zh']) : pick(spoken)
   }
 
-  /** Like a host: the smallest free table that fits, in the section with the fewest guests right now. */
+  /** Like a host: the smallest free table that fits, with the server who has fewest guests right now (handovers count). */
   private freeTable(size: number): TableState | undefined {
     const tables = Object.values(this.hub.state.tables)
-    const load = (section: string) => tables.filter((t) => t.section === section && t.visitId).length
-    return tables.filter((t) => t.status === 'available' && t.seats >= size).sort((a, b) => a.seats - b.seats || load(a.section) - load(b.section))[0]
+    const load = (serverId: string) => tables.filter((t) => t.serverId === serverId && t.visitId).length
+    return tables.filter((t) => t.status === 'available' && t.seats >= size).sort((a, b) => a.seats - b.seats || load(a.serverId) - load(b.serverId))[0]
   }
 
   /** Seat a party at the smallest free table that fits; false if none is free. */

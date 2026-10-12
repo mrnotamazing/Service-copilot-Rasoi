@@ -173,7 +173,8 @@ export function forecast(state: EngineState, config: RestaurantConfig, now: numb
 
   // Section load: open cards plus courses landing in the next 10 minutes.
   const sections: SectionForecast[] = Object.entries(config.sections).map(([section, staffId]) => {
-    const tables = Object.values(state.tables).filter((t) => t.section === section && t.visitId)
+    // The section's server's tables, wherever they are: a handed-over table counts for whoever has it.
+    const tables = Object.values(state.tables).filter((t) => t.serverId === staffId && t.visitId)
     const open = tasks.filter((t) => tables.some((x) => x.id === t.tableId)).length
     let landing = 0
     for (const t of tables)
@@ -369,7 +370,7 @@ export function shiftIntel(state: EngineState, config: RestaurantConfig): ShiftI
           : `Lost time is split between kitchen (${Math.round(overMin.kitchen)} min) and floor (${Math.round(overMin.floor)} min).`,
     )
   if (bottleneck) why.push(`The biggest single bottleneck is ${bottleneck.label.toLowerCase()}: ${bottleneck.detail}.`)
-  if (window) why.push(`It bunched up between ${istClock(window.from)} and ${istClock(window.to)}: ${window.lapses} steps ran late, with ${window.fires} tickets fired around then${window.fires >= 6 ? ', a wave of orders landing together' : ''}.`)
+  if (window) why.push(`It bunched up between ${istClock(window.from)} and ${istClock(window.to)}: ${window.lapses} ${window.lapses === 1 ? 'step' : 'steps'} ran late, with ${window.fires} ${window.fires === 1 ? 'ticket' : 'tickets'} fired around then${window.fires >= 6 ? ', a wave of orders landing together' : ''}.`)
   const overloaded = a.load.filter((l) => l.overloaded)
   if (overloaded.length) why.push(`${overloaded.length === 1 ? 'One section is' : `${overloaded.length} sections are`} above the ${config.sop.maxActiveTablesPerServer}-table limit right now, which slows every step there.`)
   if (!why.length) why.push(all.length ? 'Service is running to standard so far. Nothing stands out.' : 'Nothing to explain yet: tables are still early in their visits.')

@@ -512,6 +512,9 @@ export const ne: Record<Key, string> = {
   // Floor plan, table history, dish voices
   'floor.pass': "किचन पास",
   'floor.entrance': "प्रवेशद्वार",
+  'floor.handedOver': "यो भिजिटका लागि तपाईंलाई सुम्पिएको",
+  'floor.from': "{name} बाट",
+  'floor.with': "{name} सँग",
   'table.tasks': "{n} काम",
   'table.now': "अहिले",
   'table.nothingNow': "अहिले केही चाहिँदैन।",

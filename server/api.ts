@@ -137,7 +137,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         const back = hub.state.tables[t.id].handover === undefined
         const n = back
           ? { toNew: `${t.name} is back with you.`, toOld: `${t.name} goes back to ${to.name}. Thank you for looking after them.` }
-          : handoverNotes(hub.state.tables[t.id], fromStaff?.name ?? 'the server', to.name, reason)
+          : handoverNotes(hub.state.tables[t.id], fromStaff?.name ?? 'the server', to.name, reason, hub.config.staff.find((s) => s.id === hub.state.tables[t.id].handover?.from)?.name)
         hub.ingest({ type: 'manager.instruction', source: 'manager', payload: { instructionId: newId('ins'), from: manager, to: [to.id], text: n.toNew, tableId: t.id } })
         if (fromStaff) hub.ingest({ type: 'manager.instruction', source: 'manager', payload: { instructionId: newId('ins'), from: manager, to: [fromStaff.id], text: n.toOld, tableId: t.id } })
       }

@@ -533,6 +533,9 @@ export const en = {
   // Floor plan, table history, dish voices
   'floor.pass': "Kitchen pass",
   'floor.entrance': "Entrance",
+  'floor.handedOver': "Handed to you for this visit",
+  'floor.from': "from {name}",
+  'floor.with': "with {name}",
   'table.tasks': "{n} to do",
   'table.now': "Now",
   'table.nothingNow': "Nothing needed right now.",

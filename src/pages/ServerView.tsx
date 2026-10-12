@@ -1,10 +1,12 @@
-import { Accessibility, Armchair, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { Accessibility, Armchair, Languages, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import type { Snapshot } from '../../shared/snapshot.ts'
+import type { TableState } from '../../shared/types.ts'
+import { SPOKEN } from '../../shared/profile.ts'
 import { AccessButton } from '../components/AccessPanel.tsx'
 import { Avatar } from '../components/Avatar.tsx'
 import { ProfileCard } from '../components/ProfileEditor.tsx'
@@ -291,6 +293,12 @@ export default function ServerView() {
   )
 }
 
+/** The guests' preferred language, in its own script, when it isn't English. */
+function guestLang(t: TableState): string | undefined {
+  const l = t.party?.language
+  return l && l !== 'en' ? (SPOKEN.find((x) => x.id === l)?.native ?? l) : undefined
+}
+
 /** How much to shrink the phone frame so all of it fits the window (wider screens only; 1 = real size). */
 function usePhoneZoom(): number | null {
   const read = () => {
@@ -478,8 +486,13 @@ function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tab
         </div>
       </div>
 
-      {(t.party?.allergies.length || t.party?.needs?.length) ? (
+      {(t.party?.allergies.length || t.party?.needs?.length || guestLang(t)) ? (
         <div className="mt-3 space-y-1.5">
+          {guestLang(t) && (
+            <div className="flex items-center gap-1.5 rounded-lg bg-primary/8 px-2 py-1.5 text-sm">
+              <Languages className="size-4 shrink-0 text-primary" /> {tr('party.speaks', { lang: guestLang(t)! })}
+            </div>
+          )}
           {t.party?.allergies.length ? (
             <div className="flex items-center gap-1.5 rounded-lg bg-warn/12 px-2 py-1.5 text-sm font-medium text-warn">
               <HeartPulse className="size-4 shrink-0" /> {tr('party.allergy', { list: t.party.allergies.join(', ') })}
@@ -593,6 +606,11 @@ function GuestList({ snap, myTables, picked, onPick }: { snap: Snapshot; myTable
                       <HeartPulse className="size-3" /> {tr('party.allergy', { list: t.party.allergies.join(', ') })}
                     </div>
                   ) : null}
+                  {guestLang(t) && (
+                    <div className="mt-1 flex w-fit items-center gap-1 rounded-md bg-primary/8 px-1.5 py-0.5 text-xs text-foreground">
+                      <Languages className="size-3 shrink-0 text-primary" /> {tr('party.speaks', { lang: guestLang(t)! })}
+                    </div>
+                  )}
                   {/* Access and dietary needs from the booking: what to do, so nobody has to ask twice. */}
                   {t.party?.needs?.map((n) => (
                     <div key={n} className="mt-1 flex w-fit items-start gap-1 rounded-md bg-primary/8 px-1.5 py-0.5 text-xs text-foreground">

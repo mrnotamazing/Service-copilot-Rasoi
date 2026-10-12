@@ -512,6 +512,9 @@ export const ta: Record<Key, string> = {
   // Floor plan, table history, dish voices
   'floor.pass': "சமையலறை பாஸ்",
   'floor.entrance': "நுழைவாயில்",
+  'floor.handedOver': "இந்த வருகைக்கு உங்களிடம் ஒப்படைக்கப்பட்டது",
+  'floor.from': "{name} இடமிருந்து",
+  'floor.with': "{name} இடம்",
   'table.tasks': "{n} வேலை",
   'table.now': "இப்போது",
   'table.nothingNow': "இப்போது எதுவும் தேவையில்லை.",

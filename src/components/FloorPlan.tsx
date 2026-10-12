@@ -10,6 +10,9 @@ import { MOOD_TONE, Reaction } from './Reaction.tsx'
 const W = 400
 const CHAIR_GAP = 7 // between table edge and chair
 const CHAIR_DEPTH = 13 // seat + back
+// The doorway in the bottom wall, and its swing.
+const DOOR_L = W / 2 - 30
+const DOOR_R = W / 2 + 16
 
 /** Table top size by seats: round two-top, square four-top, long tables for six and eight. */
 function topSize(seats: number) {
@@ -58,10 +61,23 @@ export function FloorPlan({ snap, tables, tasks, picked, onPick, compact, mini }
   const defs = snap.config.tables
   const pct = (v: number, of: number) => `${(v / of) * 100}%`
 
-  const items = tables.map((table, i) => {
-    const pos = defs.find((d) => d.id === table.id)?.pos ?? autoPos(i, tables.length)
+  // The room is one section. A table handed over from another section has its spot in that other
+  // room, so it's listed under the plan instead of being drawn on top of this room's tables.
+  const count = new Map<string, number>()
+  for (const x of tables) count.set(x.section, (count.get(x.section) ?? 0) + 1)
+  const home = [...count].sort((a, b) => b[1] - a[1])[0]?.[0]
+  const visiting = tables.filter((x) => x.section !== home)
+  const inRoom = tables.filter((x) => x.section === home)
+  const staffName = (id?: string) => snap.config.staff.find((s) => s.id === id)?.name ?? ''
+  const items = inRoom.map((table, i) => {
+    const pos = defs.find((d) => d.id === table.id)?.pos ?? autoPos(i, inRoom.length)
     const size = topSize(table.seats)
-    return { table, cx: (pos.x / 100) * W, cy: (pos.y / 100) * H, ...size }
+    const cx = (pos.x / 100) * W
+    let cy = (pos.y / 100) * H
+    // A table in front of the door sits far enough up that its chairs and status line clear the doorway.
+    const reach = CHAIR_GAP + CHAIR_DEPTH
+    if (cx + size.w / 2 + reach > DOOR_L && cx - size.w / 2 - reach < DOOR_R) cy = Math.min(cy, H - 44 - size.h / 2 - reach - 18)
+    return { table, cx, cy, ...size }
   })
 
   return (
@@ -175,6 +191,9 @@ export function FloorPlan({ snap, tables, tasks, picked, onPick, compact, mini }
               {/* Status under the table, clear of chairs */}
               <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap text-[10px] leading-tight text-muted-foreground">
                 <span className="font-medium text-foreground/80">{t.any(`status.${table.status}`)}</span> {minutes ? t('tile.min', { n: minutes }) : t('tile.seats', { n: table.seats })}
+                {table.handover && table.serverId !== snap.config.sections[table.section] && (
+                  <span className="mt-0.5 block font-medium text-primary">{t('floor.with', { name: staffName(table.serverId) })}</span>
+                )}
               </span>
               {open > 0 && (
                 <span className="absolute grid size-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm ring-2 ring-card tabular" style={{ left: pct(reach - 8, w + 2 * reach), top: pct(reachY - 8, h + 2 * reachY) }} aria-hidden>
@@ -196,6 +215,40 @@ export function FloorPlan({ snap, tables, tasks, picked, onPick, compact, mini }
           )
         })}
       </div>
+
+      {visiting.length > 0 && (
+        <div className="mt-3 rounded-xl border border-dashed p-2.5">
+          <div className="mb-1.5 px-1 text-xs font-medium text-muted-foreground">{t('floor.handedOver')}</div>
+          <ul className="flex flex-wrap gap-2">
+            {visiting.map((table) => {
+              const open = tasks.filter((k) => k.tableId === table.id).length
+              const minutes = table.seatedAt ? Math.max(1, Math.round((snap.now - table.seatedAt) / 60_000)) : null
+              return (
+                <li key={table.id}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(table.id)}
+                    aria-pressed={picked === table.id}
+                    className={cn('relative flex items-center gap-2.5 rounded-xl border bg-card py-1.5 pl-1.5 pr-3 text-left transition-colors hover:bg-accent', picked === table.id && 'border-primary ring-2 ring-primary/30')}
+                  >
+                    <span className="grid size-9 place-items-center rounded-full font-display text-sm" style={{ background: fillFor(table) }}>
+                      {table.name}
+                    </span>
+                    <span className="text-[11px] leading-tight">
+                      <span className="block font-medium">
+                        {t.any(`status.${table.status}`)}
+                        {minutes ? ` ${t('tile.min', { n: minutes })}` : ''}
+                      </span>
+                      <span className="block text-muted-foreground">{t('floor.from', { name: staffName(table.handover?.from) || table.section })}</span>
+                    </span>
+                    {open > 0 && <span className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground ring-2 ring-card tabular">{open}</span>}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       {/* One quiet line explaining the drawing */}
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[11px] text-muted-foreground">

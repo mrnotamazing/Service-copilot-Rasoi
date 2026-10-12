@@ -44,6 +44,8 @@ describe('handing a table to another server', () => {
     const n = handoverNotes(s.tables.T1, 'Aisha', 'Priya', 'language')
     expect(n.toNew).toBe('T1 is yours for this visit: the guests prefer Bengali (বাংলা). Aisha will introduce you; it goes back to Aisha afterwards.')
     expect(n.toOld).toContain('Please introduce Priya')
+    // Handed on again: it still goes back to the section's own server.
+    expect(handoverNotes(s.tables.T1, 'Priya', 'Kabir', 'load', 'Aisha').toNew).toBe('T1 is yours for this visit: Priya has a full section. Priya will introduce you; it goes back to Aisha afterwards.')
   })
 })
 
@@ -98,5 +100,17 @@ describe('floor suggestions for the manager', () => {
     const [i] = floorInsights(s, DEMO_CONFIG, 5 * MIN)
     expect(i.kind).toBe('question_wait')
     expect(i.action).toMatchObject({ type: 'kitchen', tableId: 'T1' })
+  })
+})
+
+describe('handovers across the app', () => {
+  it('section load counts a handed-over table for the server who has it', async () => {
+    const { forecast } = await import('./intel.ts')
+    const s = initialState(DEMO_CONFIG)
+    applyEvent(s, ev('table.seated', { tableId: 'T5', partySize: 2 }), DEMO_CONFIG)
+    applyEvent(s, ev('table.assigned', { tableId: 'T5', serverId: 's_meera' }), DEMO_CONFIG)
+    const f = forecast(s, DEMO_CONFIG, 2 * MIN)
+    expect(f.sections.find((x) => x.section === 'B')?.active).toBe(0)
+    expect(f.sections.find((x) => x.section === 'C')?.active).toBe(1)
   })
 })

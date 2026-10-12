@@ -512,6 +512,9 @@ export const bn: Record<Key, string> = {
   // Floor plan, table history, dish voices
   'floor.pass': "কিচেন পাস",
   'floor.entrance': "প্রবেশপথ",
+  'floor.handedOver': "এই ভিজিটের জন্য আপনাকে দেওয়া",
+  'floor.from': "{name}-এর থেকে",
+  'floor.with': "{name}-এর কাছে",
   'table.tasks': "{n}টি কাজ",
   'table.now': "এখন",
   'table.nothingNow': "এখন কিছু লাগবে না।",

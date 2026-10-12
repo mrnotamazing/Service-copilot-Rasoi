@@ -145,11 +145,11 @@ export function floorInsights(state: EngineState, config: RestaurantConfig, now:
 }
 
 /** The messages a handover sends, so both servers know what's happening and the guests are introduced. */
-export function handoverNotes(t: TableState, fromName: string, toName: string, reason: 'language' | 'load' | 'manager'): { toNew: string; toOld: string } {
+export function handoverNotes(t: TableState, fromName: string, toName: string, reason: 'language' | 'load' | 'manager', homeName = fromName): { toNew: string; toOld: string } {
   const lang = t.party?.language && t.party.language !== 'en' ? languageName(t.party.language) : ''
   const why = reason === 'language' && lang ? `the guests prefer ${lang}` : reason === 'load' ? `${fromName} has a full section` : ''
   return {
-    toNew: `${t.name} is yours for this visit${why ? `: ${why}` : ''}. ${fromName} will introduce you; it goes back to ${fromName} afterwards.`,
+    toNew: `${t.name} is yours for this visit${why ? `: ${why}` : ''}. ${fromName} will introduce you; it goes back to ${homeName} afterwards.`,
     toOld: `${t.name} goes to ${toName} for this visit${why ? ` (${why})` : ''}. Please introduce ${toName} to the guests and pass on anything they've told you.`,
   }
 }
