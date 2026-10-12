@@ -275,7 +275,7 @@ export class Simulator {
         // A nut allergy, and an order that already has a dish with nuts in it: the safety check fires.
         const free = this.freeTable(2, staffId)
         if (!free) return say(false, 'No free table right now.')
-        this.send({ type: 'table.seated', source: 'pos:sim', payload: { tableId: free.id, partySize: 2, allergies: ['nuts'], needs: [], guestName: 'Sam Banerjee' } })
+        this.send({ type: 'table.seated', source: 'pos:sim', payload: { tableId: free.id, partySize: 2, allergies: ['nuts'], needs: [], guestName: pick(GUEST_NAMES) } })
         this.send({ type: 'server.greeted', source: 'app', payload: { tableId: free.id } })
         const nutty = hub.config.menu.find((m) => m.course === 'starter' && m.contains?.includes('nuts') && hub.state.unavailable[m.id] === undefined)
         const plain = hub.config.menu.find((m) => m.course === 'starter' && !m.contains?.includes('nuts') && hub.state.unavailable[m.id] === undefined)

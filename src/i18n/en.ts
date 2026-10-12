@@ -59,6 +59,9 @@ export const en = {
   // Kitchen thread
   'kitchen.sub': 'Messages with the pass about your tables.',
   'kitchen.empty': 'No messages yet. Send the kitchen a note below.',
+  'kitchen.hide': "Hide the kitchen chat",
+  'kitchen.show': "Show the kitchen chat",
+  'kitchen.new': "{n} new",
   'kitchen.general': 'General',
   'kitchen.placeholder': 'Message the pass…',
   'kitchen.placeholderTable': 'Message about {table}…',

@@ -1,4 +1,4 @@
-import { Accessibility, Armchair, Languages, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { Accessibility, Armchair, Languages, PanelRightClose, PanelRightOpen, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -79,7 +79,8 @@ export default function ServerView() {
   const myTables = useMemo(() => snap?.tables.filter((t) => t.serverId === staffId) ?? [], [snap, staffId])
   // The table open on the Tables tab: the one asked for, else the first seated one.
   const picked = myTables.find((t) => t.id === params.get('table')) ?? myTables.find((t) => t.visitId) ?? myTables[0]
-  const unread = useUnreadKitchen(snap, staffId, tab === 'kitchen' || (tablet && tab === 'home'))
+  const dock = useKitchenDock(snap, staffId)
+  const unread = useUnreadKitchen(snap, staffId, tab === 'kitchen' || (tablet && tab === 'home' && dock.open))
 
   if (!snap) return <PhoneSkeleton />
   if (!me || !snap.me) return <div className="p-8 text-muted-foreground">{t('srv.notFound')}</div>
@@ -167,13 +168,17 @@ export default function ServerView() {
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="h-full p-6">
                 {tab === 'home' && (
-                  <div className="mx-auto grid max-w-[1600px] items-start gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(300px,0.8fr)]">
+                  <div className={cn('mx-auto grid max-w-[1600px] items-start gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]', dock.open ? 'xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(300px,0.8fr)]' : 'xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_56px]')}>
                     <div className="min-w-0 space-y-4">
                       <AutopilotToggle snap={snap} staffId={staffId} />
                       <NextUp snap={snap} staffId={staffId} />
                       {/* On iPads the kitchen chat sits under the cards, where there is room. */}
                       <div className="xl:hidden">
-                        <KitchenPanel snap={snap} staffId={staffId} myTables={myTables} className="h-[480px]" />
+                        {dock.open ? (
+                          <KitchenPanel snap={snap} staffId={staffId} myTables={myTables} className="h-[480px]" onMinimise={dock.hide} />
+                        ) : (
+                          <KitchenBar unread={unread} onOpen={dock.show} />
+                        )}
                       </div>
                     </div>
                     <div className="min-w-0 space-y-6">
@@ -181,7 +186,11 @@ export default function ServerView() {
                       <GuestList snap={snap} myTables={myTables} />
                     </div>
                     <div className="sticky top-0 hidden min-w-0 xl:block">
-                      <KitchenPanel snap={snap} staffId={staffId} myTables={myTables} className="h-[calc(100dvh-8.5rem)] max-h-[720px]" />
+                      {dock.open ? (
+                        <KitchenPanel snap={snap} staffId={staffId} myTables={myTables} className="h-[calc(100dvh-8.5rem)] max-h-[720px]" onMinimise={dock.hide} />
+                      ) : (
+                        <KitchenRail unread={unread} onOpen={dock.show} />
+                      )}
                     </div>
                   </div>
                 )}
@@ -669,14 +678,20 @@ function KitchenTab({ snap, staffId, myTables }: { snap: Snapshot; staffId: stri
 }
 
 /** Compact kitchen thread for the tablet's home screen. */
-function KitchenPanel({ snap, staffId, myTables, className }: { snap: Snapshot; staffId: string; myTables: Snapshot['tables']; className?: string }) {
+function KitchenPanel({ snap, staffId, myTables, className, onMinimise }: { snap: Snapshot; staffId: string; myTables: Snapshot['tables']; className?: string; onMinimise?: () => void }) {
+  const t = useT()
   return (
-    <section className={cn('flex flex-col rounded-2xl border bg-card p-4', className)}>
+    <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }} className={cn('flex flex-col rounded-2xl border bg-card p-4', className)}>
       <h2 className="flex items-center gap-2 font-display text-xl">
-        <UtensilsCrossed className="size-5 text-primary" /> {useT()('nav.kitchen')}
+        <UtensilsCrossed className="size-5 text-primary" /> {t('nav.kitchen')}
+        {onMinimise && (
+          <Button size="icon" variant="ghost" className="ml-auto size-9 text-muted-foreground" aria-label={t('kitchen.hide')} title={t('kitchen.hide')} onClick={onMinimise}>
+            <PanelRightClose className="size-5" />
+          </Button>
+        )}
       </h2>
       <KitchenThread snap={snap} staffId={staffId} myTables={myTables} className="mt-3 min-h-0 flex-1" />
-    </section>
+    </motion.section>
   )
 }
 
@@ -960,6 +975,71 @@ function KudosDrawer({ to, snap, staffId, onClose }: { to: string | null; snap: 
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+
+/**
+ * The kitchen chat beside the cards can be tucked away to give the floor plan and cards the room.
+ * It opens again by itself when the kitchen sends something new. Remembered on this device.
+ */
+function useKitchenDock(snap: Snapshot | null, staffId: string) {
+  const KEY = 'tablemate-kitchen-dock'
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(KEY) !== 'hidden'
+    } catch {
+      return true
+    }
+  })
+  const save = (o: boolean) => {
+    setOpen(o)
+    try {
+      localStorage.setItem(KEY, o ? 'open' : 'hidden')
+    } catch {
+      /* private mode: just this visit */
+    }
+  }
+  // Messages from the kitchen to this server (or everyone): a new one opens the chat.
+  const incoming = snap ? snap.notes.filter((n) => n.direction === 'to_floor' && (!n.tableId || snap.tables.find((t) => t.id === n.tableId)?.serverId === staffId)).length : null
+  // Counted from the first snapshot, so messages already there when the page opens don't count as new.
+  const last = useRef<number | null>(null)
+  useEffect(() => {
+    if (incoming === null) return
+    if (last.current !== null && incoming > last.current && !open) setOpen(true)
+    last.current = incoming
+  }, [incoming, open])
+  return { open, show: () => save(true), hide: () => save(false) }
+}
+
+/** The tucked-away kitchen chat on a wide screen: a slim strip with the unread count. */
+function KitchenRail({ unread, onOpen }: { unread: number; onOpen: () => void }) {
+  const t = useT()
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={unread ? `${t('kitchen.show')}: ${t('kitchen.new', { n: unread })}` : t('kitchen.show')}
+      title={t('kitchen.show')}
+      className="relative flex h-[calc(100dvh-8.5rem)] max-h-[720px] w-14 flex-col items-center gap-3 rounded-2xl border bg-card py-4 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+    >
+      <PanelRightOpen className="size-5" />
+      <UtensilsCrossed className="size-5 text-primary" />
+      <span className="text-sm font-medium [writing-mode:vertical-rl]">{t('nav.kitchen')}</span>
+      {unread > 0 && <span className="grid size-6 place-items-center rounded-full bg-destructive text-[11px] font-bold text-white tabular">{unread}</span>}
+    </button>
+  )
+}
+
+/** The tucked-away kitchen chat on an iPad: one line under the cards. */
+function KitchenBar({ unread, onOpen }: { unread: number; onOpen: () => void }) {
+  const t = useT()
+  return (
+    <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 rounded-2xl border bg-card px-4 py-3 text-left transition-colors hover:bg-accent">
+      <UtensilsCrossed className="size-5 text-primary" />
+      <span className="flex-1 font-medium">{t('nav.kitchen')}</span>
+      {unread > 0 && <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-bold text-white tabular">{t('kitchen.new', { n: unread })}</span>}
+      <span className="text-sm text-primary">{t('kitchen.show')}</span>
+    </button>
+  )
+}
 
 function useUnreadKitchen(snap: Snapshot | null, staffId: string, viewing: boolean) {
   const [seen, setSeen] = useState(0)

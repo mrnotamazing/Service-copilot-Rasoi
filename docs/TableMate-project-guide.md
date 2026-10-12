@@ -165,7 +165,7 @@ Every source (a real POS, the kitchen screen, a server's tap, the simulator) pro
 
 ### 5.2 The server app (phone or tablet)
 
-Phones get bottom tabs; tablets and laptops get a side rail with cards, the floor plan, guests and the kitchen thread side by side. On a laptop, **phone view** shows a real phone's proportions (a 390×844 screen) and scales the whole phone to fit the window.
+Phones get bottom tabs; tablets and laptops get a side rail with cards, the floor plan, guests and the kitchen thread side by side. The kitchen thread can be **hidden** (a slim strip, or one line on an iPad, with an unread count) to give the cards and floor plan the room; it **opens by itself** when the kitchen sends something new, and the choice is remembered on the device. On a laptop, **phone view** shows a real phone's proportions (a 390×844 screen) and scales the whole phone to fit the window.
 
 **Home tab**
 - **Next up**: the top three cards, ranked. Swipe right for done, left for Later, or use the buttons. Cards close themselves when the POS shows the step happened.
