@@ -62,6 +62,20 @@ if (!gemini) {
     const reply = await g.model.reply({ stable: 'Answer in one word.', live: '' }, [{ role: 'user', text: 'Reply with the single word: ready' }], undefined, { maxTokens: 20 })
     ok(`Gemini answered using ${g.model.label?.() ?? model}: "${reply}"`)
     if (process.env.GEMINI_MODEL && g.model.label?.() !== process.env.GEMINI_MODEL) tip(`GEMINI_MODEL=${process.env.GEMINI_MODEL} is retired; remove that line from .env.`)
+
+    // A practice turn, judged the way the app does it: a poor reply should score low with a reason.
+    const { createAi } = await import('../server/ai.ts')
+    const { Hub, memoryStore } = await import('../server/hub.ts')
+    const ai = createAi(new Hub(memoryStore()), { chat: g.model, chatErrorReason: geminiErrorReason })
+    const turn = await ai.ask({ kind: 'chat', mode: 'practice', staffId: 's_aisha', scenario: 'cold_food', messages: [{ role: 'assistant', text: 'Excuse me. My lamb is lukewarm, and we waited forty minutes for it.' }, { role: 'user', text: 'the chef died sorry' }] })
+    if (turn.source === 'gemini' && turn.score !== undefined) {
+      ok(`Practice is judged by Gemini: "the chef died sorry" scored ${turn.score}/100`)
+      tip(`Coach: ${turn.feedback ?? '–'}`)
+      tip(`Guest: ${turn.text}`)
+    } else {
+      bad(`Practice fell back to the built-in checklist${turn.notice ? `: ${turn.notice}` : ''}`)
+      tip('Send this output to whoever is helping you; the app log shows the model’s raw reply.')
+    }
   } catch (e) {
     bad(`Gemini said no (model ${g.model.label?.() ?? model}): ${e instanceof Error ? e.message : String(e)}`)
     tip(geminiErrorReason(e))

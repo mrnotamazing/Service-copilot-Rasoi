@@ -56,7 +56,8 @@ const TIME: Check = {
 }
 const NO_BLAME: Check = {
   id: 'blame',
-  test: /\b(kitchen['’]?s fault|not my fault|chef (messed|forgot)|they messed|blame)\b/i,
+  // Blame, and excuses that pin it on the kitchen ("the chef died", "the kitchen is slow tonight").
+  test: /\b(kitchen['’]?s fault|not my fault|chef (messed|forgot)|they messed|blame)\b|\b(chef|cook|kitchen)s?\b[^.?!]{0,30}\b(died|dead|sick|ill|left|quit|is off|busy|slow|new|short.?staffed|forgot|messed|mistake|problem|not here)\b|\bbecause (of )?the (kitchen|chef)\b/i,
   stems: ['किचन की ग़लती', 'किचन की गलती', 'मेरी ग़लती नहीं', 'मेरी गलती नहीं', 'किचनको गल्ती', 'मेरो गल्ती होइन', 'কিচেনের দোষ', 'আমার দোষ না', 'சமையலறையின் தவறு', 'என் தவறு இல்லை', 'culpa de la cocina', 'no es mi culpa', 'culpa del chef'],
 }
 const CHECK_KITCHEN: Check = {

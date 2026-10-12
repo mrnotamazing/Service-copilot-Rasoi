@@ -41,7 +41,7 @@ export interface ChatModel {
   /** `reminder` restates the format and length in one line; small local models follow it far better than the long system prompt. */
   /** `onText`, when given, receives the whole answer so far as it's written (for streaming to the screen). */
   /** `opts.maxTokens` caps the answer's length; `opts.signal` cancels a request that is taking too long. */
-  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[], onText?: (text: string) => void, opts?: { maxTokens?: number; signal?: AbortSignal }): Promise<string>
+  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[], onText?: (text: string) => void, opts?: { maxTokens?: number; signal?: AbortSignal; json?: Record<string, unknown> }): Promise<string>
 }
 
 export interface PracticeTurn {
@@ -303,7 +303,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
               ? `- ${manager ? 'The manager' : 'The server'} asked to finish. Step out of character and give a short debrief in ${language}: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).`
               : opening
                 ? `- Start the role-play: say the opening line in ${language}, in character. Format exactly:\nCOACH: -\nGUEST: <the ${other}'s opening line>`
-                : `- Score ${asker}'s last reply against the practice rubric, then answer as the ${other}. Write COACH, IDEAL and GUEST in ${language}; keep the labels in English. Format exactly:\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <what an excellent ${manager ? 'manager' : 'server'} would have said instead, 1-2 sentences>\nGUEST: <the ${other}'s next line, in character>`,
+                : `- Judge ${asker}'s last reply like a strict, fair trainer, on what it actually says, not on keywords. A great reply owns the problem, says sorry sincerely, fixes the actual problem with a concrete next step and a time, and stays calm and truthful. Score under 30, even if it says sorry: excuses or made-up reasons, blaming the chef, kitchen or a colleague, jokes or sarcasm, rudeness, anything untrue or odd, guesses about allergens, or ignoring what the ${other} actually complained about. Say plainly in COACH what was wrong. Then score it against the practice rubric and answer as the ${other}. Write COACH, IDEAL and GUEST in ${language}; keep the labels in English. Format exactly:\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <what an excellent ${manager ? 'manager' : 'server'} would have said instead, 1-2 sentences>\nGUEST: <the ${other}'s next line, in character>`,
           ]
         : [manager ? '- Mode: ASK. Answer as their operations coach and peer.' : '- Mode: ASK. Answer as their expert trainer and colleague.']),
       ...(forNeed ? ['- Checked from the menu’s ingredient tags for this question (use exactly this; do not add dishes):', ...forNeed.split('\n').map((l) => `  ${l}`)] : []),
@@ -344,10 +344,13 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
           : `You are TableMate, my ${manager ? 'management coach' : 'trainer'}${req.simple ? '; use simple everyday words' : ''}. Answer my last message directly in 2-5 short sentences or bullets, no headings, no thinking out loud. Use ${language} unless I wrote in another language.`,
       },
       turns: apiTurns,
+      // Models that support it (Gemini) answer a scored practice turn as fixed fields, so nothing gets lost.
+      json: practice && !opening && !req.finish ? PRACTICE_JSON : undefined,
       parse: practice
         ? (raw: string, opts?: { local?: boolean }) => {
             // Smaller models often bold the labels (**COACH:**); read them either way.
-            const answer = raw.replace(/\*\*\s*(COACH|GUEST|STARS|SCORE|IDEAL)\s*:?\s*\*\*\s*:?/gi, '$1:')
+            const answer = fromJson(raw).replace(/\*\*\s*(COACH|GUEST|STARS|SCORE|IDEAL)\s*:?\s*\*\*\s*:?/gi, '$1:')
+            if (!opening && !req.finish && !/(COACH|SCORE):/i.test(answer)) console.warn('[practice] The model’s reply had no COACH/SCORE; using the rubric. Reply was:', raw.slice(0, 400))
             // A field the model left as the format's placeholder ("<what worked>", "0-100") counts as missing.
             const field = (label: string) => {
               const v = answer.match(new RegExp(`${label}:\\s*([\\s\\S]*?)(?=\\n\\s*(?:COACH|SCORE|IDEAL|GUEST|STARS):|$)`, 'i'))?.[1]?.trim()
@@ -516,7 +519,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
           const full = built.system ?? { stable: quickSystem(hub.config), live: `Reply in ${language}.` }
           const system = model.compact && built.compact ? { ...built.compact, reminder: full.reminder } : full
           const stream = quick || built.streamable ? (t: string) => ((started = true), onText?.(t)) : undefined
-          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], stream, { maxTokens: quick ? (QUICK_TOKENS[req.kind] ?? 240) : undefined, signal: ctrl.signal })
+          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], stream, { maxTokens: quick ? (QUICK_TOKENS[req.kind] ?? 240) : undefined, signal: ctrl.signal, json: built.json })
           const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name }
           if (model.checkFacts && built.facts?.length) out.text = `${out.text}\n\nFrom the menu: ${built.facts.join('\n')}`
           return out
@@ -540,6 +543,33 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
 }
 
 export class AiError extends Error {}
+
+/** The fields of a scored practice turn, as a response schema (Gemini's format). */
+const PRACTICE_JSON = {
+  type: 'OBJECT',
+  properties: {
+    coach: { type: 'STRING', description: '"✓ what worked → the one most important fix", in the app language. If nothing worked, say plainly what was wrong.' },
+    score: { type: 'INTEGER', description: '0-100, judged strictly on what the reply says' },
+    ideal: { type: 'STRING', description: 'What an excellent reply would have said instead, 1-2 sentences' },
+    guest: { type: 'STRING', description: 'The other person’s next line, in character, 1-2 sentences' },
+    ended: { type: 'BOOLEAN', description: 'True when the conversation is over (won over, or they give up)' },
+  },
+  required: ['coach', 'score', 'ideal', 'guest'],
+  propertyOrdering: ['coach', 'score', 'ideal', 'guest', 'ended'],
+}
+
+/** A reply given as JSON fields becomes the labelled text the parser reads; anything else is unchanged. */
+export function fromJson(raw: string): string {
+  const m = raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, '').match(/\{[\s\S]*\}/)
+  if (!m) return raw
+  try {
+    const j = JSON.parse(m[0]) as { coach?: string; score?: number; ideal?: string; guest?: string; ended?: boolean }
+    if (j.guest === undefined && j.coach === undefined) return raw
+    return [`COACH: ${j.coach ?? '-'}`, j.score !== undefined ? `SCORE: ${j.score}` : '', j.ideal ? `IDEAL: ${j.ideal}` : '', `GUEST: ${j.guest ?? ''}${j.ended ? ' [END]' : ''}`].filter(Boolean).join('\n')
+  } catch {
+    return raw
+  }
+}
 
 /** No words from the model by then: show the built-in answer instead of keeping someone waiting. */
 const QUICK_FIRST_WORDS_MS = 12_000
@@ -566,6 +596,8 @@ interface Built {
   streamable?: boolean
   /** Answer with the built-in text straight away (e.g. a role-play's opening line, already in every language). */
   instant?: boolean
+  /** A response schema for models that can answer in fixed fields (Gemini); others use the labels. */
+  json?: Record<string, unknown>
   /** Chat kinds: the system prompt (cacheable part + live part) and the turns for a chat model. */
   system?: { stable: string; live: string; reminder?: string }
   turns?: ChatTurn[]

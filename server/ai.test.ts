@@ -252,3 +252,33 @@ describe('quick buttons are fast', () => {
     }
   })
 })
+
+describe('practice judging', () => {
+  it('the built-in checklist treats excuses about the chef as blame', async () => {
+    const { scoreReply } = await import('../shared/practice.ts')
+    for (const reply of ['the chef died sorry', 'Sorry, the kitchen is slow tonight', 'Sorry, it was cold because of the kitchen']) {
+      const s = scoreReply('cold_food', reply)
+      expect(s.penalty, reply).toBe(true)
+      expect(s.score, reply).toBeLessThan(20)
+    }
+    expect(scoreReply('cold_food', 'I’m so sorry. Let me replace it right away; a fresh one will be with you in 8 minutes.').penalty).toBe(false)
+  })
+
+  it('uses the model’s own judgement when it answers in fixed fields', async () => {
+    const hub = new Hub(memoryStore())
+    let asked: Record<string, unknown> | undefined
+    const chat = {
+      name: 'gemini' as const,
+      async reply(_s: unknown, _t: unknown, _o?: unknown, opts?: { json?: Record<string, unknown> }) {
+        asked = opts?.json
+        return JSON.stringify({ coach: '✗ Blaming the chef is an excuse, and it ignores the cold lamb → apologise, replace it, give a time.', score: 8, ideal: 'I’m so sorry. I’ll bring you a fresh, hot lamb shank in eight minutes.', guest: 'What? That’s not my problem. I want hot food.' })
+      },
+    }
+    const ai = createAi(hub, { chat })
+    const a = await ai.ask({ kind: 'chat', mode: 'practice', staffId: 's_aisha', scenario: 'cold_food', messages: [{ role: 'assistant', text: 'Excuse me. My lamb is lukewarm.' }, { role: 'user', text: 'the chef died sorry' }] })
+    expect(asked).toMatchObject({ required: ['coach', 'score', 'ideal', 'guest'] })
+    expect(a).toMatchObject({ source: 'gemini', score: 8, mood: 'worse' })
+    expect(a.feedback).toMatch(/excuse/)
+    expect(a.text).toMatch(/hot food/)
+  })
+})

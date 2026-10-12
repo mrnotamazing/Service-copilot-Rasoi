@@ -60,6 +60,7 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
     async reply(system, turns: ChatTurn[], onText, o) {
       let name = await resolveModel()
       let switched = false
+      let json = o?.json
       const contents = turns.map((t, i) => ({
         role: t.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: i === turns.length - 1 && t.role === 'user' && system.reminder ? `${t.text}\n\n(${system.reminder})` : t.text }],
@@ -73,7 +74,13 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: `${system.stable}\n\n${system.live}` }] },
             contents,
-            generationConfig: { maxOutputTokens: o?.maxTokens ?? 1024, temperature: 0.6, ...(think ? { thinkingConfig: think } : {}) },
+            generationConfig: {
+              maxOutputTokens: o?.maxTokens ?? 1024,
+              temperature: 0.6,
+              ...(think ? { thinkingConfig: think } : {}),
+              // Fixed fields (e.g. a scored practice turn): Gemini returns exactly that JSON.
+              ...(json ? { responseMimeType: 'application/json', responseSchema: json } : {}),
+            },
           }),
         })
         if (!res.ok) {
@@ -82,6 +89,11 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
           // A model that doesn't take this thinking setting: try the next form once, then remember it.
           if (res.status === 400 && /thinking/i.test(msg) && thinking < thinkingTries.length - 1) {
             thinking++
+            continue
+          }
+          // A model that won't take the fixed-fields format: ask again in plain text (the app reads labels too).
+          if (res.status === 400 && json && /schema|mime|json/i.test(msg)) {
+            json = undefined
             continue
           }
           // A retired model: switch to the one Google names (once), and keep using it.
