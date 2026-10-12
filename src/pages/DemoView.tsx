@@ -245,7 +245,7 @@ function Moments({ snap }: { snap: Snapshot }) {
             type="button"
             disabled={busy !== null}
             onClick={() => void stage(kind)}
-            className="group flex min-h-16 items-start gap-3 rounded-xl border bg-background p-3 text-left transition-colors hover:border-primary/40 hover:bg-accent disabled:opacity-60"
+            className="lift group flex min-h-16 items-start gap-3 rounded-xl border bg-background p-3 text-left hover:border-primary/40 hover:bg-accent disabled:opacity-60"
           >
             <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-secondary text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
               <Icon className="size-4.5" aria-hidden />

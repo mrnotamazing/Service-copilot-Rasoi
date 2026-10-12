@@ -79,7 +79,7 @@ export default function Home() {
           <h2 id="who" className="mb-3 text-sm font-medium text-muted-foreground">
             {t('home.who')} · {servers.length}
           </h2>
-          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="rise-stagger grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {servers.map((s) => {
               const section = sectionOf(s.id)
               const tables = snap.tables.filter((x) => x.serverId === s.id)
@@ -87,7 +87,7 @@ export default function Home() {
               const open = snap.openTasks?.[s.id] ?? 0
               return (
                 <li key={s.id}>
-                  <Link to={`/server/${s.id}`} className="group flex h-full flex-col rounded-2xl border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Link to={`/server/${s.id}`} className="lift group flex h-full flex-col rounded-2xl border bg-card p-4 hover:border-primary/50 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <div className="flex items-center gap-3">
                       <Avatar staff={s} className="size-11 text-lg" />
                       <div className="min-w-0">

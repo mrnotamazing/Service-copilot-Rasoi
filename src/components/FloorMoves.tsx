@@ -4,6 +4,7 @@
 // language, never from how well anyone is doing.
 
 import { ArrowRightLeft, ChefHat, CircleCheck, Languages, MessageSquare, Scale, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import type { FloorInsight } from '../../shared/floorInsights.ts'
@@ -66,10 +67,11 @@ export function FloorMoves({ snap, managerId }: { snap: Snapshot; managerId: str
           </p>
         ) : (
           <ul className="space-y-2">
+            <AnimatePresence initial={false}>
             {list.map((i) => {
               const Icon = ICON[i.kind]
               return (
-                <li key={i.id} className="flex flex-wrap items-start gap-3 rounded-xl border p-3">
+                <motion.li key={i.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.22 }} className="flex flex-wrap items-start gap-3 rounded-xl border p-3">
                   <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary">
                     <Icon className="size-4 text-primary" aria-hidden />
                   </span>
@@ -87,9 +89,10 @@ export function FloorMoves({ snap, managerId }: { snap: Snapshot; managerId: str
                       <X />
                     </Button>
                   </span>
-                </li>
+                </motion.li>
               )
             })}
+            </AnimatePresence>
           </ul>
         )}
       </CardContent>

@@ -178,6 +178,29 @@
 .pulse-soft { animation: pulse-soft 1.8s ease-in-out infinite; }
 .tabular { font-variant-numeric: tabular-nums; }
 
+/* Subtle motion. Everything here stops for the device's reduce-motion setting and the in-app switch. */
+@keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.rise-in { animation: rise-in .34s cubic-bezier(.2, .7, .2, 1) both; }
+/* Children arrive one after another, 45ms apart. */
+.rise-stagger > * { animation: rise-in .38s cubic-bezier(.2, .7, .2, 1) both; }
+.rise-stagger > :nth-child(2) { animation-delay: 45ms; }
+.rise-stagger > :nth-child(3) { animation-delay: 90ms; }
+.rise-stagger > :nth-child(4) { animation-delay: 135ms; }
+.rise-stagger > :nth-child(5) { animation-delay: 180ms; }
+.rise-stagger > :nth-child(6) { animation-delay: 225ms; }
+.rise-stagger > :nth-child(n + 7) { animation-delay: 270ms; }
+/* A number that just changed settles into place. */
+@keyframes tick { from { opacity: .35; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.tick { display: inline-block; animation: tick .32s ease-out both; }
+/* Clickable cards rise a touch under the pointer. */
+.lift { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease; }
+@media (hover: hover) {
+  .lift:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -14px color-mix(in oklab, var(--foreground) 45%, transparent); }
+}
+/* The live dot breathes slowly. */
+@keyframes live-ring { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--good) 50%, transparent); } 70%, 100% { box-shadow: 0 0 0 5px transparent; } }
+.live-ring { animation: live-ring 2.6s ease-out infinite; }
+
 /* The running chef: speed lines streak and the figure bobs, a quiet "on its way". */
 @keyframes mascot-streak { 0% { transform: translateX(14px); opacity: .25; } 60% { opacity: 1; } 100% { transform: translateX(-10px); opacity: .25; } }
 @keyframes mascot-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
@@ -190,7 +213,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse-soft, .mascot-run .mascot-speed, .mascot-run .mascot-figure { animation: none; }
+  .pulse-soft, .mascot-run .mascot-speed, .mascot-run .mascot-figure, .rise-in, .rise-stagger > *, .tick, .live-ring { animation: none; }
+  .lift:hover { transform: none; }
 }
 
 /* Brand tagline: the one place letter-spaced capitals are used, as on the brand sheet. */
@@ -241,6 +265,7 @@ html[data-motion="reduce"] *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.001ms !important;
 }
+html[data-motion="reduce"] .lift:hover { transform: none; }
 
 /* Visual alert for Deaf and hard-of-hearing staff: the screen edge flashes on a new card. */
 @keyframes edge-flash { 0%, 100% { box-shadow: inset 0 0 0 0 transparent; } 30% { box-shadow: inset 0 0 0 6px var(--primary); } }

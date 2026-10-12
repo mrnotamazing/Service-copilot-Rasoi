@@ -1,13 +1,12 @@
-import { Accessibility, BookOpen, CakeSlice, ChefHat, Clapperboard, HeartPulse, LayoutDashboard, Menu, Monitor, Moon, Star, Sun, Users } from 'lucide-react'
+import { Accessibility, BookOpen, CakeSlice, ChefHat, Clapperboard, HeartPulse, LayoutDashboard, Menu, Star, Users } from 'lucide-react'
 import { Mark, Mascot, Wordmark } from '../brand/marks.tsx'
+import { motion } from 'motion/react'
 import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { STATUS_LABEL, STATUS_PROGRESS, clock, useWallClock } from '../lib/format.ts'
-import { useTheme, type ThemeChoice } from '../lib/theme.ts'
 import { cn } from '@/lib/utils'
 import { useT, type Key } from '../i18n/index.ts'
 import { AccessButton } from './AccessPanel.tsx'
@@ -21,56 +20,12 @@ export function Brand() {
   )
 }
 
-const THEMES: { c: ThemeChoice; Icon: typeof Sun; label: string }[] = [
-  { c: 'light', Icon: Sun, label: 'Light' },
-  { c: 'dark', Icon: Moon, label: 'Dark' },
-  { c: 'system', Icon: Monitor, label: 'Match device' },
-]
-
-export function ThemeToggle() {
-  const { choice, setTheme } = useTheme()
-  const i = THEMES.findIndex((t) => t.c === choice)
-  const { Icon, label } = THEMES[i]
-  const next = THEMES[(i + 1) % THEMES.length]
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Theme: ${label}. Switch to ${next.label}`} onClick={() => setTheme(next.c)}>
-          <Icon />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>Theme: {label}</TooltipContent>
-    </Tooltip>
-  )
-}
-
-/** Light, dark or match the device, as three plain buttons (used in the phone menu). */
-function ThemeChoices() {
-  const { choice, setTheme } = useTheme()
-  return (
-    <div role="group" aria-label="Theme" className="mt-2 grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
-      {THEMES.map(({ c, Icon, label }) => (
-        <button
-          key={c}
-          type="button"
-          aria-pressed={choice === c}
-          onClick={() => setTheme(c)}
-          className={cn('flex min-h-10 flex-col items-center justify-center gap-0.5 rounded-lg text-[11px]', choice === c ? 'bg-background font-medium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
-        >
-          <Icon className="size-4" />
-          {label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 /** The real time in IST (the restaurant's time zone) and whether the live connection is up. */
 export function LiveClock({ ok }: { now?: number; ok: boolean }) {
   const now = useWallClock()
   return (
     <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs tabular text-muted-foreground">
-      <span className={cn('size-1.5 rounded-full', ok ? 'bg-good' : 'bg-warn pulse-soft')} aria-label={ok ? 'Live' : 'Reconnecting'} />
+      <span className={cn('size-1.5 rounded-full', ok ? 'live-ring bg-good' : 'bg-warn pulse-soft')} aria-label={ok ? 'Live' : 'Reconnecting'} />
       {clock(now)} IST
     </span>
   )
@@ -171,7 +126,7 @@ export const SECTIONS: { to: string; label: Key; Icon: typeof Users; match: (pat
 ]
 
 /**
- * The main menu: logo, the four sections, "How it works", then language, access and theme.
+ * The main menu: logo, the four sections, "How it works", then Settings (language, theme, access, animation).
  * On phones the sections fold into a menu button.
  */
 export function TopNav() {
@@ -203,12 +158,14 @@ export function TopNav() {
                 to={to}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition-colors',
-                  active ? 'bg-secondary font-medium text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+                  'relative inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm transition-colors',
+                  active ? 'font-medium text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
                 )}
               >
-                <Icon className={cn('size-4', active && 'text-primary')} />
-                {t(label)}
+                {/* The highlight slides from the last section to this one. */}
+                {active && <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-lg bg-secondary" transition={{ type: 'spring', stiffness: 480, damping: 38 }} />}
+                <Icon className={cn('relative size-4', active && 'text-primary')} />
+                <span className="relative">{t(label)}</span>
               </Link>
             )
           })}
@@ -222,9 +179,6 @@ export function TopNav() {
             {t('nav.how')}
           </Link>
           <AccessButton />
-          <span className="hidden sm:inline-flex">
-            <ThemeToggle />
-          </span>
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden" aria-label={t('nav.menu')}>
@@ -256,7 +210,6 @@ export function TopNav() {
                   <BookOpen className="size-5" />
                   {t('nav.how')}
                 </Link>
-                <ThemeChoices />
               </nav>
             </SheetContent>
           </Sheet>
@@ -282,7 +235,7 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
             {right && <div className="flex items-center gap-2">{right}</div>}
           </div>
         )}
-        <div className={cn(!bare && 'mx-auto px-4 py-5 md:px-6 md:py-6', !bare && width)}>{children}</div>
+        <div className={cn('rise-in', !bare && 'mx-auto px-4 py-5 md:px-6 md:py-6', !bare && width)}>{children}</div>
       </main>
     </div>
   )

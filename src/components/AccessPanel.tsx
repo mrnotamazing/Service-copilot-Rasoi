@@ -1,4 +1,4 @@
-import { Accessibility, Check, Languages, UtensilsCrossed, Volume2, X } from 'lucide-react'
+import { Check, Monitor, Moon, Settings2, Sparkles, Sun, UtensilsCrossed, Volume2, X } from 'lucide-react'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
@@ -9,10 +9,12 @@ import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { DEFAULT_PREFS, setPrefs, usePrefs, type Prefs } from '../lib/prefs.ts'
 import { canSpeak, cuisineVoices, hasVoice, speak, speakTask, voicesFor } from '../lib/speech.ts'
 import { MENU_FOR_TEST } from '../lib/pronounce.ts'
+import { useTheme, type ThemeChoice } from '../lib/theme.ts'
 
 /**
- * Opens language & accessibility settings. Shown in every staff header as a pill with the
- * current language ("EN", "हि") so it is easy to spot, and as a labelled row where there is room.
+ * Opens Settings: language, theme, reading, voice, alerts and animation. Shown in every header as a
+ * "Settings" pill that also carries the current language ("EN", "हि"), and as a labelled row where
+ * there is room.
  */
 export function AccessButton({ className, variant = 'pill' }: { className?: string; variant?: 'pill' | 'row' | 'icon' }) {
   const [open, setOpen] = useState(false)
@@ -24,7 +26,7 @@ export function AccessButton({ className, variant = 'pill' }: { className?: stri
       {variant === 'row' ? (
         <button type="button" onClick={() => setOpen(true)} className={cn('flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-colors hover:bg-accent', className)}>
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
-            <Languages className="size-5" />
+            <Settings2 className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
             <span className="block font-medium">{t('acc.open')}</span>
@@ -34,7 +36,7 @@ export function AccessButton({ className, variant = 'pill' }: { className?: stri
         </button>
       ) : variant === 'icon' ? (
         <Button size="icon" variant="ghost" className={className} aria-label={t('acc.open')} title={t('acc.open')} onClick={() => setOpen(true)}>
-          <Languages className="size-5" />
+          <Settings2 className="size-5" />
         </Button>
       ) : (
         <button
@@ -42,10 +44,11 @@ export function AccessButton({ className, variant = 'pill' }: { className?: stri
           onClick={() => setOpen(true)}
           aria-label={t('acc.open')}
           title={t('acc.open')}
-          className={cn('inline-flex h-9 shrink-0 items-center gap-1 rounded-full border bg-background px-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-accent', className)}
+          className={cn('group inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-background pl-2.5 pr-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent', className)}
         >
-          <Languages className="size-4 text-primary" />
-          {short}
+          <Settings2 className="size-4 text-primary transition-transform duration-300 group-hover:rotate-45" aria-hidden />
+          <span className="hidden sm:inline">{t('acc.settings')}</span>
+          <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[11px] font-semibold leading-none">{short}</span>
         </button>
       )}
       <AccessPanel open={open} onOpenChange={setOpen} />
@@ -71,7 +74,7 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
       <DrawerContent className="mx-auto max-h-[90dvh] max-w-xl">
         <DrawerHeader>
           <DrawerTitle className="flex items-center gap-2 font-display text-2xl">
-            <Accessibility className="size-6 text-primary" /> {t('acc.title')}
+            <Settings2 className="size-6 text-primary" /> {t('acc.title')}
           </DrawerTitle>
           <DrawerDescription>{t('acc.sub')}</DrawerDescription>
         </DrawerHeader>
@@ -100,6 +103,11 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
               })}
             </div>
             <p className="text-xs text-muted-foreground">{t('acc.screensNote')}</p>
+          </Group>
+
+          <Group title={t('acc.display')}>
+            <ThemePicker />
+            <AnimationSwitch />
           </Group>
 
           <Group title={t('acc.reading')}>
@@ -188,7 +196,6 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
           <Group title={t('acc.calm')}>
             <Toggle k="focusMode" label="acc.focus" hint="acc.focusHint" />
             <Toggle k="quietCelebrations" label="acc.quiet" hint="acc.quietHint" />
-            <Toggle k="reduceMotion" label="acc.reduceMotion" />
             <Toggle k="leftHanded" label="acc.leftHanded" hint="acc.leftHint" />
           </Group>
 
@@ -198,6 +205,54 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
         </div>
       </DrawerContent>
     </Drawer>
+  )
+}
+
+const THEME_ICON: Record<ThemeChoice, typeof Sun> = { light: Sun, dark: Moon, system: Monitor }
+
+function ThemePicker() {
+  const t = useT()
+  const { choice, setTheme } = useTheme()
+  return (
+    <div>
+      <div className="mb-2 text-sm font-medium">{t('acc.theme')}</div>
+      <div role="radiogroup" aria-label={t('acc.theme')} className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+        {(['light', 'dark', 'system'] as const).map((c) => {
+          const Icon = THEME_ICON[c]
+          return (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={choice === c}
+              onClick={() => setTheme(c)}
+              className={cn('flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 text-sm font-medium transition-colors', choice === c ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+            >
+              <Icon className="size-4" aria-hidden /> {t(`acc.theme.${c}`)}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Animations on or off (stored as reduceMotion). The device's own reduce-motion setting always wins. */
+function AnimationSwitch() {
+  const t = useT()
+  const p = usePrefs()
+  const id = useId()
+  return (
+    <label htmlFor={id} className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-xl border bg-card px-3 py-2">
+      <span className="flex items-start gap-2">
+        <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+        <span>
+          <span className="block text-sm font-medium">{t('acc.animations')}</span>
+          <span className="block text-xs text-muted-foreground">{t('acc.animationsHint')}</span>
+        </span>
+      </span>
+      <Switch id={id} checked={!p.reduceMotion} onCheckedChange={(on) => setPrefs({ reduceMotion: !on })} />
+    </label>
   )
 }
 

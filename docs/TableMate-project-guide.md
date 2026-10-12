@@ -191,7 +191,7 @@ Phones get bottom tabs; tablets and laptops get a side rail with cards, the floo
 
 **In the header**
 - **Ask TableMate** (the sparkle button): the AI trainer (see 5.6).
-- **Comfort & access** (the accessibility icon): see 5.8.
+- **Settings** (the button in the header, with the current language): see 5.8.
 - **Language** (EN and five more) and **light / dark / system theme**.
 
 ### 5.3 Safety, timing and guest care (inside the cards)
@@ -264,12 +264,13 @@ Opened with the sparkle button (servers) or **Ask TableMate** on the manager con
 - **Speech-friendly text**: "T3" becomes "Table 3", "2×" becomes "2".
 - **Dictation** in the chat and practice room.
 
-### 5.8 Comfort & access (each person sets it for themselves)
+### 5.8 Settings (each person sets them for themselves)
 
 - **Six languages**: English, हिन्दी, नेपाली, বাংলা, தமிழ், Español. Task cards, actions, badges, quests, onboarding, the chat and practice all translate.
 - **Reading**: larger text, an easy-to-read font (Atkinson Hyperlegible), high contrast, simple words.
 - **Alerts without sound**: a flashing screen edge for Deaf and hard-of-hearing staff, plus an optional chime and vibration.
-- **Calm and focus**: one card at a time, reduced motion, quiet celebrations (XP still counts), and a left-handed layout.
+- **Look and feel**: light, dark or match the device, and an **Animations** switch. Motion across the app is subtle: pages settle in, lists arrive one after another, the menu highlight slides between sections, changed numbers settle into place, clickable cards lift a touch, the live dot breathes and the chef runs along the start page's brand line. Turning Animations off (or the device's own reduce-motion setting) stops all of it.
+- **Calm and focus**: one card at a time, quiet celebrations (XP still counts), and a left-handed layout.
 - **Respectful wording**: every AI prompt asks for gender-neutral, respectful language (no assumed "sir/madam"); optional pronouns on the profile.
 - **True dark theme** for dim dining rooms.
 

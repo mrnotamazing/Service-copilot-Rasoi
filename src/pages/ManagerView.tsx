@@ -11,6 +11,7 @@ import { languageName } from '../../shared/profile.ts'
 import { liveVisit, reconstructVisit, type Reconstruction } from '../../shared/intel.ts'
 import { AssistantDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
+import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -407,8 +408,9 @@ function NeedsYou({ snap }: { snap: Snap }) {
         <BrandEmpty inline title="All calm">Nothing needs you right now. Requests, late tickets and unhappy tables show up here first.</BrandEmpty>
       ) : (
         <ul className="divide-y">
+          <AnimatePresence initial={false}>
           {items.map((i) => (
-            <li key={i.key} className="flex items-center gap-3 py-2.5">
+            <motion.li key={i.key} layout initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.22 }} className="flex items-center gap-3 overflow-hidden py-2.5">
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-secondary">{i.icon}</span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">{i.title}</span>
@@ -416,8 +418,9 @@ function NeedsYou({ snap }: { snap: Snap }) {
               </span>
               <span className="shrink-0 text-xs text-muted-foreground tabular">{ago(i.at, now)}</span>
               {i.action}
-            </li>
+            </motion.li>
           ))}
+          </AnimatePresence>
         </ul>
       )}
     </section>
@@ -442,7 +445,9 @@ function Pulse({ snap }: { snap: Snap }) {
       {items.map((i) => (
         <div key={i.label} className="p-4">
           <div className="text-xs text-muted-foreground">{i.label}</div>
-          <div className="mt-1 font-display text-2xl tabular">{i.value}</div>
+          <div className="mt-1 font-display text-2xl tabular">
+            <span key={String(i.value)} className="tick">{i.value}</span>
+          </div>
           <div className="text-[11px] text-muted-foreground">{i.sub}</div>
         </div>
       ))}

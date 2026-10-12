@@ -6,6 +6,7 @@ import { Mascot } from '../brand/marks.tsx'
 import { AppShell } from '../components/kit.tsx'
 import { useT, type Key } from '../i18n/index.ts'
 import { useRolePage } from '../lib/role.ts'
+import { usePrefs } from '../lib/prefs.ts'
 
 const SCREENS: { to: string; label: Key; sub: Key; Icon: typeof Users }[] = [
   { to: '/servers', label: 'nav.servers', sub: 'start.serversSub', Icon: Users },
@@ -32,11 +33,11 @@ export default function Start() {
         <h1 className="font-display text-3xl md:text-4xl">{t('start.title')}</h1>
         <p className="mt-2 max-w-[48ch] text-sm opacity-80 md:text-base">{t('start.sub')}</p>
       </section>
-      <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+      <ul className="rise-stagger mt-5 grid gap-3 sm:grid-cols-2">
         {SCREENS.map(({ to, label, sub, Icon }) => (
           <li key={to}>
-            <Link to={to} className="group flex h-full items-start gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/50 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary">
+            <Link to={to} className="lift group flex h-full items-start gap-4 rounded-2xl border bg-card p-5 hover:border-primary/50 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary/12 text-primary transition-transform duration-200 group-hover:scale-105">
                 <Icon className="size-6" />
               </span>
               <span className="min-w-0">
@@ -54,7 +55,7 @@ export default function Start() {
         <h2 id="promise" className="font-display text-2xl text-balance md:text-3xl">
           {t('start.promise')}
         </h2>
-        <ul className="mt-5 grid gap-5 sm:grid-cols-3">
+        <ul className="rise-stagger mt-5 grid gap-5 sm:grid-cols-3">
           {PROMISE.map(({ title, sub, Icon }) => (
             <li key={title} className="border-l-2 border-primary pl-4">
               <div className="flex items-center gap-2 font-display text-lg">
@@ -78,7 +79,8 @@ export default function Start() {
  * face the way it's going) whenever the pointer moves over the section. Still for reduced motion.
  */
 function RunningChef({ trigger }: { trigger: RefObject<(() => void) | null> }) {
-  const still = useReducedMotion()
+  const device = useReducedMotion()
+  const still = usePrefs().reduceMotion || device
   const [end, setEnd] = useState<0 | 1>(0)
   const [running, setRunning] = useState(false)
   const [facing, setFacing] = useState<1 | -1>(1)

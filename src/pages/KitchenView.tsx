@@ -144,7 +144,9 @@ function Count({ icon, n, label, tone }: { icon: React.ReactNode; n: number; lab
   return (
     <span className="inline-flex items-center gap-2">
       {icon}
-      <span className={cn('font-display text-2xl leading-none tabular', tone)}>{n}</span>
+      <span className={cn('font-display text-2xl leading-none tabular', tone)}>
+        <span key={n} className="tick">{n}</span>
+      </span>
       <span className="text-sm text-muted-foreground">{label}</span>
     </span>
   )
