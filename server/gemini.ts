@@ -8,8 +8,16 @@
 import type { ChatModel, ChatTurn } from './ai.ts'
 
 const BASE = 'https://generativelanguage.googleapis.com/v1beta'
-/** Used when the model list can't be read; GEMINI_MODEL overrides both. */
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash'
+/**
+ * Used when the model list can't be read; GEMINI_MODEL overrides both. Google retires models for
+ * new keys over time; when it answers "use models/… instead", the app switches to that by itself.
+ */
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash'
+
+/** The replacement Google names in a "model no longer available" answer, if any. */
+export function suggestedModel(message: string): string | null {
+  return message.match(/use\s+(?:models\/)?(gemini-[\w.-]*\w)/i)?.[1] ?? null
+}
 
 /**
  * The newest fast "Flash" model the key can use (e.g. gemini-2.5-flash, or a later one), skipping
@@ -50,7 +58,8 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
     name: 'gemini',
     label: () => model ?? undefined,
     async reply(system, turns: ChatTurn[], onText, o) {
-      const name = await resolveModel()
+      let name = await resolveModel()
+      let switched = false
       const contents = turns.map((t, i) => ({
         role: t.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: i === turns.length - 1 && t.role === 'user' && system.reminder ? `${t.text}\n\n(${system.reminder})` : t.text }],
@@ -73,6 +82,14 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
           // A model that doesn't take this thinking setting: try the next form once, then remember it.
           if (res.status === 400 && /thinking/i.test(msg) && thinking < thinkingTries.length - 1) {
             thinking++
+            continue
+          }
+          // A retired model: switch to the one Google names (once), and keep using it.
+          const next = res.status === 404 ? suggestedModel(msg) : null
+          if (next && next !== name && !switched) {
+            switched = true
+            model = next
+            name = next
             continue
           }
           throw Object.assign(new Error(msg), { status: res.status })
@@ -116,7 +133,7 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
 export function geminiErrorReason(e: unknown): string {
   const status = (e as { status?: number }).status
   const msg = e instanceof Error ? e.message : String(e)
-  if (status === 400 && /api key/i.test(msg)) return 'The Gemini API key was rejected'
+  if ((status === 400 && /api key/i.test(msg)) || status === 401) return 'The Gemini API key was rejected: copy it again from AI Studio'
   if (status === 403) return 'The Gemini API key isn’t allowed to use this model'
   if (status === 429) return 'Gemini’s free limit is used up for now'
   if (/fetch failed|ENOTFOUND|ECONNREFUSED/i.test(msg)) return 'Couldn’t reach Gemini'

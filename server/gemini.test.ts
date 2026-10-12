@@ -39,3 +39,20 @@ describe('Gemini', () => {
     expect(geminiErrorReason(Object.assign(new Error('Resource exhausted'), { status: 429 }))).toMatch(/free limit/)
   })
 })
+
+describe('retired Gemini models', () => {
+  it('reads the replacement from Google’s answer and switches to it', async () => {
+    const msg = 'This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.8-flash for the latest features and improvements.'
+    const { suggestedModel } = await import('./gemini.ts')
+    expect(suggestedModel(msg)).toBe('gemini-3.8-flash')
+    const urls: string[] = []
+    const fetchImpl = vi.fn(async (url: string) => {
+      urls.push(url)
+      return url.includes('gemini-2.5-flash') ? new Response(JSON.stringify({ error: { message: msg } }), { status: 404 }) : new Response(sse('ready'), { status: 200 })
+    })
+    const g = createGemini({ key: 'k', model: 'gemini-2.5-flash', fetchImpl: fetchImpl as unknown as typeof fetch })
+    expect(await g.model.reply({ stable: '', live: '' }, [{ role: 'user', text: 'x' }])).toBe('ready')
+    expect(urls.at(-1)).toMatch(/gemini-3.8-flash:streamGenerateContent/)
+    expect(g.model.label?.()).toBe('gemini-3.8-flash')
+  })
+})
