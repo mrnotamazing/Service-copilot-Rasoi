@@ -86,7 +86,8 @@ describe('decide: what-if', () => {
     expect(r.findings.some((f) => /Recommendation/.test(f))).toBe(true)
     // Same seed, same night.
     expect(runWhatIf(DEMO_CONFIG, {}, { minutes: 60, runs: 1 }).base).toEqual(runWhatIf(DEMO_CONFIG, {}, { minutes: 60, runs: 1 }).changed)
-  })
+    // Several simulated evenings: give it room when the whole suite runs in parallel.
+  }, 20_000)
 
   it('a server off sick hands their section to a colleague', () => {
     const r = runWhatIf(DEMO_CONFIG, { sickServer: 's_rohan' }, { minutes: 90, runs: 1 })

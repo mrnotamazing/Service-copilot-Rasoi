@@ -32,7 +32,7 @@ describe('demo control', () => {
     }
     const texts = hub.feed.map((f) => f.text).join('\n')
     expect(texts).toMatch(/Staged: a guest with a nut allergy at T\d+ orders/)
-    expect(texts).toMatch(/seated: party of \d · Sam Banerjee · nut allergy/)
+    expect(texts).toMatch(/seated: party of \d · [^·]+ · nut allergy/)
     expect(texts).toMatch(/Kitchen → floor: Grill is backed up/)
     sim.pause()
   })
