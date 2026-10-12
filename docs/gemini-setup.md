@@ -35,6 +35,9 @@ yourself, set `GEMINI_MODEL`, e.g. `GEMINI_MODEL=gemini-2.5-flash`.
 
 ## If something goes wrong
 
+Run `npm run doctor` in the project folder. It checks your Node version, whether this copy has the Gemini connection, whether `.env` is there and readable, whether the key is set (without showing it), and asks Gemini a one-word question. Each problem comes with the fix.
+
+
 The answer still appears (from the built-in trainer) with a short note saying why:
 
 | Note | What to do |
