@@ -810,6 +810,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       tasks.push({
         id: `instruction:${i.id}:${staffId}`,
         kind: 'instruction',
+        from: i.from,
         tableId: t?.id ?? '',
         tableName: t?.name ?? 'All',
         staffId,

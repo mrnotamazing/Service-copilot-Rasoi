@@ -268,11 +268,15 @@ html[data-motion="reduce"] *::after {
 html[data-motion="reduce"] .lift:hover { transform: none; }
 
 /* Visual alert for Deaf and hard-of-hearing staff: the screen edge flashes on a new card. */
-@keyframes edge-flash { 0%, 100% { box-shadow: inset 0 0 0 0 transparent; } 30% { box-shadow: inset 0 0 0 6px var(--primary); } }
-.edge-flash { animation: edge-flash 0.9s ease-out 2; }
-/* It's an alert, not decoration: with motion reduced it shows as a steady edge for a moment instead. */
-html[data-motion="reduce"] .edge-flash { animation: none !important; box-shadow: inset 0 0 0 6px var(--primary); }
-@media (prefers-reduced-motion: reduce) { .edge-flash { animation: none; box-shadow: inset 0 0 0 6px var(--primary); } }
+/* Hard to miss from across the room: a thick edge, a glow inward and a light wash, pulsing three times. */
+@keyframes edge-flash {
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent; background-color: transparent; }
+  25% { box-shadow: inset 0 0 0 14px var(--primary), inset 0 0 90px 30px color-mix(in oklab, var(--primary) 55%, transparent); background-color: color-mix(in oklab, var(--primary) 12%, transparent); }
+}
+.edge-flash { animation: edge-flash 0.6s ease-out 3; }
+/* It's an alert, not decoration: with motion reduced it shows as a steady edge and wash for a moment instead. */
+html[data-motion="reduce"] .edge-flash { animation: none !important; box-shadow: inset 0 0 0 14px var(--primary), inset 0 0 90px 30px color-mix(in oklab, var(--primary) 45%, transparent); background-color: color-mix(in oklab, var(--primary) 10%, transparent); }
+@media (prefers-reduced-motion: reduce) { .edge-flash { animation: none; box-shadow: inset 0 0 0 14px var(--primary), inset 0 0 90px 30px color-mix(in oklab, var(--primary) 45%, transparent); background-color: color-mix(in oklab, var(--primary) 10%, transparent); } }
 
 /* In the dark theme, raised panels get a hairline edge so near-black layers stay distinct. */
 .dark .bg-hero { box-shadow: inset 0 0 0 1px var(--border); }

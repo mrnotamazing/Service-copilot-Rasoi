@@ -268,6 +268,8 @@ export interface Task {
   createdAt: number
   score: number
   actions: TaskAction[]
+  /** Who sent it, for notes from a teammate (manager or kitchen). */
+  from?: string
   /** Filled for the top cards: tasks worth doing on the same trip. */
   related?: RelatedTask[]
 }

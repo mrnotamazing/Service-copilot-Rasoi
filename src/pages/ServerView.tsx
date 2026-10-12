@@ -284,6 +284,7 @@ export default function ServerView() {
           })}
         </nav>
         {overlays}
+        <KitchenPopup fresh={dock.fresh} kitchenTab={tab === 'kitchen'} onOpenChat={() => setTab('kitchen')} />
       </div>
 
       <aside className="mx-auto mt-3 hidden w-full max-w-[410px] items-center justify-between gap-4 text-sm text-muted-foreground md:flex">
@@ -701,7 +702,14 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
   const tr = useT()
   const ago = useAgo()
   const active = myTables.filter((t) => t.visitId)
-  const thread = snap.notes.filter((n) => !n.tableId || myTables.some((t) => t.id === n.tableId) || n.from === staffId).slice(-30)
+  // Notes both ways, plus the kitchen's answers to guests' questions and its team notes to me.
+  const extra = kitchenNews(snap, staffId).filter((n) => n.id.startsWith('t:'))
+  const thread = [
+    ...snap.notes.filter((n) => !n.tableId || myTables.some((t) => t.id === n.tableId) || n.from === staffId).map((n) => ({ ...n, label: undefined as string | undefined })),
+    ...extra.map((n) => ({ id: n.id, at: n.at, text: n.text, tableId: n.tableId, direction: 'to_floor' as const, from: 'kitchen', ackAt: undefined, label: n.label })),
+  ]
+    .sort((a, b) => a.at - b.at)
+    .slice(-30)
 
   async function send(body = text) {
     const msg = body.trim()
@@ -724,6 +732,7 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
           return (
             <li key={n.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
               <div className={cn('max-w-[80%] rounded-2xl px-3 py-2 text-sm', mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary', n.text.startsWith('ALLERGY') && 'ring-2 ring-warn')}>
+                {n.label && <span className="block text-xs text-muted-foreground">{n.label}</span>}
                 {n.tableId && <span className={cn('mr-1 text-xs font-semibold', mine ? 'opacity-80' : 'text-muted-foreground')}>{n.tableId}</span>}
                 {n.text}
                 <div className={cn('mt-0.5 text-right text-[10px] tabular', mine ? 'opacity-70' : 'text-muted-foreground')}>
@@ -997,16 +1006,101 @@ function useKitchenDock(snap: Snapshot | null, staffId: string) {
       /* private mode: just this visit */
     }
   }
-  // Messages from the kitchen to this server (or everyone): a new one opens the chat.
-  const incoming = snap ? snap.notes.filter((n) => n.direction === 'to_floor' && (!n.tableId || snap.tables.find((t) => t.id === n.tableId)?.serverId === staffId)).length : null
-  // Counted from the first snapshot, so messages already there when the page opens don't count as new.
-  const last = useRef<number | null>(null)
+  // Anything new from the kitchen (a note, an answer to a guest's question, a team note) opens the chat.
+  const fresh = useNewKitchenNews(snap, staffId)
   useEffect(() => {
-    if (incoming === null) return
-    if (last.current !== null && incoming > last.current && !open) setOpen(true)
-    last.current = incoming
-  }, [incoming, open])
-  return { open, show: () => save(true), hide: () => save(false) }
+    if (fresh.length) setOpen(true)
+  }, [fresh])
+  return { open, show: () => save(true), hide: () => save(false), fresh }
+}
+
+/** One thing the kitchen told this server: a note, an answer to a guest's question, or a team note. */
+interface KitchenNews {
+  id: string
+  at: number
+  text: string
+  tableId?: string
+  label?: string
+}
+
+/** Everything from the kitchen for this server (or the whole floor), oldest first. */
+function kitchenNews(snap: Snapshot, staffId: string): KitchenNews[] {
+  const kitchen = new Set(snap.config.staff.filter((s) => s.role === 'kitchen').map((s) => s.id))
+  const notes = snap.notes
+    .filter((n) => n.direction === 'to_floor' && (!n.tableId || snap.tables.find((t) => t.id === n.tableId)?.serverId === staffId))
+    .map((n) => ({ id: `n:${n.id}`, at: n.at, text: n.text, tableId: n.tableId }))
+  const tasks = (snap.me?.tasks ?? [])
+    .filter((k) => k.kind === 'kitchen_answer' || (k.kind === 'instruction' && k.from && kitchen.has(k.from)))
+    .map((k) => ({
+      id: `t:${k.id}`,
+      at: k.createdAt,
+      tableId: k.tableId || undefined,
+      text: k.kind === 'kitchen_answer' ? k.title.replace(/^Kitchen answered:\s*/, '') : k.title.replace(/^[^:]+:\s*/, ''),
+      label: k.kind === 'kitchen_answer' ? k.hint : undefined,
+    }))
+  return [...notes, ...tasks].sort((a, b) => a.at - b.at)
+}
+
+/** Kitchen news that arrived since the last snapshot (none for what was already there on load). */
+function useNewKitchenNews(snap: Snapshot | null, staffId: string): KitchenNews[] {
+  const seen = useRef<Set<string> | null>(null)
+  const [fresh, setFresh] = useState<KitchenNews[]>([])
+  const news = snap ? kitchenNews(snap, staffId) : null
+  const sig = news?.map((n) => n.id).join('|') ?? null
+  useEffect(() => {
+    if (!news) return
+    const prev = seen.current
+    seen.current = new Set(news.map((n) => n.id))
+    const added = prev ? news.filter((n) => !prev.has(n.id)) : []
+    if (added.length) setFresh(added)
+    // The ids are the dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig])
+  return fresh
+}
+
+/** On a phone: something new from the kitchen pops up over whatever you're doing. */
+function KitchenPopup({ fresh, onOpenChat, kitchenTab }: { fresh: KitchenNews[]; onOpenChat: () => void; kitchenTab: boolean }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (fresh.length && !kitchenTab) setOpen(true)
+  }, [fresh, kitchenTab])
+  return (
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerContent className="mx-auto max-w-[440px]">
+        <DrawerHeader className="text-left">
+          <DrawerTitle className="flex items-center gap-2 font-display text-xl">
+            <UtensilsCrossed className="size-5 text-primary" /> {t('kitchen.fromKitchen')}
+          </DrawerTitle>
+          <DrawerDescription className="sr-only">{t('kitchen.fromKitchen')}</DrawerDescription>
+        </DrawerHeader>
+        <ul className="space-y-2 px-4">
+          {fresh.map((n) => (
+            <li key={n.id} className="rounded-2xl rounded-bl-md bg-secondary px-3 py-2.5">
+              {n.label && <div className="text-xs text-muted-foreground">{n.label}</div>}
+              {n.tableId && <span className="mr-1 text-xs font-semibold text-muted-foreground">{n.tableId}</span>}
+              <span className="text-base">{n.text}</span>
+            </li>
+          ))}
+        </ul>
+        <DrawerFooter className="flex-row">
+          <Button variant="outline" className="h-11 flex-1 rounded-full" onClick={() => setOpen(false)}>
+            {t('kitchen.ok')}
+          </Button>
+          <Button
+            className="h-11 flex-1 rounded-full"
+            onClick={() => {
+              setOpen(false)
+              onOpenChat()
+            }}
+          >
+            {t('kitchen.openChat')}
+          </Button>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
+  )
 }
 
 /** The tucked-away kitchen chat on a wide screen: a slim strip with the unread count. */
