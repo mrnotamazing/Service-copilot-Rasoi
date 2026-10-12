@@ -55,6 +55,7 @@ export default function ServerView() {
   const wide = useMediaQuery('(min-width: 768px)')
   const forcePhone = params.get('device') === 'phone'
   const tablet = wide && !forcePhone
+  const zoom = usePhoneZoom()
   const setParam = (key: string, value: string | null) =>
     setParams(
       (prev) => {
@@ -218,7 +219,9 @@ export default function ServerView() {
     <div className="flex h-dvh flex-col md:h-auto md:min-h-dvh">
     <TopNav />
     <div className="min-h-0 flex-1 md:flex md:flex-col md:items-center md:justify-center md:bg-[radial-gradient(ellipse_at_top,var(--accent),var(--background)_60%)] md:py-6">
-      <div className="relative mx-auto flex h-full w-full max-w-[440px] flex-col overflow-hidden bg-background md:h-[min(860px,calc(100dvh-9rem))] md:rounded-[2.75rem] md:border-[10px] md:border-foreground/85 md:shadow-2xl">
+      {/* On a laptop the phone keeps a real phone's shape (a 390×844 screen) and is scaled to fit the window. */}
+      <div className="h-full md:h-auto" style={zoom ? { zoom } : undefined}>
+      <div className="relative mx-auto flex h-full w-full flex-col overflow-hidden bg-background md:h-[864px] md:w-[410px] md:rounded-[3rem] md:border-[10px] md:border-foreground/85 md:shadow-2xl">
         {/* Top bar: who I am, my rank, my streak */}
         <header className="z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-2.5 backdrop-blur">
           {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} />}
@@ -272,7 +275,7 @@ export default function ServerView() {
         {overlays}
       </div>
 
-      <aside className="mx-auto mt-3 hidden w-full max-w-[440px] items-center justify-between gap-4 text-sm text-muted-foreground md:flex">
+      <aside className="mx-auto mt-3 hidden w-full max-w-[410px] items-center justify-between gap-4 text-sm text-muted-foreground md:flex">
         <span>{t('srv.phoneOf', { name: me.name })}</span>
         <span className="flex items-center gap-3">
           {forcePhone && (
@@ -282,9 +285,26 @@ export default function ServerView() {
           )}
         </span>
       </aside>
+      </div>
     </div>
     </div>
   )
+}
+
+/** How much to shrink the phone frame so all of it fits the window (wider screens only; 1 = real size). */
+function usePhoneZoom(): number | null {
+  const read = () => {
+    if (typeof window === 'undefined' || !window.matchMedia('(min-width: 768px)').matches) return null
+    // Top bar (57) + padding (48) + caption (36) around a 864px-tall frame.
+    return Math.max(0.6, Math.min(1, (window.innerHeight - 141) / 864))
+  }
+  const [zoom, setZoom] = useState(read)
+  useEffect(() => {
+    const on = () => setZoom(read())
+    window.addEventListener('resize', on)
+    return () => window.removeEventListener('resize', on)
+  }, [])
+  return zoom
 }
 
 /** Switch between the servers on tonight's floor without leaving the server app (keeps the tab). */
