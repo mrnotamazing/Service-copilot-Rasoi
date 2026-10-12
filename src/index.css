@@ -270,6 +270,9 @@ html[data-motion="reduce"] .lift:hover { transform: none; }
 /* Visual alert for Deaf and hard-of-hearing staff: the screen edge flashes on a new card. */
 @keyframes edge-flash { 0%, 100% { box-shadow: inset 0 0 0 0 transparent; } 30% { box-shadow: inset 0 0 0 6px var(--primary); } }
 .edge-flash { animation: edge-flash 0.9s ease-out 2; }
+/* It's an alert, not decoration: with motion reduced it shows as a steady edge for a moment instead. */
+html[data-motion="reduce"] .edge-flash { animation: none !important; box-shadow: inset 0 0 0 6px var(--primary); }
+@media (prefers-reduced-motion: reduce) { .edge-flash { animation: none; box-shadow: inset 0 0 0 6px var(--primary); } }
 
 /* In the dark theme, raised panels get a hairline edge so near-black layers stay distinct. */
 .dark .bg-hero { box-shadow: inset 0 0 0 1px var(--border); }

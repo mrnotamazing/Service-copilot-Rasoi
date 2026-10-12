@@ -13,6 +13,7 @@ import { AssistantDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
+import { useAlertOnNew } from '../lib/useAlerts.ts'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,6 +45,16 @@ export default function ManagerView() {
   useRolePage({ kind: 'manager' })
   const { snap, connected } = useSnapshot('manager')
   const summary = useAi()
+  // Something new that needs the manager alerts (as chosen in Settings): a visit request, an unhappy table, a handover idea.
+  useAlertOnNew(
+    snap?.analytics
+      ? [
+          ...snap.analytics.managerRequests.map((r) => `m:${r.tableId}:${r.at}`),
+          ...snap.tables.filter((t) => t.mood?.value === 'unhappy' && !t.recoveredAt).map((t) => `u:${t.id}:${t.mood!.at}`),
+          ...(snap.insights ?? []).map((i) => `i:${i.id}`),
+        ]
+      : null,
+  )
   const [assist, setAssist] = useState(false)
   const [incident, setIncident] = useState<Reconstruction | null>(null)
   if (!snap || !snap.analytics) return <ShellSkeleton />

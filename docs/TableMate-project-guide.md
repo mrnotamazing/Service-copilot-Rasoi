@@ -280,7 +280,7 @@ Opened from **Settings** in the header (it also shows the current language). Sav
 
 - **Six languages**: English, हिन्दी, नेपाली, বাংলা, தமிழ், Español. Task cards, actions, badges, quests, onboarding, the chat and practice all translate.
 - **Reading**: larger text, an easy-to-read font (Atkinson Hyperlegible), high contrast, simple words.
-- **Alerts without sound**: a flashing screen edge for Deaf and hard-of-hearing staff, plus an optional chime and vibration.
+- **Alerts**: when something new arrives (a new card in a server's top three; a new ticket, guest question or floor note at the kitchen; a visit request, unhappy table or handover idea for the manager) the screen can **chime**, **flash its edge** (for Deaf and hard-of-hearing staff; with motion reduced it shows as a steady edge instead) and **vibrate** (Android; iPhones don't let web pages vibrate, and Settings says so). Turning one on plays it once as a preview, and **Test my alerts** plays all three. Browsers only allow sound after the first tap on the page, so the app unlocks it then.
 - **Look and feel**: light, dark or match the device, and an **Animations** switch. Motion across the app is subtle: pages settle in, lists arrive one after another, the menu highlight slides between sections, changed numbers settle into place, clickable cards lift a touch, the live dot breathes and the chef runs along the start page's brand line. Turning Animations off (or the device's own reduce-motion setting) stops all of it.
 - **Calm and focus**: one card at a time, quiet celebrations (XP still counts), and a left-handed layout.
 - **Respectful wording**: every AI prompt asks for gender-neutral, respectful language (no assumed "sir/madam"); optional pronouns on the profile.

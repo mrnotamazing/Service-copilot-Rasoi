@@ -1,4 +1,4 @@
-import { Check, Monitor, Moon, Settings2, Sparkles, Sun, UtensilsCrossed, Volume2, X } from 'lucide-react'
+import { BellRing, Check, Monitor, Moon, Settings2, Sparkles, Sun, UtensilsCrossed, Volume2, X } from 'lucide-react'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
@@ -10,6 +10,7 @@ import { DEFAULT_PREFS, setPrefs, usePrefs, type Prefs } from '../lib/prefs.ts'
 import { canSpeak, cuisineVoices, hasVoice, speak, speakTask, voicesFor } from '../lib/speech.ts'
 import { MENU_FOR_TEST } from '../lib/pronounce.ts'
 import { useTheme, type ThemeChoice } from '../lib/theme.ts'
+import { alertNew, canVibrate, chime, flashEdge, haptic } from '../lib/haptics.ts'
 
 /**
  * Opens Settings: language, theme, reading, voice, alerts and animation. Shown in every header as a
@@ -188,9 +189,12 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
           </Group>
 
           <Group title={t('acc.alerts')}>
-            <Toggle k="flash" label="acc.flash" hint="acc.flashHint" />
-            <Toggle k="chime" label="acc.chime" />
-            <Toggle k="haptics" label="acc.haptics" />
+            <Toggle k="flash" label="acc.flash" hint="acc.flashHint" onOn={flashEdge} />
+            <Toggle k="chime" label="acc.chime" hint="acc.chimeHint" onOn={chime} />
+            <Toggle k="haptics" label="acc.haptics" hint={canVibrate() ? 'acc.hapticsHint' : 'acc.hapticsNone'} onOn={haptic.alert} />
+            <Button variant="outline" className="h-11 w-full rounded-xl" onClick={alertNew}>
+              <BellRing /> {t('acc.testAlert')}
+            </Button>
           </Group>
 
           <Group title={t('acc.calm')}>
@@ -270,7 +274,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 
 type BoolKey = { [K in keyof Prefs]-?: Prefs[K] extends boolean ? K : never }[keyof Prefs]
 
-function Toggle({ k, label, hint }: { k: BoolKey; label: Key; hint?: Key }) {
+function Toggle({ k, label, hint, onOn }: { k: BoolKey; label: Key; hint?: Key; onOn?: () => void }) {
   const t = useT()
   const p = usePrefs()
   const id = useId()
@@ -280,7 +284,15 @@ function Toggle({ k, label, hint }: { k: BoolKey; label: Key; hint?: Key }) {
         <span className="block text-sm font-medium">{t(label)}</span>
         {hint && <span className="block text-xs text-muted-foreground">{t(hint)}</span>}
       </span>
-      <Switch id={id} checked={p[k]} onCheckedChange={(v) => setPrefs({ [k]: v } as Partial<Prefs>)} />
+      <Switch
+        id={id}
+        checked={p[k]}
+        onCheckedChange={(v) => {
+          setPrefs({ [k]: v } as Partial<Prefs>)
+          // Turning an alert on plays it once, so you know what to expect (and the browser allows it from now on).
+          if (v) setTimeout(() => onOn?.(), 0)
+        }}
+      />
     </label>
   )
 }

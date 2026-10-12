@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { STANDALONE } from './lib/live.ts'
 import { usePrefs } from './lib/prefs.ts'
+import { useEdgeFlash } from './lib/useAlerts.ts'
 import AboutView from './pages/AboutView.tsx'
 import Home from './pages/Home.tsx'
 import Start from './pages/Start.tsx'
@@ -34,7 +35,14 @@ export default function App() {
           </Routes>
         </Router>
         <Toaster position="top-center" />
+        <EdgeFlash />
       </TooltipProvider>
     </MotionConfig>
   )
+}
+
+/** A visual alert for Deaf and hard-of-hearing staff: the screen edge flashes when something new arrives. */
+function EdgeFlash() {
+  const n = useEdgeFlash()
+  return n ? <div key={n} className="edge-flash pointer-events-none fixed inset-0 z-[100]" aria-hidden /> : null
 }

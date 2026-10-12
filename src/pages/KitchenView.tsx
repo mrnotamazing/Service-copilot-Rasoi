@@ -1,5 +1,6 @@
 import { MessageCircleQuestion, BellRing, Bot, Check, Flame, HandPlatter, HeartPulse, Send, ShieldAlert, Timer, UtensilsCrossed } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
+import { useAlertOnNew } from '../lib/useAlerts.ts'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { safetyIssues } from '../../shared/safety.ts'
@@ -36,6 +37,16 @@ export default function KitchenView() {
   useRolePage({ kind: 'kitchen' })
   const { snap, connected } = useSnapshot('kitchen')
   const [station, setStation] = useState<Station | 'all'>('all')
+  // New tickets, guest questions and notes from the floor alert the pass (as chosen in Settings).
+  useAlertOnNew(
+    snap
+      ? [
+          ...new Set(snap.tables.flatMap((t) => t.lines.filter((l) => l.status === 'fired').map((l) => `k:${l.ticketId}`))),
+          ...(snap.questions ?? []).filter((q) => !q.answer).map((q) => `q:${q.id}`),
+          ...snap.notes.filter((n) => n.direction === 'to_kitchen' && !n.ackAt).map((n) => `n:${n.id}`),
+        ]
+      : null,
+  )
 
   const tickets = useMemo(() => {
     if (!snap) return { line: [] as Ticket[], pass: [] as Ticket[] }

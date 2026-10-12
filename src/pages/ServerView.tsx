@@ -32,7 +32,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { en } from '../i18n/en.ts'
 import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
-import { chime, haptic } from '../lib/haptics.ts'
+import { useAlertOnNew } from '../lib/useAlerts.ts'
 import { setPrefs, usePrefs } from '../lib/prefs.ts'
 import { speakTask } from '../lib/speech.ts'
 import { clock, minutesAgo, useWallClock } from '../lib/format.ts'
@@ -1176,15 +1176,14 @@ function LanguageRow() {
 }
 
 /**
- * When a new task reaches the top: read it aloud, chime, flash the screen edge and/or buzz,
- * each only if the person turned it on. Nothing fires for the cards already there on load.
+ * When a new card joins the top three: chime, flash the screen edge and/or buzz; when a new card
+ * leads, read it aloud. Each only if the person turned it on. Nothing fires for cards there on load.
  */
 function NewTaskAlerts({ top }: { top: Task[] }) {
   const prefs = usePrefs()
   const lead = top[0]
   const words = useTaskWords(lead ?? EMPTY_TASK)
   const seen = useRef<string | null | undefined>(undefined)
-  const [flash, setFlash] = useState(0)
   useEffect(() => {
     const id = lead?.id ?? null
     if (seen.current === undefined || id === null || id === seen.current) {
@@ -1193,14 +1192,12 @@ function NewTaskAlerts({ top }: { top: Task[] }) {
     }
     seen.current = id
     if (prefs.readAloud) speakTask(words.title, words.hint, { title: lead.title, hint: lead.hint })
-    if (prefs.chime) chime()
-    if (prefs.flash) setFlash((n) => n + 1)
-    if (prefs.flash || prefs.chime) haptic.alert()
-    // Only the lead card's identity should trigger an alert.
+    // Only the lead card's identity should trigger reading aloud.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead?.id])
-  if (!flash) return null
-  return <div key={flash} className="edge-flash pointer-events-none fixed inset-0 z-50" aria-hidden />
+  // Any new card among the top three chimes, flashes and buzzes (not only a new top card).
+  useAlertOnNew(top.map((k) => k.id))
+  return null
 }
 
 const UP_ICON: Record<Upcoming['kind'], typeof Clock3> = { food_ready: HandPlatter, course_end: Hourglass, bill_soon: ReceiptText, crunch: Gauge }
