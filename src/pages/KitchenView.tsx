@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { safetyIssues } from '../../shared/safety.ts'
 import type { OrderLine, Station, TableState } from '../../shared/types.ts'
 import { Avatar } from '../components/Avatar.tsx'
-import { AppShell, LiveClock, ShellSkeleton } from '../components/kit.tsx'
+import { AppShell, LiveClock, ShellSkeleton, BrandEmpty } from '../components/kit.tsx'
 import { TeamCard } from '../components/TeamCard.tsx'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -92,7 +92,7 @@ export default function KitchenView() {
           <section>
             <LaneTitle icon={<Flame className="size-4" />} title="On the line" n={line.length} />
             {line.length === 0 ? (
-              <p className="rounded-2xl border border-dashed p-8 text-center text-muted-foreground">Nothing cooking{station !== 'all' ? ` on ${station}` : ''}. New tickets appear here the moment they’re fired.</p>
+              <BrandEmpty title={`Nothing cooking${station !== 'all' ? ` on ${station}` : ''}`}>New tickets land here the second they’re fired, with the clock already running.</BrandEmpty>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
                 <AnimatePresence mode="popLayout" initial={false}>

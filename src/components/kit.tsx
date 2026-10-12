@@ -1,5 +1,5 @@
 import { Accessibility, BookOpen, CakeSlice, ChefHat, Clapperboard, HeartPulse, LayoutDashboard, Menu, Monitor, Moon, Star, Sun, Users } from 'lucide-react'
-import { Mark, Wordmark } from '../brand/marks.tsx'
+import { Mark, Mascot, Wordmark } from '../brand/marks.tsx'
 import { useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
@@ -291,17 +291,35 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
 /** Shown while the first snapshot arrives, in the shape of the page. */
 export function ShellSkeleton() {
   return (
-    <div className="min-h-dvh" aria-busy="true" aria-label="Loading">
-      <div className="h-14 border-b" />
-      <div className="mx-auto w-full max-w-7xl space-y-4 px-4 py-6 md:px-6">
-        <div className="h-7 w-48 animate-pulse rounded-md bg-muted" />
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
-          ))}
-        </div>
-        <div className="h-56 animate-pulse rounded-xl bg-muted" />
+    <div className="grid min-h-dvh place-items-center bg-background" aria-busy="true" role="status" aria-label="Loading">
+      <div className="flex flex-col items-center gap-3">
+        <Mascot running className="w-36" speed="var(--muted-foreground)" />
+        <Wordmark className="text-xl" />
       </div>
+    </div>
+  )
+}
+
+/**
+ * An empty moment in the brand's voice: the running chef, a short headline and what happens next.
+ * `inline` sits in a row inside a card; the default stands on its own in a lane or a page.
+ */
+export function BrandEmpty({ title, children, inline, running, className }: { title?: ReactNode; children?: ReactNode; inline?: boolean; running?: boolean; className?: string }) {
+  if (inline)
+    return (
+      <div className={cn('flex items-center gap-4 rounded-xl bg-muted/50 px-4 py-3', className)}>
+        <Mascot running={running} className="h-11 w-auto shrink-0" speed="var(--muted-foreground)" />
+        <div className="min-w-0 text-sm">
+          {title && <div className="font-medium">{title}</div>}
+          {children && <div className="text-muted-foreground text-pretty">{children}</div>}
+        </div>
+      </div>
+    )
+  return (
+    <div className={cn('flex flex-col items-center rounded-2xl border border-dashed px-6 py-8 text-center', className)}>
+      <Mascot running={running} className="mb-2 w-32" speed="var(--muted-foreground)" />
+      {title && <div className="font-display text-lg">{title}</div>}
+      {children && <p className="mt-1 max-w-[46ch] text-sm text-muted-foreground text-pretty">{children}</p>}
     </div>
   )
 }

@@ -8,6 +8,7 @@
 import type { CopilotEvent } from './events.ts'
 import { isNear, minutesUntil, predictReady, type Running } from './predict.ts'
 import { safetyIssues } from './safety.ts'
+import { languageName, SPOKEN } from './profile.ts'
 import type { DishQuestion, Instruction,
   Course,
   TaskText,
@@ -104,12 +105,18 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       t.visitId = `${t.id}@${at}`
       t.seatedAt = at
       t.lastAttentionAt = at
-      t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], needs: p.needs ?? [], occasion: p.occasion, vip: p.vip }
+      t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], needs: p.needs ?? [], occasion: p.occasion, vip: p.vip, language: p.language }
       break
     }
     case 'table.assigned': {
       const t = table(ev.payload.tableId)
-      if (t) t.serverId = ev.payload.serverId
+      if (!t || !ev.payload.serverId || t.serverId === ev.payload.serverId) break
+      // During a visit it's a handover for this party only; on a free table it's a lasting change.
+      if (t.visitId) {
+        const home = t.handover?.from ?? t.serverId
+        t.handover = home === ev.payload.serverId ? undefined : { from: home, at, reason: ev.payload.reason }
+      }
+      t.serverId = ev.payload.serverId
       break
     }
     case 'server.greeted': {
@@ -376,7 +383,7 @@ function closeVisit(state: EngineState, t: TableState, config: RestaurantConfig,
     recovered: t.mood?.value === 'unhappy' ? !!t.recoveredAt : undefined,
   })
   if (state.visits.length > 500) state.visits.splice(0, state.visits.length - 500)
-  state.tables[t.id] = emptyTable(t.id, config, t.serverId)
+  state.tables[t.id] = emptyTable(t.id, config, t.handover?.from ?? t.serverId)
 }
 
 // ---------------------------------------------------------------------------
@@ -464,6 +471,7 @@ function partyText(t: TableState): TaskText[] {
   if (p.occasion) out.push({ k: `occ.${p.occasion}` })
   if (p.allergies.length) out.push({ k: 'party.allergy', p: { list: p.allergies.join(', ') } })
   for (const n of p.needs ?? []) out.push({ k: `need.${n}` })
+  if (p.language && p.language !== 'en') out.push({ k: 'party.speaks', p: { lang: SPOKEN.find((l) => l.id === p.language)?.native ?? p.language } })
   return out
 }
 
@@ -479,6 +487,7 @@ function describeParty(t: TableState): string {
   if (p.occasion) bits.push(p.occasion)
   if (p.allergies.length) bits.push(`allergy: ${p.allergies.join(', ')}`)
   for (const n of p.needs ?? []) bits.push(NEED_WORDS[n] ?? n)
+  if (p.language && p.language !== 'en') bits.push(`prefers ${languageName(p.language)}`)
   return bits.filter(Boolean).join(' · ')
 }
 

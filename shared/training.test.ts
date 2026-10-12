@@ -45,7 +45,7 @@ describe('training notes', () => {
 describe('practice for everyone', () => {
   it('has separate situations for servers and managers', () => {
     expect(scenariosFor('server').map((s) => s.id)).toEqual(expect.arrayContaining(['cold_food', 'access_direct', 'fasting', 'misgender']))
-    expect(scenariosFor('manager').map((s) => s.id)).toEqual(['m_guest', 'm_feedback', 'm_harassed', 'm_conflict', 'm_newhire', 'm_allergy'])
+    expect(scenariosFor('manager').map((s) => s.id)).toEqual(['m_guest', 'm_feedback', 'm_harassed', 'm_conflict', 'm_newhire', 'm_allergy', 'm_handover'])
   })
 
   it('coaches managers on listening, privacy, support and follow-up', () => {

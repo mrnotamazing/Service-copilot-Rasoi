@@ -8,6 +8,7 @@ import type { SimStatus } from '../shared/snapshot.ts'
 import type { Course, TableState } from '../shared/types.ts'
 import type { Hub } from './hub.ts'
 import { answerAboutDish } from '../shared/menuAnswer.ts'
+import { languageName } from '../shared/profile.ts'
 
 const MIN = 60_000
 // Names as a guest gives them when booking; no honorific is assumed.
@@ -23,10 +24,10 @@ const chance = (p: number) => Math.random() < p
 type Party = Omit<PayloadOf<'table.seated'>, 'tableId'>
 
 /** Moments the presenter can stage on cue (and that showcase mode stages by itself). */
-export const MOMENTS = ['arrival', 'allergy', 'vip', 'access', 'kitchen_delay', 'sold_out', 'unhappy', 'manager', 'bill', 'rush'] as const
+export const MOMENTS = ['arrival', 'allergy', 'vip', 'access', 'language', 'kitchen_delay', 'sold_out', 'unhappy', 'manager', 'bill', 'rush'] as const
 export type MomentKind = (typeof MOMENTS)[number]
 /** The order showcase mode works through: each one shows off a different part of the app. */
-const SHOWCASE: MomentKind[] = ['allergy', 'kitchen_delay', 'vip', 'unhappy', 'access', 'sold_out', 'manager', 'bill']
+const SHOWCASE: MomentKind[] = ['allergy', 'kitchen_delay', 'language', 'vip', 'unhappy', 'access', 'sold_out', 'manager', 'bill']
 
 interface Plan {
   orderAt?: number
@@ -172,6 +173,18 @@ export class Simulator {
         return say(this.seat({ vip: true, occasion: 'birthday', guestName: 'Ria D’Souza', partySize: 4 }, 'birthday'), 'regulars arrive for a birthday')
       case 'access':
         return say(this.seat({ needs: [pick(['wheelchair', 'hearing', 'vision', 'quiet', 'service_animal'])] }, 'access need'), 'a guest with an access need arrives')
+      case 'language': {
+        // Guests who'd rather speak a language their section's server doesn't list, but a teammate does.
+        const free = this.freeTable(2)
+        if (!free) return say(false, 'No free table right now.')
+        const mine = hub.config.staff.find((x) => x.id === free.serverId)?.languages ?? []
+        const others = hub.config.staff.filter((x) => x.role === 'server' && x.id !== free.serverId).flatMap((x) => x.languages ?? [])
+        const options = [...new Set(others)].filter((l) => l !== 'en' && !mine.includes(l))
+        if (!options.length) return say(false, 'Everyone on tonight speaks the same languages.')
+        const language = pick(options)
+        this.send({ type: 'table.seated', source: 'pos:sim', payload: { tableId: free.id, partySize: 2, allergies: [], needs: [], language } })
+        return say(true, `guests who prefer ${languageName(language)} sit at ${free.name}`)
+      }
       case 'kitchen_delay': {
         const cooking = tables.flatMap((t) => t.lines.filter((l) => l.status === 'fired'))
         if (!cooking.length) return say(false, 'Nothing is cooking right now; try again once orders are in.')
@@ -232,6 +245,12 @@ export class Simulator {
       this.tick()
       if (i % 4 === 3) onMinute?.()
     }
+  }
+
+  /** A language a party might prefer: mostly ones the team speaks, now and then one no one does. */
+  private guestLanguage(): string {
+    const spoken = [...new Set(this.hub.config.staff.filter((s) => s.role === 'server').flatMap((s) => s.languages ?? []))].filter((l) => l !== 'en')
+    return chance(0.15) || !spoken.length ? pick(['fr', 'ar', 'zh']) : pick(spoken)
   }
 
   /** Like a host: the smallest free table that fits, in the section with the fewest guests right now. */
@@ -325,6 +344,7 @@ export class Simulator {
           allergies: chance(0.2) ? [pick(ALLERGIES)] : [],
           vip: chance(0.12),
           needs: chance(0.22) ? [pick(NEEDS)] : [],
+          language: chance(0.2) ? this.guestLanguage() : undefined,
           ...g.party,
         },
       })

@@ -3,6 +3,7 @@
 
 import { analytics, staffStats, tasksFor } from '../shared/engine.ts'
 import { predictReady, upcomingFor } from '../shared/predict.ts'
+import { floorInsights, handoverNotes } from '../shared/floorInsights.ts'
 import { crunchAhead, forecast, learningPlan, shiftIntel, whyFirst } from '../shared/intel.ts'
 import { cleanProfile } from '../shared/profile.ts'
 import { playerView, teamView } from '../shared/game.ts'
@@ -79,7 +80,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       }
     }
     if (role === 'manager')
-      return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40), instructions: hub.state.instructions.slice(-30).reverse() }
+      return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), insights: floorInsights(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40), instructions: hub.state.instructions.slice(-30).reverse() }
     return { ...base, openTasks, instructions: hub.state.instructions.slice(-30).reverse(), questions: hub.state.questions.slice(-30).reverse() }
   }
 
@@ -118,6 +119,29 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       if (body.extraGrill === true) w.extraGrill = true
       if (typeof body.kitchenSpeed === 'number') w.kitchenSpeed = Math.max(0.5, Math.min(1.5, body.kitchenSpeed))
       return runWhatIf(hub.config, w)
+    },
+    // The manager hands a table to another server (for this visit if guests are seated), and both are told.
+    '/api/floor/move': (body) => {
+      const t = typeof body.tableId === 'string' ? hub.state.tables[body.tableId] : undefined
+      const to = hub.config.staff.find((s) => s.id === body.serverId && s.role === 'server')
+      if (!t) throw new Error('Unknown table.')
+      if (!to) throw new Error('Pick a server.')
+      if (t.serverId === to.id) return { ok: true }
+      const reason = body.reason === 'language' || body.reason === 'load' ? body.reason : 'manager'
+      const fromStaff = hub.config.staff.find((s) => s.id === t.serverId)
+      const manager = typeof body.from === 'string' && hub.config.staff.some((s) => s.id === body.from) ? body.from : (hub.config.staff.find((s) => s.role === 'manager')?.id ?? 'manager')
+      const seated = !!t.visitId
+      hub.ingest({ type: 'table.assigned', source: 'manager', payload: { tableId: t.id, serverId: to.id, reason } })
+      if (seated) {
+        // Going back to the section's own server needs only a short note to each.
+        const back = hub.state.tables[t.id].handover === undefined
+        const n = back
+          ? { toNew: `${t.name} is back with you.`, toOld: `${t.name} goes back to ${to.name}. Thank you for looking after them.` }
+          : handoverNotes(hub.state.tables[t.id], fromStaff?.name ?? 'the server', to.name, reason)
+        hub.ingest({ type: 'manager.instruction', source: 'manager', payload: { instructionId: newId('ins'), from: manager, to: [to.id], text: n.toNew, tableId: t.id } })
+        if (fromStaff) hub.ingest({ type: 'manager.instruction', source: 'manager', payload: { instructionId: newId('ins'), from: manager, to: [fromStaff.id], text: n.toOld, tableId: t.id } })
+      }
+      return { ok: true }
     },
     // A guest's dish question the menu notes couldn't answer: straight to the kitchen screen.
     '/api/kitchen/ask': (body) => {

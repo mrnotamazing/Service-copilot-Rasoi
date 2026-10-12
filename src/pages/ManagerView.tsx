@@ -1,11 +1,13 @@
-import { Plug, ChefHat, CircleCheck, History, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { Plug, ChefHat, History, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
-import { AppShell, LiveClock, ShellSkeleton, PanelTitle } from '../components/kit.tsx'
+import { AppShell, BrandEmpty, LiveClock, ShellSkeleton, PanelTitle } from '../components/kit.tsx'
 import { Avatar } from '../components/Avatar.tsx'
 import { FloorPlan } from '../components/FloorPlan.tsx'
 import { IncidentSheet, NextFifteen, WhatIfCard, WhyTonight } from '../components/ManagerIntel.tsx'
 import { TeamCard } from '../components/TeamCard.tsx'
+import { FloorMoves, HandTo } from '../components/FloorMoves.tsx'
+import { languageName } from '../../shared/profile.ts'
 import { liveVisit, reconstructVisit, type Reconstruction } from '../../shared/intel.ts'
 import { AssistantDrawer } from '../components/Practice.tsx'
 import { safetyIssues } from '../../shared/safety.ts'
@@ -68,6 +70,7 @@ export default function ManagerView() {
       <AssistantDrawer open={assist} onOpenChange={setAssist} staffId={managerId} provider={snap.ai.provider} role="manager" wide />
       <div className="space-y-5">
         <NeedsYou snap={snap} />
+        <FloorMoves snap={snap} managerId={managerId} />
         <Pulse snap={snap} />
         <ConnectedSystems snap={snap} />
         <TeamCard snap={snap} meId={managerId} />
@@ -79,6 +82,7 @@ export default function ManagerView() {
         )}
         <LiveFloor
           snap={snap}
+          managerId={managerId}
           onReconstruct={(t) => {
             const v = liveVisit(t, snap.config, snap.now)
             if (v) setIncident(reconstructVisit(v, snap.config, true))
@@ -400,9 +404,7 @@ function NeedsYou({ snap }: { snap: Snap }) {
         Needs you now {items.length > 0 && <span className="grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular">{items.length}</span>}
       </h2>
       {items.length === 0 ? (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CircleCheck className="size-4 text-good" /> All calm. Nothing needs you right now.
-        </p>
+        <BrandEmpty inline title="All calm">Nothing needs you right now. Requests, late tickets and unhappy tables show up here first.</BrandEmpty>
       ) : (
         <ul className="divide-y">
           {items.map((i) => (
@@ -449,7 +451,7 @@ function Pulse({ snap }: { snap: Snap }) {
 }
 
 /** Every section as a floor plan, with its server and how loaded they are (load, never performance). */
-function LiveFloor({ snap, onReconstruct }: { snap: Snap; onReconstruct: (t: Snap['tables'][number]) => void }) {
+function LiveFloor({ snap, managerId, onReconstruct }: { snap: Snap; managerId: string; onReconstruct: (t: Snap['tables'][number]) => void }) {
   const [picked, setPicked] = useState<string | undefined>()
   const a = snap.analytics!
   const sections = Object.entries(snap.config.sections)
@@ -480,13 +482,12 @@ function LiveFloor({ snap, onReconstruct }: { snap: Snap; onReconstruct: (t: Sna
           )
         })}
       </div>
-      {table && <TableSummary snap={snap} table={table} onReconstruct={() => onReconstruct(table)} />}
+      {table && <TableSummary snap={snap} table={table} managerId={managerId} onReconstruct={() => onReconstruct(table)} />}
     </section>
   )
 }
 
-function TableSummary({ snap, table: t, onReconstruct }: { snap: Snap; table: Snap['tables'][number]; onReconstruct: () => void }) {
-  const server = snap.config.staff.find((s) => s.id === t.serverId)
+function TableSummary({ snap, table: t, managerId, onReconstruct }: { snap: Snap; table: Snap['tables'][number]; managerId: string; onReconstruct: () => void }) {
   return (
     <div className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-2xl border bg-card p-4 text-sm">
       <div>
@@ -497,14 +498,11 @@ function TableSummary({ snap, table: t, onReconstruct }: { snap: Snap; table: Sn
         <div className="text-xs text-muted-foreground">Guests</div>
         {t.visitId ? `${t.party?.guestName ?? 'Party'} of ${t.party?.size ?? '?'}, seated ${t.seatedAt ? ago(t.seatedAt, snap.now) : ''}` : 'Free'}
       </div>
-      <div>
-        <div className="text-xs text-muted-foreground">Server</div>
-        {server?.name}
-      </div>
-      {t.party?.allergies.length || t.party?.needs?.length ? (
+      <HandTo snap={snap} table={t} managerId={managerId} />
+      {t.party?.allergies.length || t.party?.needs?.length || (t.party?.language && t.party.language !== 'en') ? (
         <div>
           <div className="text-xs text-muted-foreground">Needs</div>
-          {[...(t.party?.allergies.map((x) => `${x} allergy`) ?? []), ...(t.party?.needs ?? [])].join(', ')}
+          {[...(t.party?.allergies.map((x) => `${x} allergy`) ?? []), ...(t.party?.needs ?? []), ...(t.party?.language && t.party.language !== 'en' ? [`prefers ${languageName(t.party.language)}`] : [])].join(', ')}
         </div>
       ) : null}
       {t.lines.length > 0 && (

@@ -3,9 +3,11 @@
 // works. The copilot builds the facts; the model only phrases them and holds the conversation.
 
 import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
+import { floorInsights } from '../shared/floorInsights.ts'
 import { dishesNamed } from '../shared/dishNames.ts'
 import { answerAboutDish, dishLine, SPICE_WORDS } from '../shared/menuAnswer.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
+import { practiceText } from '../shared/practiceText/index.ts'
 import { MAX_REPLIES, moodFor, type Mood, type Outcome, patienceAfter, PATIENCE_MAX, practiceDebrief, practiceStep, scenarioById, scenarioOpening, type Score, scoreReply, starsFor } from '../shared/practice.ts'
 import { forecast, liveVisit as liveVisitOf, reconstructVisit, shiftIntel } from '../shared/intel.ts'
 import { predictReady } from '../shared/predict.ts'
@@ -303,7 +305,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
               ? `- ${manager ? 'The manager' : 'The server'} asked to finish. Step out of character and give a short debrief in ${language}: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).`
               : opening
                 ? `- Start the role-play: say the opening line in ${language}, in character. Format exactly:\nCOACH: -\nGUEST: <the ${other}'s opening line>`
-                : `- Judge ${asker}'s last reply like a strict, fair trainer, on what it actually says, not on keywords. A great reply owns the problem, says sorry sincerely, fixes the actual problem with a concrete next step and a time, and stays calm and truthful. Score under 30, even if it says sorry: excuses or made-up reasons, blaming the chef, kitchen or a colleague, jokes or sarcasm, rudeness, anything untrue or odd, guesses about allergens, or ignoring what the ${other} actually complained about. Say plainly in COACH what was wrong. Then score it against the practice rubric and answer as the ${other}. Write COACH, IDEAL and GUEST in ${language}; keep the labels in English. Format exactly:\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <what an excellent ${manager ? 'manager' : 'server'} would have said instead, 1-2 sentences>\nGUEST: <the ${other}'s next line, in character>`,
+                : `${calibration(sc!.id)}\n- Judge ${asker}'s last reply like a strict, fair trainer, on what it actually says, not on keywords. A great reply owns the problem, says sorry sincerely, fixes the actual problem with a concrete next step and a time, and stays calm and truthful. Score under 30, even if it says sorry: excuses or made-up reasons, blaming the chef, kitchen or a colleague, jokes or sarcasm, rudeness, anything untrue or odd, guesses about allergens, or ignoring what the ${other} actually complained about. Say plainly in COACH what was wrong. Then score it against the practice rubric and answer as the ${other}. Write COACH, IDEAL and GUEST in ${language}; keep the labels in English. Format exactly:\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <what an excellent ${manager ? 'manager' : 'server'} would have said instead, 1-2 sentences>\nGUEST: <the ${other}'s next line, in character>`,
           ]
         : [manager ? '- Mode: ASK. Answer as their operations coach and peer.' : '- Mode: ASK. Answer as their expert trainer and colleague.']),
       ...(forNeed ? ['- Checked from the menu’s ingredient tags for this question (use exactly this; do not add dishes):', ...forNeed.split('\n').map((l) => `  ${l}`)] : []),
@@ -434,6 +436,13 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       if (/\bwhy\b|what('?s| is) (going on|happening|wrong)|went wrong|bottleneck|slow|behind/.test(q)) {
         const intel = shiftIntel(hub.state, cfg)
         return { text: [...intel.why, '', ...intel.actions.map((x) => `• ${x}`)].join('\n').trim(), suggestions: ['What happens in the next 15 minutes?', 'What if we add a second grill cook?'] }
+      }
+      if (/\b(move|hand ?over|reassign|swap|share|language|speak|overload|help (out|each)|who (should|can) take)\b/.test(q)) {
+        const ins = floorInsights(hub.state, cfg, now, hub.tasks(now))
+        return {
+          text: ins.length ? ins.map((i) => `• ${i.title}. ${i.why}`).join('\n') + '\n\nEach one has a button under “Share the floor”.' : 'Load looks fair and every seated table has a server who speaks their language. Nothing to move right now.',
+          suggestions: ['What happens in the next 15 minutes?', 'Why is service slow tonight?'],
+        }
       }
       if (/forecast|next (15|fifteen|half|few)|predict|coming up|about to|going to/.test(q)) {
         const f = forecast(hub.state, cfg, now, hub.tasks(now))
@@ -807,6 +816,21 @@ function briefingFacts(tables: TableState[], cfg: RestaurantConfig, unavailable:
 }
 
 /** What a manager needs to know right now: load by section (never performance) and what needs them. */
+/**
+ * Worked examples for the judge, so scores mean the same thing on every model: what this situation
+ * needs, a reply worth 90+ (the scenario's own ideal), and what middling and poor replies score.
+ */
+export function calibration(scenarioId: string): string {
+  const sc = scenarioById(scenarioId)
+  const en = practiceText('en')
+  const tx = en.scenarios[scenarioId]
+  if (!sc || !tx) return ''
+  return [
+    `- What this situation needs (each one missing costs points): ${sc.musts.map((c) => en.checks[c.id].tip).join(' ')}`,
+    `- Calibration: "${tx.ideal[0]}" scores about 95. A sincere reply that does most of the above but stays vague on one point scores 55-70. "Sorry about that" alone scores about 25. An excuse, blame, a joke, a safety guess or a made-up reason scores 0-20, however polite.`,
+  ].join('\n')
+}
+
 function floorFacts(hub: Hub, now: number): string[] {
   const cfg = hub.config
   const a = analytics(hub.state, cfg)
@@ -817,6 +841,8 @@ function floorFacts(hub: Hub, now: number): string[] {
   }
   for (const r of a.managerRequests) out.push(`- NEEDS YOU: a server asked you to visit ${r.tableName}`)
   for (const h of forecast(hub.state, cfg, now, hub.tasks(now)).headlines) out.push(`- Next 15 min: ${h}`)
+  for (const i of floorInsights(hub.state, cfg, now, hub.tasks(now))) out.push(`- Suggested (on the manager's screen with a button): ${i.title}. ${i.why}`)
+  for (const t of Object.values(hub.state.tables)) if (t.handover) out.push(`- ${t.name} was handed from ${cfg.staff.find((s) => s.id === t.handover!.from)?.name ?? '?'} to ${cfg.staff.find((s) => s.id === t.serverId)?.name ?? '?'} for this visit`)
   for (const w of shiftIntel(hub.state, cfg).why.slice(0, 2)) out.push(`- Tonight so far: ${w}`)
   for (const t of Object.values(hub.state.tables)) {
     if (!t.visitId) continue

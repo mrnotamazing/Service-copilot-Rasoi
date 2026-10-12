@@ -1,4 +1,4 @@
-import { Plug,
+import { Languages, Plug,
   Accessibility,
   BellRing,
   ChefHat,
@@ -39,7 +39,7 @@ import { clock } from '../lib/format.ts'
 import { post, useSnapshot } from '../lib/live.ts'
 import { useRolePage } from '../lib/role.ts'
 
-type Kind = 'arrival' | 'allergy' | 'vip' | 'access' | 'kitchen_delay' | 'sold_out' | 'unhappy' | 'manager' | 'bill' | 'rush'
+type Kind = 'arrival' | 'allergy' | 'vip' | 'access' | 'language' | 'kitchen_delay' | 'sold_out' | 'unhappy' | 'manager' | 'bill' | 'rush'
 
 /** Moments a presenter can stage on cue, each showing off a different part of TableMate. */
 const MOMENTS: { kind: Kind; title: string; shows: string; Icon: LucideIcon }[] = [
@@ -47,6 +47,7 @@ const MOMENTS: { kind: Kind; title: string; shows: string; Icon: LucideIcon }[] 
   { kind: 'kitchen_delay', title: 'Kitchen falls behind', shows: 'Delay cards tell servers to warn tables before they ask.', Icon: Flame },
   { kind: 'vip', title: 'Birthday regulars', shows: 'A regular’s birthday: the greeting card picks it up.', Icon: Sparkles },
   { kind: 'unhappy', title: 'Unhappy table', shows: 'A bad check-in opens a recovery card.', Icon: Frown },
+  { kind: 'language', title: 'Guests prefer another language', shows: 'The manager is offered a handover to a server who speaks it.', Icon: Languages },
   { kind: 'access', title: 'Access need', shows: 'Wheelchair, hearing, vision or a quiet table.', Icon: Accessibility },
   { kind: 'sold_out', title: 'Dish runs out', shows: 'The 86 reaches every server with that dish on order.', Icon: UtensilsCrossed },
   { kind: 'manager', title: 'Guest asks for manager', shows: 'Shows up in the manager’s “Needs you now”.', Icon: HandHelping },

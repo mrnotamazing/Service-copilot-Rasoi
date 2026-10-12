@@ -426,12 +426,12 @@ const SKILLS: Record<'server' | 'manager', { id: string; scenarios: string[] }[]
   server: [
     { id: 'recovery', scenarios: ['cold_food', 'rude', 'wrong_bill'] },
     { id: 'delays', scenarios: ['long_wait', 'sold_out'] },
-    { id: 'safety', scenarios: ['allergy'] },
-    { id: 'inclusion', scenarios: ['access_direct', 'fasting', 'misgender'] },
+    { id: 'safety', scenarios: ['allergy', 'spice_question'] },
+    { id: 'inclusion', scenarios: ['access_direct', 'fasting', 'misgender', 'language'] },
   ],
   manager: [
     { id: 'guests', scenarios: ['m_guest', 'm_allergy'] },
-    { id: 'team', scenarios: ['m_feedback', 'm_harassed', 'm_conflict', 'm_newhire'] },
+    { id: 'team', scenarios: ['m_feedback', 'm_harassed', 'm_conflict', 'm_newhire', 'm_handover'] },
   ],
 }
 

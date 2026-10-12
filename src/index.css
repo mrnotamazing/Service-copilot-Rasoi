@@ -178,13 +178,19 @@
 .pulse-soft { animation: pulse-soft 1.8s ease-in-out infinite; }
 .tabular { font-variant-numeric: tabular-nums; }
 
+/* The running chef: speed lines streak and the figure bobs, a quiet "on its way". */
+@keyframes mascot-streak { 0% { transform: translateX(14px); opacity: .25; } 60% { opacity: 1; } 100% { transform: translateX(-10px); opacity: .25; } }
+@keyframes mascot-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.mascot-run .mascot-speed { animation: mascot-streak .9s ease-in-out infinite; }
+.mascot-run .mascot-figure { animation: mascot-bob .45s ease-in-out infinite; }
+
 /* Installed to the home screen: no rubber-band page bounce. */
 @media (display-mode: standalone) {
   html, body { overscroll-behavior: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse-soft { animation: none; }
+  .pulse-soft, .mascot-run .mascot-speed, .mascot-run .mascot-figure { animation: none; }
 }
 
 /* Brand tagline: the one place letter-spaced capitals are used, as on the brand sheet. */

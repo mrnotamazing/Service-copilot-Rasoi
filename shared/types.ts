@@ -139,6 +139,8 @@ export interface Party {
   needs?: string[]
   occasion?: string
   vip?: boolean
+  /** The language the guests are most at ease in (an id from shared/profile.ts SPOKEN), if they said. */
+  language?: string
 }
 
 export interface TableState {
@@ -166,6 +168,8 @@ export interface TableState {
   recoveredAt?: number
   managerRequestedAt?: number
   managerVisitedAt?: number
+  /** The manager handed this visit to another server (by language or load); it goes back after the visit. */
+  handover?: { from: string; at: number; reason?: string }
   lines: OrderLine[]
 }
 

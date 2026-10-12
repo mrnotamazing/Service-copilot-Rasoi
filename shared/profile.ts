@@ -8,24 +8,30 @@ export const AVATAR_COLORS = ['#c4442a', '#e07a5f', '#a85d0c', '#2f7d5b', '#3d9a
 export const AVATAR_ICONS = ['chef', 'star', 'leaf', 'flame', 'coffee', 'wine', 'cherry', 'croissant', 'fish', 'heart', 'moon', 'sun', 'music', 'flower', 'cat', 'dog']
 
 /** Languages a person can say they speak, in their own script. */
-export const SPOKEN: { id: string; native: string }[] = [
-  { id: 'en', native: 'English' },
-  { id: 'hi', native: 'हिन्दी' },
-  { id: 'ne', native: 'नेपाली' },
-  { id: 'bn', native: 'বাংলা' },
-  { id: 'ta', native: 'தமிழ்' },
-  { id: 'te', native: 'తెలుగు' },
-  { id: 'kn', native: 'ಕನ್ನಡ' },
-  { id: 'ml', native: 'മലയാളം' },
-  { id: 'mr', native: 'मराठी' },
-  { id: 'gu', native: 'ગુજરાતી' },
-  { id: 'pa', native: 'ਪੰਜਾਬੀ' },
-  { id: 'ur', native: 'اردو' },
-  { id: 'es', native: 'Español' },
-  { id: 'fr', native: 'Français' },
-  { id: 'ar', native: 'العربية' },
-  { id: 'zh', native: '中文' },
+export const SPOKEN: { id: string; native: string; english: string }[] = [
+  { id: 'en', english: 'English', native: 'English' },
+  { id: 'hi', english: 'Hindi', native: 'हिन्दी' },
+  { id: 'ne', english: 'Nepali', native: 'नेपाली' },
+  { id: 'bn', english: 'Bengali', native: 'বাংলা' },
+  { id: 'ta', english: 'Tamil', native: 'தமிழ்' },
+  { id: 'te', english: 'Telugu', native: 'తెలుగు' },
+  { id: 'kn', english: 'Kannada', native: 'ಕನ್ನಡ' },
+  { id: 'ml', english: 'Malayalam', native: 'മലയാളം' },
+  { id: 'mr', english: 'Marathi', native: 'मराठी' },
+  { id: 'gu', english: 'Gujarati', native: 'ગુજરાતી' },
+  { id: 'pa', english: 'Punjabi', native: 'ਪੰਜਾਬੀ' },
+  { id: 'ur', english: 'Urdu', native: 'اردو' },
+  { id: 'es', english: 'Spanish', native: 'Español' },
+  { id: 'fr', english: 'French', native: 'Français' },
+  { id: 'ar', english: 'Arabic', native: 'العربية' },
+  { id: 'zh', english: 'Chinese', native: '中文' },
 ]
+
+/** "Bengali (বাংলা)", or just "English" when the two are the same. */
+export function languageName(id: string): string {
+  const l = SPOKEN.find((x) => x.id === id)
+  return !l ? id : l.native === l.english ? l.english : `${l.english} (${l.native})`
+}
 
 /** Small photos only: the client crops and shrinks before upload. */
 export const MAX_PHOTO_CHARS = 60_000

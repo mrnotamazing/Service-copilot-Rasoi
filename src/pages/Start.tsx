@@ -1,4 +1,4 @@
-import { BookOpen, ChefHat, Clapperboard, LayoutDashboard, Users } from 'lucide-react'
+import { BookOpen, ChefHat, Clapperboard, HeartHandshake, LayoutDashboard, ShieldCheck, Timer, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Mascot } from '../brand/marks.tsx'
 import { AppShell } from '../components/kit.tsx'
@@ -10,6 +10,12 @@ const SCREENS: { to: string; label: Key; sub: Key; Icon: typeof Users }[] = [
   { to: '/manager', label: 'nav.manager', sub: 'start.managerSub', Icon: LayoutDashboard },
   { to: '/kitchen', label: 'nav.kitchen', sub: 'start.kitchenSub', Icon: ChefHat },
   { to: '/demo', label: 'nav.demo', sub: 'start.demoSub', Icon: Clapperboard },
+]
+
+const PROMISE: { title: Key; sub: Key; Icon: typeof Users }[] = [
+  { title: 'start.quick', sub: 'start.quickSub', Icon: Timer },
+  { title: 'start.correct', sub: 'start.correctSub', Icon: ShieldCheck },
+  { title: 'start.together', sub: 'start.togetherSub', Icon: HeartHandshake },
 ]
 
 /** The front door: the same four sections as the menu, one card each. */
@@ -38,7 +44,25 @@ export default function Start() {
           </li>
         ))}
       </ul>
-      <p className="mt-5 text-sm text-muted-foreground">{t('start.present')}</p>
+      {/* The brand promise: quick and correct, and shared across the team. */}
+      <section aria-labelledby="promise" className="relative mt-12 border-t pt-6">
+        {/* The chef runs along the rule: the service line, kept moving. */}
+        <Mascot className="absolute -top-[36px] left-0 w-[60px]" speed="var(--muted-foreground)" />
+        <h2 id="promise" className="font-display text-2xl text-balance md:text-3xl">
+          {t('start.promise')}
+        </h2>
+        <ul className="mt-5 grid gap-5 sm:grid-cols-3">
+          {PROMISE.map(({ title, sub, Icon }) => (
+            <li key={title} className="border-l-2 border-primary pl-4">
+              <div className="flex items-center gap-2 font-display text-lg">
+                <Icon className="size-4 text-primary" aria-hidden /> {t(title)}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground text-pretty">{t(sub)}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <p className="mt-8 text-sm text-muted-foreground">{t('start.present')}</p>
       <Link to="/about" className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline">
         <BookOpen className="size-4" /> {t('nav.how')}
       </Link>

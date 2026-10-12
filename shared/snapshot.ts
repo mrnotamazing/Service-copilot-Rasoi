@@ -1,3 +1,4 @@
+import type { FloorInsight } from './floorInsights.ts'
 import type { FeedItem } from './narrate.ts'
 import type { Forecast, LearningPlan, ShiftIntel } from './intel.ts'
 import type { Analytics } from './engine.ts'
@@ -56,6 +57,8 @@ export interface Snapshot {
   /** manager role: why tonight is going the way it is, and what the next 15 minutes look like. */
   intel?: ShiftIntel
   forecast?: Forecast
+  /** Manager only: suggested moves and nudges to share the load (load and language, never rankings). */
+  insights?: FloorInsight[]
   integrations?: IntegrationStatus[]
   /** manager/kitchen: how many open cards each server has (load, not performance) */
   openTasks?: Record<string, number>

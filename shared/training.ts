@@ -320,6 +320,39 @@ export const LESSONS: Lesson[] = [
   },
   // ——— For managers ———
   {
+    id: 'accuracy',
+    keys: ['accurate', 'accuracy', 'correct', 'mistake in order', 'wrong order', 'repeat back', 'read back', 'modifier', 'seat number', 'quick and correct', 'fast and right'],
+    title: 'Quick and correct',
+    answer:
+      'Speed only counts if it’s right. Read the order back before you leave the table ("Two biryani, one mild, and the sea bass with sauce on the side"), note seat numbers so food lands at the right person without asking, and write every allergy and change on the ticket, not in your head. Before food leaves the pass, check it against the ticket: right dish, right change, right table. One extra second there saves a ten-minute remake.',
+    next: ['How do I answer menu questions?', 'What if I made a mistake?'],
+  },
+  {
+    id: 'menu_question',
+    keys: ['menu question', 'guest asks', 'what is in', 'what’s in', 'does it have', 'is it spicy', 'how spicy', 'don’t know the answer', 'not sure', 'ask the kitchen', 'ingredient'],
+    title: 'Answering menu questions',
+    answer:
+      'Answer from what the restaurant has recorded: tap Ask TableMate and type the question; it answers from the dish notes, spice level and the kitchen’s earlier answers. If the notes don’t cover it, never guess: tell the guest "Let me check with the chef, I’ll be back in two minutes" and tap Ask the kitchen. The chef’s answer comes back to your phone and is saved, so the next server gets it at once.',
+    next: ['Practise a spice question', 'How do I handle allergies?'],
+  },
+  {
+    id: 'sold_out',
+    keys: ['sold out', '86', 'ran out', 'run out', 'not available', 'off the menu', 'finished'],
+    title: 'When a dish runs out',
+    answer:
+      'Tell the guest as soon as you know, before the food is due: "I’m sorry, the risotto has just run out tonight." Offer two alternatives that are close (similar course, similar diet), not the whole menu, and say how long they take. The sold-out card lists which of your tables ordered it, so you can tell them all on one trip.',
+    next: ['How do I recommend dishes?', 'How do I warn guests about a delay?'],
+  },
+  {
+    id: 'handover',
+    for: 'both',
+    keys: ['handover', 'hand over', 'take over a table', 'given a table', 'moved my table', 'table moved', 'swap table', 'reassign', 'another server', 'took my table'],
+    title: 'Handing a table over',
+    answer:
+      'A handover is teamwork, not a judgement: it happens when guests prefer a language a teammate speaks, or a section is over its table limit. Make it warm: walk the new server to the table and introduce them by name, and pass on allergies, occasions and anything the guests told you. The new server repeats the key facts back. The table goes back to its own section after the visit, and both of you get a note on your phone so no one is surprised.',
+    next: ['How do I ask a teammate for help?', 'What if guests don’t speak English?'],
+  },
+  {
     id: 'm_brief',
     for: 'manager',
     keys: ['briefing', 'pre-shift', 'pre shift', 'line-up', 'lineup', 'huddle', 'before service', 'start of shift', 'brief the team'],
@@ -453,6 +486,15 @@ export const LESSONS: Lesson[] = [
     answer:
       'Agree how notes travel: use the app’s kitchen notes for timings and 86s, and walk over for anything sensitive. When the kitchen is behind, tell the floor a realistic time, slow seating, and give servers the words for guests. Never let blame fly across the pass in front of guests. Debrief together and thank the kitchen out loud.',
     next: ['Running a rush or a short shift', 'The end-of-shift debrief'],
+  },
+  {
+    id: 'm_handover',
+    for: 'manager',
+    keys: ['move a table', 'reassign', 'hand a table', 'handover', 'hand over', 'share the floor', 'language match', 'overloaded server', 'too many tables', 'balance sections', 'balance the floor'],
+    title: 'Moving tables between servers',
+    answer:
+      'Move a table for the guests or for the load, never as a verdict on someone: when the guests prefer a language another server speaks, or a server is over the table limit while a teammate has room. Move early, before they order, so it’s an easy handover. Tell the first server the reason in one line and thank them; they introduce the new server at the table. “Share the floor” suggests these with one tap, and both servers get a note. The table returns to its section after the visit.',
+    next: ['Running a rush or a short shift', 'Using TableMate’s data fairly'],
   },
 ]
 

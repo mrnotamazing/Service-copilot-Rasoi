@@ -23,14 +23,14 @@ export interface FiredLine {
 
 export type CopilotEvent =
   // From the POS / table management
-  | Base<'table.seated', { tableId: string; partySize: number; guestName?: string; allergies?: string[]; needs?: string[]; occasion?: string; vip?: boolean }>
+  | Base<'table.seated', { tableId: string; partySize: number; guestName?: string; allergies?: string[]; needs?: string[]; occasion?: string; vip?: boolean; language?: string }>
   | Base<'order.fired', { tableId: string; ticketId: string; lines: FiredLine[] }>
   | Base<'item.ready', { lineIds?: string[]; ticketId?: string }>
   | Base<'item.stock', { menuItemId: string; available: boolean }>
   | Base<'bill.requested', { tableId: string }>
   | Base<'bill.settled', { tableId: string }>
   | Base<'table.reset', { tableId: string }>
-  | Base<'table.assigned', { tableId: string; serverId: string }>
+  | Base<'table.assigned', { tableId: string; serverId: string; reason?: string }>
   // From the server's copilot (the server's own taps)
   | Base<'server.greeted', { tableId: string }>
   | Base<'item.served', { lineIds: string[] }>

@@ -18,7 +18,7 @@ import { safetyIssues } from '../../shared/safety.ts'
 import { tableTimeline } from '../../shared/timeline.ts'
 import { FloorPlan } from '../components/FloorPlan.tsx'
 import { BadgeTile, Celebrations, LevelRing, StreakChip, useAwardText } from '../components/game.tsx'
-import { TopNav } from '../components/kit.tsx'
+import { BrandEmpty, TopNav } from '../components/kit.tsx'
 import { TaskCard, useTaskWords } from '../components/TaskCard.tsx'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
@@ -544,7 +544,7 @@ function GuestList({ snap, myTables, picked, onPick }: { snap: Snapshot; myTable
     <section>
       <h2 className="mb-2 font-display text-xl">{tr('tables.guestsNow')}</h2>
       {seated.length === 0 ? (
-        <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">{tr('tables.none')}</p>
+        <BrandEmpty inline>{tr('tables.none')}</BrandEmpty>
       ) : (
         <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
           {seated.map((t) => {

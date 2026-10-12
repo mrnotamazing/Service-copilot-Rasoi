@@ -47,11 +47,11 @@ const EMPATHY: Check = {
 const ACTION: Check = {
   id: 'action',
   test: /\b(i['’]?ll|i will|let me|right away|straight away|replace|bring|check|fix|arrange|get you)\b/i,
-  stems: ['लाऊँ', 'लाता', 'लाती', 'ले आऊँ', 'बदल', 'ठीक कर', 'बनवा', 'करूँ', 'दूँ', 'ल्याउँछु', 'ल्याइदिन्छु', 'मिलाउँछु', 'गर्छु', 'हेर्छु', 'আনছি', 'এনে দিচ্ছি', 'বদলে', 'ঠিক করে', 'করে দিচ্ছি', 'দেখছি', 'கொண்டு வருகிறேன்', 'மாற்றி', 'சரிசெய்', 'செய்கிறேன்', 'கவனிக்கிறேன்', 'le traigo', 'te traigo', 'voy a', 'cambi', 'lo arreglo', 'me encargo'],
+  stems: ['पूछता', 'पूछती', 'बताता', 'बताती', 'दिखाता', 'दिखाती', 'सोध्छु', 'आउँछु', 'देखाइदिन्छु', 'দেখিয়ে দিচ্ছি', 'জানাচ্ছি', 'கேட்கிறேன்', 'வருகிறேன்', 'காட்டுகிறேன்', 'le señalo', 'le enseño', 'vuelvo', 'लाऊँ', 'लाता', 'लाती', 'ले आऊँ', 'बदल', 'ठीक कर', 'बनवा', 'करूँ', 'दूँ', 'ल्याउँछु', 'ल्याइदिन्छु', 'मिलाउँछु', 'गर्छु', 'हेर्छु', 'আনছি', 'এনে দিচ্ছি', 'বদলে', 'ঠিক করে', 'করে দিচ্ছি', 'দেখছি', 'கொண்டு வருகிறேன்', 'மாற்றி', 'சரிசெய்', 'செய்கிறேன்', 'கவனிக்கிறேன்', 'le traigo', 'te traigo', 'voy a', 'cambi', 'lo arreglo', 'me encargo'],
 }
 const TIME: Check = {
   id: 'time',
-  test: /\b(\d+\s*(min|minute)s?|a minute|right now|immediately|shortly)\b/i,
+  test: /\b(\d+\s*(min|minute)s?|(a|one|two|three|five|ten|a few|a couple of) (min|minute)s?|right now|immediately|shortly)\b/i,
   stems: ['मिनट', 'अभी', 'तुरंत', 'मिनेट', 'तुरुन्त', 'अहिले', 'মিনিট', 'এখনই', 'এক্ষুনি', 'நிமிட', 'உடனே', 'இப்போதே', 'minuto', 'ahora mismo', 'enseguida'],
 }
 const NO_BLAME: Check = {
@@ -106,7 +106,7 @@ const SPECIFIC: Check = {
 }
 const SUPPORT: Check = {
   id: 'support',
-  test: /\b(are you (ok|okay|alright|all right)|how are you|not your fault|take (a|five|a few|some) (min|minutes|break|moment)|i['’]?ve got (it|this)|you['’]?re safe|i believe you)\b/i,
+  test: /\b(are you (ok|okay|alright|all right)|how are you|not your fault|(it['’]?s|this is) not about (you|how you|your work)|you['’]?(ve been|re doing) (great|well|fine|a good job)|take (a|five|a few|some) (min|minutes|break|moment)|i['’]?ve got (it|this)|you['’]?re safe|i believe you)\b/i,
   stems: ['आप ठीक', 'तुम ठीक', 'आपकी कोई ग़लती नहीं', 'आपकी ग़लती नहीं', 'आपकी गलती नहीं', 'ठीक हुनुहुन्छ', 'तपाईंको गल्ती होइन', 'ঠিক আছেন', 'আপনার কোনো দোষ নেই', 'আপনার দোষ নেই', 'நலமா', 'உங்கள் தவறு இல்லை', 'உங்கள் தவறு எதுவும் இல்லை', 'estás bien', 'está bien?', 'no es tu culpa', 'no es su culpa'],
 }
 const FOLLOW: Check = {
@@ -136,6 +136,9 @@ export const SCENARIOS: Scenario[] = [
   { id: 'access_direct', musts: [APOLOGY, DIRECT, ACTION] },
   { id: 'fasting', musts: [ASK, CHECK_KITCHEN, ACTION] },
   { id: 'misgender', musts: [APOLOGY, ACTION] },
+  // Quick and correct: answer from what's known, check what isn't, and say when.
+  { id: 'spice_question', musts: [CHECK_KITCHEN, ACTION, TIME] },
+  { id: 'language', musts: [DIRECT, ACTION, TIME] },
   // Managers (TableMate plays a guest or a team member)
   { id: 'm_guest', for: 'manager', musts: [LISTEN, APOLOGY, OWN, ACTION] },
   { id: 'm_feedback', for: 'manager', plays: 'staff', musts: [PRIVATE, SPECIFIC, LISTEN, FOLLOW] },
@@ -143,6 +146,7 @@ export const SCENARIOS: Scenario[] = [
   { id: 'm_conflict', for: 'manager', plays: 'staff', musts: [PRIVATE, LISTEN, FOLLOW] },
   { id: 'm_newhire', for: 'manager', plays: 'staff', musts: [SUPPORT, ACTION, FOLLOW] },
   { id: 'm_allergy', for: 'manager', musts: [EMERGENCY, ACTION] },
+  { id: 'm_handover', for: 'manager', plays: 'staff', musts: [SPECIFIC, SUPPORT, FOLLOW] },
 ]
 
 /** The scenarios a server or a manager can practise. */
