@@ -176,7 +176,7 @@ npm test         # engine tests
 
 Production: `npm run build && npm start` serves the app and API on port 4000.
 
-Then open **Demo & setup** and click **Start a fresh demo** (or **Start service**, with the speed set to compress an evening).
+Then open **Demo & setup** and, under **Presenting**, click **Set up a presentation**: a service already 100 minutes in, with a story staged on every screen and a running order to follow. For a hands-free loop, use **Start a fresh demo** (showcase mode) instead.
 For a role-play study, turn a server's autopilot off and play them on a phone.
 
 ## Using it for the study

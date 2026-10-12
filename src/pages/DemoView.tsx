@@ -1,4 +1,4 @@
-import { Languages, Plug,
+import { Languages, MessageCircleQuestion, Plug,
   Accessibility,
   BellRing,
   ChefHat,
@@ -31,6 +31,7 @@ import type { Snapshot } from '../../shared/snapshot.ts'
 import { Avatar } from '../components/Avatar.tsx'
 import { SetupPanels } from '../components/SetupPanels.tsx'
 import { IntegrationsPanel } from '../components/IntegrationsPanel.tsx'
+import { PresenterGuide } from '../components/PresenterGuide.tsx'
 import { AppShell, LiveClock, ShellSkeleton } from '../components/kit.tsx'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -39,7 +40,7 @@ import { clock } from '../lib/format.ts'
 import { post, useSnapshot } from '../lib/live.ts'
 import { useRolePage } from '../lib/role.ts'
 
-type Kind = 'arrival' | 'allergy' | 'vip' | 'access' | 'language' | 'kitchen_delay' | 'sold_out' | 'unhappy' | 'manager' | 'bill' | 'rush'
+type Kind = 'arrival' | 'allergy' | 'vip' | 'access' | 'language' | 'question' | 'kitchen_delay' | 'sold_out' | 'unhappy' | 'manager' | 'bill' | 'rush'
 
 /** Moments a presenter can stage on cue, each showing off a different part of TableMate. */
 const MOMENTS: { kind: Kind; title: string; shows: string; Icon: LucideIcon }[] = [
@@ -48,6 +49,7 @@ const MOMENTS: { kind: Kind; title: string; shows: string; Icon: LucideIcon }[] 
   { kind: 'vip', title: 'Birthday regulars', shows: 'A regular’s birthday: the greeting card picks it up.', Icon: Sparkles },
   { kind: 'unhappy', title: 'Unhappy table', shows: 'A bad check-in opens a recovery card.', Icon: Frown },
   { kind: 'language', title: 'Guests prefer another language', shows: 'The manager is offered a handover to a server who speaks it.', Icon: Languages },
+  { kind: 'question', title: 'Guest asks the kitchen', shows: 'A question the menu notes don’t cover goes to the pass to answer once.', Icon: MessageCircleQuestion },
   { kind: 'access', title: 'Access need', shows: 'Wheelchair, hearing, vision or a quiet table.', Icon: Accessibility },
   { kind: 'sold_out', title: 'Dish runs out', shows: 'The 86 reaches every server with that dish on order.', Icon: UtensilsCrossed },
   { kind: 'manager', title: 'Guest asks for manager', shows: 'Shows up in the manager’s “Needs you now”.', Icon: HandHelping },
@@ -121,6 +123,7 @@ export default function DemoView() {
       ) : (
       <div role="tabpanel" id="panel-run" aria-labelledby="tab-run" className="space-y-5">
         <ControlBar snap={snap} />
+        <PresenterGuide snap={snap} />
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
           <Moments snap={snap} />
           <div className="space-y-5">
@@ -153,6 +156,7 @@ function ControlBar({ snap }: { snap: Snapshot }) {
     await settings({ showcase: true })
     toast.success('Fresh demo started: showcase mode is on')
   }
+  // Showcase: hands-free. Presenter mode (below) is for walking people through it yourself.
   return (
     <section className="bg-hero overflow-hidden rounded-3xl text-hero-foreground">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-4 p-5 sm:p-6">
@@ -208,7 +212,7 @@ function ControlBar({ snap }: { snap: Snapshot }) {
           <Clapperboard className="mt-0.5 size-5 shrink-0 text-primary-2" aria-hidden />
           <span>
             <span className="block font-medium">Showcase mode</span>
-            <span className="block text-sm opacity-75">The whole restaurant runs on autopilot and stages a new moment every few minutes, so you can present hands-free.</span>
+            <span className="block text-sm opacity-75">Hands-free: the whole restaurant runs on autopilot at speed and stages a new moment every few minutes. To walk people through it yourself, use Presenting below.</span>
           </span>
         </label>
         <Switch id="showcase" checked={sim.showcase} onCheckedChange={(v) => void settings({ showcase: v }).then(() => toast.success(v ? 'Showcase mode on' : 'Showcase mode off'))} />

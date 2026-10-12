@@ -31,7 +31,7 @@ describe('demo control', () => {
       expect(typeof r.text).toBe('string')
     }
     const texts = hub.feed.map((f) => f.text).join('\n')
-    expect(texts).toMatch(/Staged: a guest with a nut allergy arrives/)
+    expect(texts).toMatch(/Staged: a guest with a nut allergy at T\d+ orders/)
     expect(texts).toMatch(/seated: party of \d · Sam Banerjee · nut allergy/)
     expect(texts).toMatch(/Kitchen → floor: Grill is backed up/)
     sim.pause()
@@ -50,9 +50,16 @@ describe('demo control', () => {
     const status = post('/api/sim/settings', { showcase: true }) as { showcase: boolean; running: boolean; autoManager: boolean; autopilot: string[] }
     expect(status).toMatchObject({ showcase: true, running: true, autoManager: true })
     expect(status.autopilot).toHaveLength(6)
+    // Count staged moments as they happen (the feed only keeps the latest 80 lines).
+    let staged = 0
+    const moment = sim.moment.bind(sim)
+    sim.moment = (kind, staffId) => {
+      const r = moment(kind, staffId)
+      if (r.ok) staged++
+      return r
+    }
     run(120)
-    const staged = hub.feed.filter((f) => f.kind === 'demo')
-    expect(staged.length).toBeGreaterThanOrEqual(3)
+    expect(staged).toBeGreaterThanOrEqual(3)
     expect(hub.state.visits.length).toBeGreaterThan(0)
     // Requests to see the manager get answered by the manager on autopilot.
     expect(Object.values(hub.state.tables).filter((t) => t.managerRequestedAt && !t.managerVisitedAt && hub.clock.now() - t.managerRequestedAt > 5 * MIN)).toHaveLength(0)

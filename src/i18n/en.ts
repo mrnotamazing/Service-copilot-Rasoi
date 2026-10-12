@@ -675,7 +675,7 @@ export const en = {
   "start.managerSub": "Live floor, forecasts, what happened and why, what-if planning",
   "start.kitchenSub": "Tickets with timers, food at the pass, notes to the floor, 86 board",
   "start.demoSub": "Run a simulated service, set standards and AI, and connect the POS, bookings and other apps",
-  "start.present": "Presenting? Start a service in Demo & setup, then open the other screens.",
+  "start.present": "Presenting? In Demo & setup, tap “Set up a presentation”: every screen gets something to show, with a running order to follow.",
   "start.promise": "The right service. At the right time.",
   "start.quick": "Quick",
   "start.quickSub": "Each server sees the next three moves, in the order the guests need them.",

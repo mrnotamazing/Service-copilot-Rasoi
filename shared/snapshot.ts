@@ -15,6 +15,8 @@ export interface SimStatus {
   autoKitchen: boolean
   autoManager: boolean
   showcase: boolean
+  /** Presenter mode: the server the presenter plays (their phone keeps its cards), or null. */
+  presenter: string | null
   waiting: number
   startedAt: number | null
 }

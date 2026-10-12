@@ -654,7 +654,7 @@ export const es: Record<Key, string> = {
   "start.managerSub": "Sala en vivo, previsiones, qué pasó y por qué, planificación de escenarios",
   "start.kitchenSub": "Comandas con temporizador, platos en el pase, notas a sala, tablero 86",
   "start.demoSub": "Simula un servicio, ajusta estándares e IA, y conecta el TPV, las reservas y otras apps",
-  "start.present": "¿Vas a presentar? Inicia un servicio en Demo y ajustes y luego abre las otras pantallas.",
+  "start.present": "¿Vas a presentar? En Demo y configuración, pulsa “Set up a presentation”: cada pantalla tendrá algo que mostrar, con un orden a seguir.",
   "start.promise": "El servicio justo. En el momento justo.",
   "start.quick": "Rápido",
   "start.quickSub": "Cada camarero ve sus tres próximos pasos, en el orden en que los necesitan los clientes.",

@@ -24,7 +24,7 @@ const chance = (p: number) => Math.random() < p
 type Party = Omit<PayloadOf<'table.seated'>, 'tableId'>
 
 /** Moments the presenter can stage on cue (and that showcase mode stages by itself). */
-export const MOMENTS = ['arrival', 'allergy', 'vip', 'access', 'language', 'kitchen_delay', 'sold_out', 'unhappy', 'manager', 'bill', 'rush'] as const
+export const MOMENTS = ['arrival', 'allergy', 'vip', 'access', 'language', 'question', 'kitchen_delay', 'sold_out', 'unhappy', 'manager', 'bill', 'rush'] as const
 export type MomentKind = (typeof MOMENTS)[number]
 /** The order showcase mode works through: each one shows off a different part of the app. */
 const SHOWCASE: MomentKind[] = ['allergy', 'kitchen_delay', 'language', 'vip', 'unhappy', 'access', 'sold_out', 'manager', 'bill']
@@ -47,6 +47,14 @@ export class Simulator {
   autoManager = false
   /** Runs itself and stages a key moment every few minutes of service time. */
   showcase = false
+  /**
+   * Presenter mode: the server the presenter plays. Everyone else is on autopilot, the kitchen and
+   * the other servers leave guest problems and questions open for a few minutes so there's time to
+   * show them, and anything the story needs is restaged when it runs out.
+   */
+  presenter: string | null = null
+  private nextKeep = 0
+  private keepIndex = 0
   /** What-if knobs: how fast the kitchen cooks (1 = as usual) and an extra cook on the grill. */
   kitchenSpeed = 1
   extraGrill = false
@@ -77,6 +85,7 @@ export class Simulator {
       autoKitchen: this.autoKitchen,
       autoManager: this.autoManager,
       showcase: this.showcase,
+      presenter: this.presenter,
       waiting: this.waitlist.length,
       startedAt: this.startedAt,
     }
@@ -120,6 +129,7 @@ export class Simulator {
     this.walkouts = 0
     this.momentIndex = 0
     this.nextMoment = 0
+    this.presenter = null
     this.hub.clock.set(Date.now())
     this.hub.clock.resume()
     this.hub.emit()
@@ -141,6 +151,7 @@ export class Simulator {
   setShowcase(on: boolean) {
     this.showcase = on
     if (on) {
+      this.presenter = null
       for (const st of this.hub.config.staff) if (st.role === 'server') this.autopilot.add(st.id)
       this.autoKitchen = true
       this.autoManager = true
@@ -150,8 +161,101 @@ export class Simulator {
     this.hub.emit()
   }
 
+  /**
+   * Set up a presentation: a fresh service with about 100 minutes of history already played (so
+   * reports, forecasts, receipts, XP and the team goal have real numbers), then the moments worth
+   * showing staged on purpose: on the presenter's phone, at the pass and on the manager's screen.
+   * Service then runs at 2× and keeps the story going (see `keepStory`).
+   */
+  prepare(staffId: string) {
+    const hub = this.hub
+    if (!hub.config.staff.some((s) => s.id === staffId && s.role === 'server')) throw new Error('Pick a server to present as.')
+    this.reset()
+    this.showcase = false
+    this.intensity = 1.3
+    this.autoKitchen = true
+    this.autoManager = false
+    for (const st of hub.config.staff) if (st.role === 'server') this.autopilot.add(st.id)
+    // History ends at the real time now, so clocks match the room.
+    hub.clock.set(Date.now() - 100 * MIN)
+    this.fastForward(100)
+    this.presenter = staffId
+    this.autopilot.delete(staffId)
+    // Make room for the guests in the story: the longest-seated tables pay and leave (two of the
+    // presenter's, three elsewhere), which also adds finished visits to the reports.
+    const seatedLongest = Object.values(hub.state.tables).filter((t) => t.visitId).sort((a, b) => (a.seatedAt ?? 0) - (b.seatedAt ?? 0))
+    const leaving = [...seatedLongest.filter((t) => t.serverId === staffId).slice(0, 2), ...seatedLongest.filter((t) => t.serverId !== staffId).slice(0, 3)]
+    for (const t of leaving) this.leave(t.id)
+    this.intensity = 0.8
+    const by = (role: string) => hub.config.staff.find((s) => s.role === role)?.id ?? role
+    const me = hub.config.staff.find((s) => s.id === staffId)!
+    // The team talking to each other.
+    this.send({ type: 'kudos.sent', source: 'kitchen', payload: { from: by('kitchen'), to: staffId, reason: 'Warned T-tables about the grill before they asked. Thank you!' } })
+    this.send({ type: 'manager.instruction', source: 'manager', payload: { instructionId: newId('ins'), from: by('manager'), to: hub.config.staff.filter((s) => s.role === 'server').map((s) => s.id), text: 'Saffron crème brûlée is tonight’s special: mention it at the main course check-back.' } })
+    this.send({ type: 'practice.scored', source: 'app', payload: { staffId, scenario: 'cold_food', score: 86, final: true, outcome: 'won' } })
+    // The story: guests who need something, on the presenter's phone and around the room.
+    this.moment('allergy', staffId)
+    this.moment('vip', staffId)
+    this.moment('question', staffId)
+    this.moment('language')
+    this.moment('unhappy')
+    this.moment('manager')
+    this.moment('kitchen_delay')
+    this.setSpeed(2)
+    this.nextKeep = hub.clock.now() + 4 * MIN
+    this.start()
+    hub.feed.push({ id: newId('demo'), at: hub.clock.now(), kind: 'demo', text: `Presentation ready: you're playing ${me.name}; everyone else is on autopilot.` })
+    hub.emit()
+    return this.status()
+  }
+
+  /** A table pays and leaves at once (presenter mode, to make room for the next guest in the story). */
+  private leave(tableId: string) {
+    for (const type of ['bill.requested', 'bill.presented', 'bill.settled', 'guest.farewelled', 'table.reset'] as const)
+      this.send({ type, source: type === 'bill.presented' || type === 'guest.farewelled' ? 'app' : 'pos:sim', payload: { tableId } } as IncomingEvent)
+  }
+
+  /** The presenter's section is full (nobody else serves it): their longest-seated table that isn't part of the story leaves. */
+  private roomFor(staffId: string) {
+    const tables = Object.values(this.hub.state.tables)
+    if (tables.some((t) => t.serverId === staffId && t.status === 'available')) return
+    const oldest = tables
+      .filter((t) => t.serverId === staffId && t.visitId && !t.party?.allergies.length && t.mood?.value !== 'unhappy')
+      .sort((a, b) => (a.seatedAt ?? 0) - (b.seatedAt ?? 0))[0]
+    if (oldest) this.leave(oldest.id)
+  }
+
+  stopPresenting() {
+    if (this.presenter) this.autopilot.add(this.presenter)
+    this.presenter = null
+    this.hub.emit()
+  }
+
+  /** Presenter mode: every few minutes, restage the first thing the story is missing. */
+  private keepStory(now: number) {
+    const hub = this.hub
+    const me = this.presenter!
+    const tables = Object.values(hub.state.tables)
+    const tasks = hub.tasks(now)
+    const needs: [boolean, () => boolean][] = [
+      [tasks.filter((k) => k.staffId === me).length < 2, () => (this.roomFor(me), this.moment('arrival', me).ok)],
+      [!tasks.some((k) => k.staffId === me && k.kind === 'safety_check'), () => (this.roomFor(me), this.moment('allergy', me).ok)],
+      [!hub.state.questions.some((q) => !q.answer), () => this.moment('question', me).ok],
+      [!tables.some((t) => (t.mood?.value === 'unhappy' && !t.recoveredAt) || (t.managerRequestedAt && !t.managerVisitedAt)), () => this.moment(chance(0.5) ? 'unhappy' : 'manager').ok],
+      [!tables.some((t) => t.visitId && t.party?.language && t.party.language !== 'en' && !hub.config.staff.find((s) => s.id === t.serverId)?.languages?.includes(t.party.language)), () => this.moment('language').ok],
+      [!tables.some((t) => t.lines.some((l) => l.status === 'fired' && now > l.expectedReadyAt)), () => this.moment('kitchen_delay').ok],
+    ]
+    for (let i = 0; i < needs.length; i++) {
+      const [missing, stage] = needs[(this.keepIndex + i) % needs.length]
+      if (missing && stage()) {
+        this.keepIndex += i + 1
+        break
+      }
+    }
+  }
+
   /** Stage a moment now. Returns what happened, or why it couldn't (e.g. no free table). */
-  moment(kind: MomentKind): { ok: boolean; text: string } {
+  moment(kind: MomentKind, staffId?: string): { ok: boolean; text: string } {
     const hub = this.hub
     const now = hub.clock.now()
     if (this.startedAt === null) this.start()
@@ -166,16 +270,42 @@ export class Simulator {
     }
     switch (kind) {
       case 'arrival':
-        return this.seat({}, 'a new party arrives') ? say(true, 'a new party arrives') : say(false, 'No free table right now; they’ll be seated when one frees up.')
-      case 'allergy':
-        return say(this.seat({ allergies: ['nuts'], guestName: 'Sam Banerjee' }, 'nut allergy'), 'a guest with a nut allergy arrives')
+        return this.seat({}, 'a new party arrives', staffId) ? say(true, 'a new party arrives') : say(false, 'No free table right now; they’ll be seated when one frees up.')
+      case 'allergy': {
+        // A nut allergy, and an order that already has a dish with nuts in it: the safety check fires.
+        const free = this.freeTable(2, staffId)
+        if (!free) return say(false, 'No free table right now.')
+        this.send({ type: 'table.seated', source: 'pos:sim', payload: { tableId: free.id, partySize: 2, allergies: ['nuts'], needs: [], guestName: 'Sam Banerjee' } })
+        this.send({ type: 'server.greeted', source: 'app', payload: { tableId: free.id } })
+        const nutty = hub.config.menu.find((m) => m.course === 'starter' && m.contains?.includes('nuts') && hub.state.unavailable[m.id] === undefined)
+        const plain = hub.config.menu.find((m) => m.course === 'starter' && !m.contains?.includes('nuts') && hub.state.unavailable[m.id] === undefined)
+        const lines: FiredLine[] = [nutty, plain].filter((m) => !!m).map((m) => ({ id: newId('ln'), menuItemId: m!.id, qty: 1 }))
+        for (const l of lines) this.readyPlan.set(l.id, now + (hub.config.menu.find((m) => m.id === l.menuItemId)!.prepMin + 2) * MIN)
+        if (lines.length) this.send({ type: 'order.fired', source: 'pos:sim', payload: { tableId: free.id, ticketId: newId('kot'), lines } })
+        this.plan(hub.state.tables[free.id]).courseFiredFor.add('starter')
+        return say(true, `a guest with a nut allergy at ${free.name} orders ${nutty?.name ?? 'a starter'}`)
+      }
       case 'vip':
-        return say(this.seat({ vip: true, occasion: 'birthday', guestName: 'Ria D’Souza', partySize: 4 }, 'birthday'), 'regulars arrive for a birthday')
+        return say(this.seat({ vip: true, occasion: 'birthday', guestName: 'Ria D’Souza', partySize: 4 }, 'birthday', staffId), 'regulars arrive for a birthday')
+      case 'question': {
+        // A guest's question the menu notes don't cover, sent from a server's table to the kitchen.
+        const from = staffId ?? pick(hub.config.staff.filter((s) => s.role === 'server')).id
+        const t = tables.find((x) => x.visitId && x.serverId === from) ?? tables.find((x) => x.visitId)
+        const asks: [string, string][] = [
+          ['Is the burrata made in-house?', 'm_burrata'],
+          ['Can the sea bass be cooked without butter?', 'm_seabass'],
+          ['Is the kulfi made with real saffron?', 'm_kulfi'],
+        ]
+        const [text, id] = pick(asks)
+        const menuItemId = hub.config.menu.some((m) => m.id === id) ? id : undefined
+        this.send({ type: 'dish.question', source: 'app', payload: { questionId: newId('q'), from, text, menuItemId, tableId: t?.id } })
+        return say(true, `a guest asks “${text}”`)
+      }
       case 'access':
-        return say(this.seat({ needs: [pick(['wheelchair', 'hearing', 'vision', 'quiet', 'service_animal'])] }, 'access need'), 'a guest with an access need arrives')
+        return say(this.seat({ needs: [pick(['wheelchair', 'hearing', 'vision', 'quiet', 'service_animal'])] }, 'access need', staffId), 'a guest with an access need arrives')
       case 'language': {
         // Guests who'd rather speak a language their section's server doesn't list, but a teammate does.
-        const free = this.freeTable(2)
+        const free = this.freeTable(2, undefined, this.presenter ?? undefined)
         if (!free) return say(false, 'No free table right now.')
         const mine = hub.config.staff.find((x) => x.id === free.serverId)?.languages ?? []
         const others = hub.config.staff.filter((x) => x.role === 'server' && x.id !== free.serverId).flatMap((x) => x.languages ?? [])
@@ -186,11 +316,14 @@ export class Simulator {
         return say(true, `guests who prefer ${languageName(language)} sit at ${free.name}`)
       }
       case 'kitchen_delay': {
-        const cooking = tables.flatMap((t) => t.lines.filter((l) => l.status === 'fired'))
+        // One station falls behind (the grill if it has anything on), not the whole kitchen.
+        const all = tables.flatMap((t) => t.lines.filter((l) => l.status === 'fired'))
+        const station = all.some((l) => l.station === 'grill') ? 'grill' : all[0]?.station
+        const cooking = all.filter((l) => l.station === station)
         if (!cooking.length) return say(false, 'Nothing is cooking right now; try again once orders are in.')
         const extra = rand(6, 9) * MIN
         for (const l of cooking) this.readyPlan.set(l.id, (this.readyPlan.get(l.id) ?? l.expectedReadyAt) + extra)
-        this.send({ type: 'note.sent', source: 'kitchen', payload: { noteId: newId('note'), direction: 'to_floor', text: `Grill is backed up, about ${Math.round(extra / MIN)} minutes behind`, from: 'k_pass' } })
+        this.send({ type: 'note.sent', source: 'kitchen', payload: { noteId: newId('note'), direction: 'to_floor', text: `${station![0].toUpperCase()}${station!.slice(1)} is backed up, about ${Math.round(extra / MIN)} minutes behind`, from: 'k_pass' } })
         return say(true, 'the kitchen falls behind')
       }
       case 'sold_out': {
@@ -203,14 +336,14 @@ export class Simulator {
         return say(true, `${item.name} runs out`)
       }
       case 'unhappy': {
-        const t = eating.find((x) => x.mood?.value !== 'unhappy')
+        const t = eating.find((x) => x.mood?.value !== 'unhappy' && x.serverId !== this.presenter) ?? eating.find((x) => x.mood?.value !== 'unhappy')
         if (!t) return say(false, 'No table is eating yet; try again once food is out.')
         const course = [...t.lines].reverse().find((l) => l.servedAt)!.course
         this.send({ type: 'server.checkback', source: 'sim', payload: { tableId: t.id, course, mood: 'unhappy' } })
         return say(true, `${t.name} isn’t happy with their food`)
       }
       case 'manager': {
-        const t = eating.find((x) => !x.managerRequestedAt)
+        const t = eating.find((x) => !x.managerRequestedAt && x.serverId !== this.presenter) ?? eating.find((x) => !x.managerRequestedAt)
         if (!t) return say(false, 'No table is eating yet; try again once food is out.')
         this.send({ type: 'guest.recovered', source: 'sim', payload: { tableId: t.id, how: 'manager' } })
         return say(true, `${t.name} asks to see the manager`)
@@ -254,16 +387,17 @@ export class Simulator {
   }
 
   /** Like a host: the smallest free table that fits, with the server who has fewest guests right now (handovers count). */
-  private freeTable(size: number): TableState | undefined {
+  private freeTable(size: number, prefer?: string, avoid?: string): TableState | undefined {
     const tables = Object.values(this.hub.state.tables)
     const load = (serverId: string) => tables.filter((t) => t.serverId === serverId && t.visitId).length
-    return tables.filter((t) => t.status === 'available' && t.seats >= size).sort((a, b) => a.seats - b.seats || load(a.serverId) - load(b.serverId))[0]
+    const free = tables.filter((t) => t.status === 'available' && t.seats >= size && t.serverId !== avoid).sort((a, b) => a.seats - b.seats || load(a.serverId) - load(b.serverId))
+    return (prefer && free.find((t) => t.serverId === prefer)) || free[0]
   }
 
   /** Seat a party at the smallest free table that fits; false if none is free. */
-  private seat(party: Partial<Party>, _why: string): boolean {
+  private seat(party: Partial<Party>, _why: string, prefer?: string): boolean {
     const size = party.partySize ?? pick([2, 2, 3, 4, 4])
-    const free = this.freeTable(size)
+    const free = this.freeTable(size, prefer)
     if (!free) return false
     this.send({ type: 'table.seated', source: 'pos:sim', payload: { allergies: [], needs: [], ...party, partySize: size, tableId: free.id } })
     return true
@@ -414,6 +548,11 @@ export class Simulator {
       this.nextMoment = now + rand(5, 7) * MIN
     }
 
+    if (this.presenter && now >= this.nextKeep) {
+      this.keepStory(now)
+      this.nextKeep = now + 4 * MIN
+    }
+
     // A manager on autopilot visits a table that asked for them after a couple of minutes.
     if (this.autoManager)
       for (const t of Object.values(hub.state.tables))
@@ -423,7 +562,7 @@ export class Simulator {
     // Dish questions: a kitchen on autopilot answers from the dish's notes, or offers to come over.
     if (this.autoKitchen)
       for (const q of hub.state.questions)
-        if (!q.answer && now > q.at + 1.5 * MIN) {
+        if (!q.answer && now > q.at + (this.presenter ? 8 : 1.5) * MIN) {
           const dish = hub.config.menu.find((m) => m.id === q.menuItemId)
           const a = dish ? answerAboutDish(q.text, dish) : null
           const answer = a?.known ? a.text : 'Chef will come to the table to explain.'
@@ -451,7 +590,9 @@ export class Simulator {
         if ((this.busyUntil.get(staffId) ?? 0) > now) continue
         const task = tasks.find((k) => k.staffId === staffId)
         if (!task) continue
-        if (!this.reaction.has(task.id)) this.reaction.set(task.id, (chance(0.08) ? rand(2.5, 5) : rand(0.2, 1.1)) * MIN)
+        // While presenting, guest problems stay open a few minutes so they can be shown on the manager's screen.
+        const slow = this.presenter && (task.kind === 'recovery' || task.kind === 'safety_check')
+        if (!this.reaction.has(task.id)) this.reaction.set(task.id, (slow ? rand(6, 8) : chance(0.08) ? rand(2.5, 5) : rand(0.2, 1.1)) * MIN)
         if (now < task.createdAt + this.reaction.get(task.id)!) continue
         let action = task.actions.find((a) => a.primary) ?? task.actions[0]
         // Most tables are happy at a check-in; a few aren't, so recovery gets exercised.

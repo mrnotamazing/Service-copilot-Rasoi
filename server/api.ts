@@ -80,7 +80,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       }
     }
     if (role === 'manager')
-      return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), insights: floorInsights(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40), instructions: hub.state.instructions.slice(-30).reverse() }
+      return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), insights: floorInsights(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40), instructions: hub.state.instructions.slice(-30).reverse(), questions: hub.state.questions.slice(-30).reverse() }
     return { ...base, openTasks, instructions: hub.state.instructions.slice(-30).reverse(), questions: hub.state.questions.slice(-30).reverse() }
   }
 
@@ -97,8 +97,11 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     '/api/sim/moment': (body) => {
       const kind = MOMENTS.find((m) => m === body.kind)
       if (!kind) throw new Error('Unknown moment.')
-      return { ...sim.moment(kind), status: sim.status() }
+      // While presenting, guests arrive at the presenter's tables first.
+      return { ...sim.moment(kind, typeof body.staffId === 'string' ? body.staffId : (sim.presenter ?? undefined)), status: sim.status() }
     },
+    // Presenter mode: a warmed-up service with the story staged, or stop (the presenter's server goes back on autopilot).
+    '/api/sim/presenter': (body) => (body.on === false ? (sim.stopPresenting(), sim.status()) : sim.prepare(typeof body.staffId === 'string' ? body.staffId : 's_aisha')),
     '/api/sim/settings': (body) => {
       if (typeof body.speed === 'number') sim.setSpeed(body.speed)
       if (typeof body.intensity === 'number') sim.intensity = Math.max(0.3, Math.min(3, body.intensity))
