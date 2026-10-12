@@ -7,6 +7,7 @@ import { newId, type FiredLine, type IncomingEvent, type PayloadOf } from '../sh
 import type { SimStatus } from '../shared/snapshot.ts'
 import type { Course, TableState } from '../shared/types.ts'
 import type { Hub } from './hub.ts'
+import { answerAboutDish } from '../shared/menuAnswer.ts'
 
 const MIN = 60_000
 // Names as a guest gives them when booking; no honorific is assumed.
@@ -398,6 +399,16 @@ export class Simulator {
       for (const t of Object.values(hub.state.tables))
         if (t.managerRequestedAt && !(t.managerVisitedAt && t.managerVisitedAt >= t.managerRequestedAt) && now > t.managerRequestedAt + 2.5 * MIN)
           this.send({ type: 'manager.visited', source: 'manager', payload: { tableId: t.id } })
+
+    // Dish questions: a kitchen on autopilot answers from the dish's notes, or offers to come over.
+    if (this.autoKitchen)
+      for (const q of hub.state.questions)
+        if (!q.answer && now > q.at + 1.5 * MIN) {
+          const dish = hub.config.menu.find((m) => m.id === q.menuItemId)
+          const a = dish ? answerAboutDish(q.text, dish) : null
+          const answer = a?.known ? a.text : 'Chef will come to the table to explain.'
+          this.send({ type: 'dish.answered', source: 'kitchen', payload: { questionId: q.id, answer, by: hub.config.staff.find((s) => s.role === 'kitchen')?.id ?? 'k_pass' } })
+        }
 
     // Notes: the kitchen (and the manager on autopilot) tap "Got it" a minute or so after a note arrives.
     const reader = (id: string) => (this.autoKitchen && hub.config.staff.find((s) => s.id === id)?.role === 'kitchen') || (this.autoManager && hub.config.staff.find((s) => s.id === id)?.role === 'manager')

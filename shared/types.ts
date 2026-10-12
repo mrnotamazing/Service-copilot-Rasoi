@@ -16,6 +16,34 @@ export interface MenuItem {
    * fish, egg, soy, sesame) and diet tags (meat, root, alcohol, pork, nonhalal).
    */
   contains?: string[]
+  /** How hot: 0 not spicy, 1 mild, 2 medium, 3 hot. Unset = not recorded yet. */
+  spice?: 0 | 1 | 2 | 3
+  /** What the dish is and how it's made, in a sentence or two (what a server would say). */
+  description?: string
+  /** What the kitchen can change on request (less spicy, without onion and garlic…). */
+  adjust?: string
+  /** Answers the kitchen gave to servers' questions, kept so the next one is answered at once. */
+  facts?: DishFact[]
+}
+
+export interface DishFact {
+  q: string
+  a: string
+  at: number
+}
+
+/** A guest's question about a dish that the menu couldn't answer, sent to the kitchen. */
+export interface DishQuestion {
+  id: string
+  at: number
+  from: string
+  text: string
+  menuItemId?: string
+  tableId?: string
+  answer?: string
+  answeredAt?: number
+  by?: string
+  seenAt?: number
 }
 
 export interface Staff {
@@ -183,6 +211,7 @@ export type TaskKind =
   | 'reset'
   | 'kitchen_message'
   | 'instruction'
+  | 'kitchen_answer'
   | 'safety_check'
   | 'recovery'
 

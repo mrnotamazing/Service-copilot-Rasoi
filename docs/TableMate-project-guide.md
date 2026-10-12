@@ -206,6 +206,7 @@ Phones get bottom tabs; tablets and laptops get a side rail with cards, the floo
 - **Counts strip**: dishes on the line, running late, and waiting at the pass; a **station filter** (grill, hot, cold, pastry, bar).
 - **On the line**: tickets with table, server, course, elapsed time against the forecast, a progress bar, allergy and diet clashes, and a large **Ready** button.
 - **At the pass**: food waiting, how long it has waited, and a **Nudge** that tells the server.
+- **Guest questions**: when a server asks something the menu notes can't answer ("Is the risotto good for kids?"), it appears here at once, highlighted, with the dish and the table. One tap answers (Yes, No, Mild, Can be made mild, Chef will come to the table…) or type a line; **Save to the dish's notes** (on by default) means the next server who asks gets the answer instantly. The answer reaches the server as a card.
 - **Team**: the same card as the manager's. Notes from servers and the manager arrive under **For you** (allergy notes highlighted) with **Got it**, and servers see "Seen" in their kitchen chat. The kitchen can send notes to the manager or any server (e.g. "Need a runner at the pass") and see who has read them, and give kudos to anyone. **Quick update to the floor** still sends one-tap updates ("Mains in 5 min") to the whole floor or one table's server.
 - **All-day counts** per dish, **notes from the floor** (allergy notes highlighted), **quick notes to the floor**, and the **86 board** to switch dishes off (servers with that dish on order are told straight away).
 
@@ -252,6 +253,8 @@ Opened with the sparkle button (servers) or **Ask TableMate** on the manager con
 
 **Practice XP**: up to 10 XP per scored reply; at the end 10 per star plus 10 for winning them over; capped at 150 practice XP a day so it rewards learning, not grinding. Badges *First rehearsal*, *Smooth talker* and *Well rehearsed*, and a *Practise one tough moment* quest. Managers earn training XP too.
 
+**Questions about a dish** ("How spicy is the galouti kebab?", "Can the tikka be made mild?", "Is the gnocchi vegan?", "Any nuts in the kulfi?") are answered from the menu notes: spice level, ingredient tags, what it is, what can be changed, and the kitchen's earlier answers, in the server's language with an AI connected. If the notes don't cover it, TableMate says so instead of guessing and shows **Ask the kitchen**: the question goes straight to the kitchen screen, the answer comes back as a card, and it's saved to the dish so the next server gets it instantly.
+
 ### 5.7 Voice
 
 - **Read aloud** new top tasks and any card, in the chosen language, at an adjustable speed, with the most natural voice on the device.
@@ -281,6 +284,7 @@ Opened with the sparkle button (servers) or **Ask TableMate** on the manager con
 - **Open the screens**: each server's phone, the kitchen and the manager console in new tabs.
 
 **Setup** tab
+- **Menu**: every dish with its ingredient tags (for the allergy and diet check), **spice level** (none, mild, medium, hot), **what it is** (a sentence a server can say) and **what the kitchen can change** ("Can be made mild", "Sauce on the side"), plus the kitchen's saved answers. Add, edit or remove dishes; dishes missing a spice level or description are flagged.
 - **Service standards (SOPs)**: greet within, order nudge, kitchen-delay tolerance, pick-up time, check-back, course check, bill, goodbye, reset, max tables per server. Saving re-scores the whole service.
 - **AI assistance**: which AI is connected, with step-by-step instructions for Ollama (free, local) or Claude (paid).
 - **POS and other systems**: a pointer to the Integrations tab.
@@ -327,9 +331,10 @@ TableMate uses AI for language and coaching, and plain rules for anything safety
 **AI providers, in order of preference**
 
 1. **Claude** (Anthropic API, paid): best quality in every language; the long standards-and-menu prompt is cached; answers stream.
-2. **Ollama** (free, runs on the computer, nothing leaves it): picked up automatically; tuned for laptops with a compact prompt of only the relevant notes, a fixed context size and a warm-up load.
-3. **Dify**: for managing prompts in a Dify app.
-4. **Built-in**: always available; questions in English, role-plays in all six languages.
+2. **Google Gemini** (free tier, fast on any laptop; set `GEMINI_API_KEY` from aistudio.google.com): uses the newest Gemini Flash model the key allows, with thinking turned off for quick answers; no training needed, because the standards, menu notes and training lessons go with every question (see `docs/gemini-setup.md`).
+3. **Ollama** (free, runs on the computer, nothing leaves it): picked up automatically; tuned for laptops with a compact prompt of only the relevant notes, a fixed context size and a warm-up load.
+4. **Dify**: for managing prompts in a Dify app.
+5. **Built-in**: always available; questions in English, role-plays in all six languages.
 
 The shareable demo link uses Claude through the viewer's own claude.ai account.
 

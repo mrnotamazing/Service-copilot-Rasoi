@@ -4,6 +4,7 @@
 
 import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
 import { dishesNamed } from '../shared/dishNames.ts'
+import { answerAboutDish, dishLine, SPICE_WORDS } from '../shared/menuAnswer.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
 import { MAX_REPLIES, moodFor, type Mood, type Outcome, patienceAfter, PATIENCE_MAX, practiceDebrief, practiceStep, scenarioById, scenarioOpening, type Score, scoreReply, starsFor } from '../shared/practice.ts'
 import { forecast, liveVisit as liveVisitOf, reconstructVisit, shiftIntel } from '../shared/intel.ts'
@@ -17,7 +18,7 @@ import { parseWhatIf, runWhatIf, whatIfText } from './whatif.ts'
 export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat' | 'complaint' | 'incident'
 
 /** One message in the assistant chat. In practice mode the guest's lines are the assistant's. */
-export type AiProvider = 'claude' | 'ollama' | 'dify' | 'built-in'
+export type AiProvider = 'claude' | 'gemini' | 'ollama' | 'dify' | 'built-in'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -28,7 +29,7 @@ export interface ChatTurn {
 
 /** A conversational language model (Claude, or a local Ollama model). `stable` is cacheable; `live` changes every message. */
 export interface ChatModel {
-  name: 'claude' | 'ollama'
+  name: 'claude' | 'gemini' | 'ollama'
   /** False while the model can't be used (e.g. the demo page hasn't been granted Claude); the next provider answers. */
   available?(): boolean
   /** Small local models can get menu facts wrong: add the menu's own line for any dish the question names. */
@@ -104,6 +105,8 @@ export interface AiAnswer {
   xp?: number
   /** Language of `text` when it isn't the app's language (the built-in trainer answers in English). */
   lang?: string
+  /** A question about a dish: offer to send it to the kitchen (`unsure`: the menu notes didn't answer it). */
+  askKitchen?: { menuItemId?: string; question: string; unsure: boolean }
 }
 
 export interface DifyOptions {
@@ -398,12 +401,18 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
               lang: undefined,
             }
           }
-        : (answer: string) => ({ text: answer, suggestions: builtIn.suggestions }),
+        : (answer: string) => {
+            // The model marks a dish question the menu notes didn't answer; the app offers "Ask the kitchen".
+            const unsure = /\[ASK_KITCHEN\]/i.test(answer)
+            const dish = dishesNamed(asked, cfg.menu)[0]
+            const askKitchen = dish || unsure ? { menuItemId: dish?.id, question: asked, unsure } : undefined
+            return { text: answer.replace(/\[ASK_KITCHEN\]/gi, '').trim(), suggestions: builtIn.suggestions, askKitchen }
+          },
     }
   }
 
   /** Built-in expert: today's section, the menu, the standards and the training notes. */
-  function askBuiltIn(question: string, req: AiRequest, now: number, audience: Audience = 'server'): { text: string; suggestions: string[]; feedback?: string; stars?: number; done?: boolean } {
+  function askBuiltIn(question: string, req: AiRequest, now: number, audience: Audience = 'server'): { text: string; suggestions: string[]; feedback?: string; stars?: number; done?: boolean; askKitchen?: AiAnswer['askKitchen'] } {
     const cfg = hub.config
     const q = question.toLowerCase()
     const starters = audience === 'manager' ? MANAGER_STARTERS : STARTERS
@@ -434,7 +443,12 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       return { text: facts.map((f) => `• ${f.replace(/^- /, '')}`).join('\n'), suggestions: ['How do I warn guests about a delay?', 'Explain Jain food'] }
     }
     const dish = dishesNamed(question, cfg.menu)[0]
-    if (dish) return { text: dishFacts(dish), suggestions: ['How do I describe a dish well?', 'How do I handle allergies?'] }
+    if (dish) {
+      // Answered from what the restaurant recorded (spice, contents, description, the kitchen's earlier
+      // answers); when that doesn't cover it, the answer says so and offers to ask the kitchen.
+      const a = answerAboutDish(question, dish)
+      return { text: a.general ? dishFacts(dish) : a.text, suggestions: ['How do I describe a dish well?', 'How do I handle allergies?'], askKitchen: { menuItemId: dish.id, question, unsure: !a.known } }
+    }
     // Diet or allergy lists come from the ingredient tags, never a guess.
     const forNeed = menuForNeed(question, cfg.menu)
     if (forNeed) return { text: forNeed, suggestions: ['How do I handle allergies?', 'Explain Jain food'] }
@@ -590,8 +604,9 @@ export function stableSystem(cfg: RestaurantConfig, audience: Audience = 'server
     'Service standards:',
     ...sopFacts(cfg),
     '',
-    'Menu (course, station, what it contains):',
-    ...cfg.menu.map((m) => `- ${m.name}: ${m.course}, ${m.station}, about ${m.prepMin} min; contains ${m.contains?.join(', ') || 'not listed'}`),
+    'Menu (everything the restaurant recorded about each dish):',
+    ...cfg.menu.map(dishLine),
+    'Questions about a dish (spice, ingredients, how it’s made, changes): answer only from these notes. If they don’t answer it, say you’re not sure, never guess, say you can ask the kitchen, and end your reply with [ASK_KITCHEN].',
     'Diet rules: vegetarian avoids meat, fish, shellfish. Vegan also avoids dairy, egg, honey. Jain avoids meat, fish, shellfish, egg and root vegetables (onion, garlic, potato). Halal avoids pork, alcohol and non-halal meat. Some guests avoid beef or pork only; religious fasts differ, so ask.',
     '',
     manager
@@ -612,7 +627,8 @@ function dishFacts(m: RestaurantConfig['menu'][number]): string {
     c.some((x) => ['pork', 'alcohol', 'nonhalal'].includes(x)) ? 'halal' : '',
   ].filter(Boolean)
   const word: Record<string, string> = { root: 'onion, garlic or root veg', nonhalal: 'non-halal meat' }
-  return `${m.name}: ${m.course === 'main' ? 'a main' : `a ${m.course}`} from the ${m.station} station, about ${m.prepMin} minutes. Contains: ${c.map((x) => word[x] ?? x).join(', ') || 'not listed'}.${clashes.length ? ` Not suitable as-is for ${clashes.join(', ')} guests.` : ''} Always confirm allergies with the kitchen.`
+  const extra = [m.description, m.spice !== undefined ? `Spice: ${SPICE_WORDS[m.spice]}.` : '', m.adjust ? `Can be changed: ${m.adjust}` : ''].filter(Boolean).join(' ')
+  return `${m.name}: ${m.course === 'main' ? 'a main' : `a ${m.course}`} from the ${m.station} station, about ${m.prepMin} minutes. Contains: ${c.map((x) => word[x] ?? x).join(', ') || 'not listed'}.${clashes.length ? ` Not suitable as-is for ${clashes.join(', ')} guests.` : ''}${extra ? ` ${extra}` : ''} Always confirm allergies with the kitchen.`
 }
 
 /** Minutes until the table's late dishes are most likely ready, using tonight's station load. */

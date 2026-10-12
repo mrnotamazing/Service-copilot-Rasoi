@@ -173,7 +173,9 @@ export function withDefaults(config: RestaurantConfig): RestaurantConfig {
     }),
     menu: config.menu.map((m) => {
       const base = DEMO_CONFIG.menu.find((d) => d.id === m.id)
-      return m.contains || !base?.contains ? m : { ...m, contains: base.contains }
+      if (!base) return m
+      // Fill fields added since the menu was saved (ingredient tags, spice, descriptions), never overwrite.
+      return { ...m, contains: m.contains ?? base.contains, spice: m.spice ?? base.spice, description: m.description ?? base.description, adjust: m.adjust ?? base.adjust }
     }),
   }
 }

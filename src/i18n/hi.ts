@@ -646,4 +646,10 @@ export const hi: Record<Key, string> = {
   "action.instruction": "समझ गया",
   "kitchen.seen": "देख लिया",
   "kudos.r6": "बढ़िया खाना, तेज़ और ध्यान से",
+  "chat.byGemini": "Gemini द्वारा AI",
+  "t.kitchen_answer": "किचन का जवाब:",
+  "h.kitchen_answer": "आपने पूछा: {q}",
+  "action.kitchen_answer": "समझ गया",
+  "chat.askKitchen": "किचन से पूछें",
+  "chat.askedKitchen": "किचन को भेज दिया। उनका जवाब आपको कार्ड के रूप में मिलेगा, और अगली बार के लिए सहेजा जाएगा।",
 }

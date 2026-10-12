@@ -646,4 +646,10 @@ export const es: Record<Key, string> = {
   "action.instruction": "Entendido",
   "kitchen.seen": "Visto",
   "kudos.r6": "Comida excelente, rápida y cuidada",
+  "chat.byGemini": "IA con Gemini",
+  "t.kitchen_answer": "La cocina respondió:",
+  "h.kitchen_answer": "Preguntaste: {q}",
+  "action.kitchen_answer": "Entendido",
+  "chat.askKitchen": "Preguntar a cocina",
+  "chat.askedKitchen": "Enviado a cocina. Su respuesta te llegará como tarjeta y quedará guardada para la próxima vez.",
 }

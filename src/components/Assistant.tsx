@@ -1,4 +1,4 @@
-import { BookOpenText, ChevronLeft, CircleCheck, Drama, Flag, Lightbulb, Loader2, Mic, Minus, RotateCcw, Send, Sparkles, Star, TrendingDown, TrendingUp, Volume2 } from 'lucide-react'
+import { BookOpenText, ChefHat, ChevronLeft, CircleCheck, Drama, Flag, Lightbulb, Loader2, Mic, Minus, RotateCcw, Send, Sparkles, Star, TrendingDown, TrendingUp, Volume2 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { AiAnswer, ChatTurn } from '../../server/ai.ts'
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { en } from '../i18n/en.ts'
+import { aiName } from '../lib/ai.ts'
 import { post, postStream } from '../lib/live.ts'
 import { getPrefs, setPrefs, usePrefs, type Lang } from '../lib/prefs.ts'
 import { speak } from '../lib/speech.ts'
@@ -22,6 +23,8 @@ interface Message extends ChatTurn {
   feedback?: string
   stars?: number
   suggestions?: string[]
+  /** A dish question: offer to send it to the kitchen (prominent when the menu notes didn't answer it). */
+  askKitchen?: AiAnswer['askKitchen']
   /** Practice debrief shown as a summary card. */
   debrief?: boolean
   /** Practice, on your replies: what this one did and missed, an ideal version and the XP it earned. */
@@ -68,7 +71,7 @@ export function Assistant({ staffId, provider, initialMode = 'ask', role = 'serv
           ))}
         </div>
         <Badge variant="outline" className="shrink-0 gap-1 text-[10px] font-normal text-muted-foreground">
-          <Sparkles className="size-3" /> {provider === 'claude' ? t('chat.byClaude') : provider === 'ollama' ? t('chat.byOllama') : provider === 'dify' ? t('assist.dify') : t('assist.builtIn')}
+          <Sparkles className="size-3" /> {aiName(t, provider)}
         </Badge>
       </div>
       {/* Each mode keeps its own conversation while you switch back and forth. */}
@@ -158,7 +161,7 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
         : history
       const reply: Message = finish
         ? { role: 'assistant', text: a.text, source: a.source, debrief: true, stars: a.stars, score: a.score, xp: a.xp, lang }
-        : { role: 'assistant', text: a.text, source: a.source, notice: a.notice, suggestions: a.suggestions, mood: a.mood, patience: a.patience, lang }
+        : { role: 'assistant', text: a.text, source: a.source, notice: a.notice, suggestions: a.suggestions, mood: a.mood, patience: a.patience, lang, askKitchen: practice ? undefined : a.askKitchen }
       const next = [...withCoach, reply]
       setMessages(next)
       if (finish) setDone(true)
@@ -237,6 +240,24 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
               </Button>
             )}
           </div>
+        )}
+        {!practice && !busy && last?.role === 'assistant' && last.askKitchen && (
+          <Button
+            size="sm"
+            variant={last.askKitchen.unsure ? 'default' : 'outline'}
+            className="h-9 rounded-full"
+            onClick={async () => {
+              const ask = last.askKitchen!
+              try {
+                await post('/api/kitchen/ask', { from: staffId, text: ask.question, menuItemId: ask.menuItemId })
+                setMessages((ms) => [...ms.map((m) => (m === last ? { ...m, askKitchen: undefined } : m)), { role: 'assistant', text: t('chat.askedKitchen'), source: 'built-in' }])
+              } catch {
+                setError(t('chat.failed'))
+              }
+            }}
+          >
+            <ChefHat /> {t('chat.askKitchen')}
+          </Button>
         )}
         {showSuggestions ? (
           <div className="flex flex-wrap gap-1.5">

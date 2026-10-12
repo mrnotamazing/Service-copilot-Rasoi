@@ -9,6 +9,7 @@ import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
 import { useT, type Key } from '../i18n/index.ts'
 import { en } from '../i18n/en.ts'
+import { aiName } from '../lib/ai.ts'
 import { post, useSnapshot } from '../lib/live.ts'
 import { useRolePage } from '../lib/role.ts'
 
@@ -68,7 +69,7 @@ export default function Home() {
           </Button>
         ) : (
           <span className="inline-flex items-center gap-1 rounded-full border border-white/20 px-2.5 py-1 text-xs opacity-80">
-            <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? t('chat.byClaude') : snap.ai.provider === 'ollama' ? t('chat.byOllama') : snap.ai.provider === 'dify' ? t('assist.dify') : t('home.aiBuiltIn')}
+            <Sparkles className="size-3" /> {aiName(t, snap.ai.provider, 'home.aiBuiltIn')}
           </span>
         )}
       </section>

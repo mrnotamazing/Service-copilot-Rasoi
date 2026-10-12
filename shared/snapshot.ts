@@ -2,7 +2,7 @@ import type { FeedItem } from './narrate.ts'
 import type { Forecast, LearningPlan, ShiftIntel } from './intel.ts'
 import type { Analytics } from './engine.ts'
 import type { PlayerView, teamView } from './game.ts'
-import type { Instruction, Note, RestaurantConfig, StaffStats, TableState, Task, TaskText, Upcoming, VisitRecord } from './types.ts'
+import type { DishQuestion, Instruction, Note, RestaurantConfig, StaffStats, TableState, Task, TaskText, Upcoming, VisitRecord } from './types.ts'
 
 export type Role = 'server' | 'kitchen' | 'manager'
 
@@ -46,7 +46,7 @@ export interface Snapshot {
   notes: Note[]
   sim: SimStatus
   /** Where AI answers come from: a connected Dify app, or the built-in writer. */
-  ai: { provider: 'claude' | 'ollama' | 'dify' | 'built-in'; model?: string }
+  ai: { provider: 'claude' | 'gemini' | 'ollama' | 'dify' | 'built-in'; model?: string }
   /** Shared with everyone: the team goal and kudos. Never individual scores. */
   team: ReturnType<typeof teamView>
   /** server role: own top tasks and private stats */
@@ -59,6 +59,8 @@ export interface Snapshot {
   integrations?: IntegrationStatus[]
   /** manager/kitchen: how many open cards each server has (load, not performance) */
   openTasks?: Record<string, number>
+  /** kitchen and manager: guests' dish questions sent to the kitchen, newest first. */
+  questions?: DishQuestion[]
   /** manager and kitchen: team notes, newest first, with who has seen each. */
   instructions?: Instruction[]
   /** Manager / demo control: what's been happening, in plain words (newest last). */

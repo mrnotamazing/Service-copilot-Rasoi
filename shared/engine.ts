@@ -8,7 +8,7 @@
 import type { CopilotEvent } from './events.ts'
 import { isNear, minutesUntil, predictReady, type Running } from './predict.ts'
 import { safetyIssues } from './safety.ts'
-import type { Instruction,
+import type { DishQuestion, Instruction,
   Course,
   TaskText,
   MenuItem,
@@ -35,6 +35,7 @@ export interface EngineState {
   unavailable: Record<string, number> // menuItemId -> since
   notes: Note[]
   instructions: Instruction[]
+  questions: DishQuestion[]
   snoozes: Record<string, number> // taskId -> snoozed until
   visits: VisitRecord[]
   eventCount: number
@@ -46,7 +47,7 @@ export interface EngineState {
 export function initialState(config: RestaurantConfig): EngineState {
   const tables: Record<string, TableState> = {}
   for (const t of config.tables) tables[t.id] = emptyTable(t.id, config)
-  return { tables, unavailable: {}, notes: [], instructions: [], snoozes: {}, visits: [], eventCount: 0, prepStats: {}, eatStats: {} }
+  return { tables, unavailable: {}, notes: [], instructions: [], questions: [], snoozes: {}, visits: [], eventCount: 0, prepStats: {}, eatStats: {} }
 }
 
 function emptyTable(id: string, config: RestaurantConfig, keepServer?: string): TableState {
@@ -321,6 +322,22 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       const p = ev.payload
       state.notes.push({ id: p.noteId, at, direction: p.direction, tableId: p.tableId, text: p.text, from: p.from })
       if (state.notes.length > 200) state.notes.splice(0, state.notes.length - 200)
+      break
+    }
+    case 'dish.question': {
+      const p = ev.payload
+      state.questions.push({ id: p.questionId, at, from: p.from, text: p.text, menuItemId: p.menuItemId, tableId: p.tableId })
+      if (state.questions.length > 100) state.questions.splice(0, state.questions.length - 100)
+      break
+    }
+    case 'dish.answered': {
+      const q = state.questions.find((x) => x.id === ev.payload.questionId)
+      if (q && !q.answer) Object.assign(q, { answer: ev.payload.answer, answeredAt: at, by: ev.payload.by })
+      break
+    }
+    case 'dish.answer_seen': {
+      const q = state.questions.find((x) => x.id === ev.payload.questionId)
+      if (q) q.seenAt ??= at
       break
     }
     case 'manager.instruction': {
@@ -751,6 +768,27 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         score: 0,
         actions: [{ label: 'Got it', event: 'note.acked', payload: { noteId: n.id }, primary: true }],
       })
+  }
+
+  // The kitchen's answer to a guest's dish question, back to the server who asked.
+  for (const q of state.questions) {
+    if (!q.answer || q.seenAt || !servers.some((s) => s.id === q.from)) continue
+    const t = q.tableId ? state.tables[q.tableId] : undefined
+    tasks.push({
+      id: `kitchen_answer:${q.id}`,
+      kind: 'kitchen_answer',
+      tableId: t?.id ?? '',
+      tableName: t?.name ?? 'All',
+      staffId: q.from,
+      title: `Kitchen answered: ${q.answer}`,
+      hint: `You asked: ${q.text}`,
+      text: { title: { parts: [k('t.kitchen_answer'), raw(q.answer)], sep: ' ' }, hint: k('h.kitchen_answer', { q: q.text }) },
+      impact: 4,
+      createdAt: q.answeredAt!,
+      dueAt: q.answeredAt! + 1 * MIN,
+      score: 0,
+      actions: [{ label: 'Got it', event: 'dish.answer_seen', payload: { questionId: q.id }, primary: true }],
+    })
   }
 
   // Team notes (from the manager or the kitchen): one card per server it was sent to, until they've seen it.

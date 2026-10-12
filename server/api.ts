@@ -10,6 +10,8 @@ import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
 import type { RestaurantConfig } from '../shared/types.ts'
 import { CATALOG } from './adapters/index.ts'
+import { newId } from '../shared/events.ts'
+import { cleanMenuItem } from '../shared/menuEdit.ts'
 import { AiError, createAi, type AiKind, type AiRequest, type DifyOptions } from './ai.ts'
 import type { Hub } from './hub.ts'
 import { MOMENTS, type Simulator } from './simulator.ts'
@@ -78,7 +80,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     }
     if (role === 'manager')
       return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40), instructions: hub.state.instructions.slice(-30).reverse() }
-    return { ...base, openTasks, instructions: hub.state.instructions.slice(-30).reverse() }
+    return { ...base, openTasks, instructions: hub.state.instructions.slice(-30).reverse(), questions: hub.state.questions.slice(-30).reverse() }
   }
 
   const routes: Record<string, (body: ApiBody) => unknown> = {
@@ -116,6 +118,43 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       if (body.extraGrill === true) w.extraGrill = true
       if (typeof body.kitchenSpeed === 'number') w.kitchenSpeed = Math.max(0.5, Math.min(1.5, body.kitchenSpeed))
       return runWhatIf(hub.config, w)
+    },
+    // A guest's dish question the menu notes couldn't answer: straight to the kitchen screen.
+    '/api/kitchen/ask': (body) => {
+      const from = typeof body.from === 'string' ? body.from : ''
+      const text = typeof body.text === 'string' ? body.text.trim().slice(0, 300) : ''
+      if (!hub.config.staff.some((s) => s.id === from)) throw new Error('Unknown staff member.')
+      if (!text) throw new Error('Type the question first.')
+      const menuItemId = typeof body.menuItemId === 'string' && hub.config.menu.some((m) => m.id === body.menuItemId) ? body.menuItemId : undefined
+      const tableId = typeof body.tableId === 'string' && hub.state.tables[body.tableId] ? body.tableId : undefined
+      const questionId = newId('q')
+      hub.ingest({ type: 'dish.question', source: 'app', payload: { questionId, from, text, menuItemId, tableId } })
+      return { questionId }
+    },
+    // The kitchen answers; with `save`, the answer joins the dish's notes so it's answered at once next time.
+    '/api/kitchen/answer': (body) => {
+      const q = hub.state.questions.find((x) => x.id === body.questionId)
+      const answer = typeof body.answer === 'string' ? body.answer.trim().slice(0, 300) : ''
+      if (!q) throw new Error('That question is no longer open.')
+      if (!answer) throw new Error('Type an answer first.')
+      const by = hub.config.staff.find((s) => s.role === 'kitchen')?.id ?? 'k_pass'
+      hub.ingest({ type: 'dish.answered', source: 'kitchen', payload: { questionId: q.id, answer, by } })
+      if (body.save === true && q.menuItemId)
+        hub.updateConfig({ menu: hub.config.menu.map((m) => (m.id === q.menuItemId ? { ...m, facts: [...(m.facts ?? []), { q: q.text, a: answer, at: hub.clock.now() }].slice(-20) } : m)) })
+      return { ok: true }
+    },
+    // The menu editor: add or change one dish, or remove it.
+    '/api/menu': (body) => {
+      if (typeof body.deleteId === 'string') {
+        hub.updateConfig({ menu: hub.config.menu.filter((m) => m.id !== body.deleteId) })
+        return hub.config.menu
+      }
+      const item = cleanMenuItem(body.item, hub.config.menu)
+      if (typeof item === 'string') throw new Error(item)
+      const exists = hub.config.menu.some((m) => m.id === item.id)
+      // The editor sends the whole dish (so cleared fields clear); the POS id and the kitchen's answers stay unless sent.
+      hub.updateConfig({ menu: exists ? hub.config.menu.map((m) => (m.id === item.id ? { ...item, posItemId: m.posItemId, facts: item.facts ?? m.facts } : m)) : [...hub.config.menu, item] })
+      return hub.config.menu
     },
     // Integrations tab: show data arriving from an outside system, as a booking app would send it.
     '/api/integrations/test': () => {

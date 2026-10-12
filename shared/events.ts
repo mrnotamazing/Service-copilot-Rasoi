@@ -50,6 +50,10 @@ export type CopilotEvent =
   // The manager to one or more servers: a note to act on, acknowledged by each server
   | Base<'manager.instruction', { instructionId: string; from: string; to: string[]; text: string; tableId?: string }>
   | Base<'instruction.acked', { instructionId: string; staffId: string }>
+  // A guest's question about a dish that the menu couldn't answer: asked of the kitchen, answered, seen
+  | Base<'dish.question', { questionId: string; from: string; text: string; menuItemId?: string; tableId?: string }>
+  | Base<'dish.answered', { questionId: string; answer: string; by: string }>
+  | Base<'dish.answer_seen', { questionId: string }>
   // Peer recognition between staff (feeds the team layer of the game)
   | Base<'kudos.sent', { from: string; to: string; reason: string }>
   // Training: a scored practice reply, or the end of a practice (feeds XP, never the floor)
@@ -68,7 +72,7 @@ export const EVENT_TYPES: EventType[] = [
   'table.reset', 'table.assigned', 'server.greeted', 'item.served', 'guest.informed',
   'server.checkback', 'course.cleared', 'bill.presented', 'guest.farewelled', 'allergy.confirmed',
   'task.snoozed', 'note.sent', 'note.acked', 'kudos.sent', 'safety.resolved', 'guest.recovered', 'manager.visited',
-  'practice.scored', 'manager.instruction', 'instruction.acked',
+  'practice.scored', 'manager.instruction', 'instruction.acked', 'dish.question', 'dish.answered', 'dish.answer_seen',
 ]
 
 let counter = 0

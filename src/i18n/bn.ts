@@ -646,4 +646,10 @@ export const bn: Record<Key, string> = {
   "action.instruction": "বুঝেছি",
   "kitchen.seen": "দেখেছে",
   "kudos.r6": "দারুণ খাবার, দ্রুত আর যত্নে",
+  "chat.byGemini": "Gemini-এর মাধ্যমে AI",
+  "t.kitchen_answer": "কিচেনের উত্তর:",
+  "h.kitchen_answer": "আপনি জিজ্ঞেস করেছিলেন: {q}",
+  "action.kitchen_answer": "বুঝেছি",
+  "chat.askKitchen": "কিচেনকে জিজ্ঞেস করুন",
+  "chat.askedKitchen": "কিচেনে পাঠানো হয়েছে। উত্তর কার্ড হিসেবে আসবে, আর পরের বারের জন্য সেভ থাকবে।",
 }

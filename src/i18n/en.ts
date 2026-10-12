@@ -667,6 +667,12 @@ export const en = {
   "action.instruction": "Got it",
   "kitchen.seen": "Seen",
   "kudos.r6": "Great food, fast and careful",
+  "chat.byGemini": "AI via Gemini",
+  "t.kitchen_answer": "Kitchen answered:",
+  "h.kitchen_answer": "You asked: {q}",
+  "action.kitchen_answer": "Got it",
+  "chat.askKitchen": "Ask the kitchen",
+  "chat.askedKitchen": "Sent to the kitchen. Their answer will come to you as a card, and it’s saved for next time.",
 } as const
 
 export type Key = keyof typeof en

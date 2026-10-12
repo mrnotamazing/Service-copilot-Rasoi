@@ -31,6 +31,7 @@ const ICON: Record<TaskKind, typeof Hand> = {
   reset: Sparkles,
   kitchen_message: BellRing,
   instruction: Megaphone,
+  kitchen_answer: ChefHat,
   safety_check: ShieldAlert,
   recovery: HeartHandshake,
 }

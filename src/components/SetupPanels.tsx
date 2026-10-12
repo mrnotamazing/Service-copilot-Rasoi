@@ -1,5 +1,6 @@
 import { Plug, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { MenuEditor } from './MenuEditor.tsx'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import type { Snapshot } from '../../shared/snapshot.ts'
@@ -86,13 +87,17 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
           <CardDescription>The assistant chat and practice room, suggested lines for guests, section briefings, the private coach and the manager’s shift summary.</CardDescription>
           <CardAction>
             <Badge variant={snap.ai.provider === 'built-in' ? 'secondary' : 'default'} className="gap-1">
-              <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? 'Claude connected' : snap.ai.provider === 'ollama' ? 'Local AI connected' : dify ? 'Dify connected' : 'Built-in trainer'}
+              <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? 'Claude connected' : snap.ai.provider === 'gemini' ? 'Gemini connected' : snap.ai.provider === 'ollama' ? 'Local AI connected' : dify ? 'Dify connected' : 'Built-in trainer'}
             </Badge>
           </CardAction>
         </CardHeader>
         <CardContent className="text-sm">
           {snap.ai.provider === 'claude' ? (
             <p className="text-muted-foreground">The assistant runs on Claude: it answers in each server’s language, knows your standards and menu, and plays guests in practice. If Claude can’t be reached, the built-in trainer answers and says so.</p>
+          ) : snap.ai.provider === 'gemini' ? (
+            <p className="text-muted-foreground">
+              The assistant runs on Google <span className="text-foreground">{snap.ai.model ?? 'Gemini'}</span>: fast on any computer, in every app language, with your standards, menu and training notes sent with each question. If Gemini can’t be reached or the free limit is used up, the built-in trainer answers and says so.
+            </p>
           ) : snap.ai.provider === 'ollama' ? (
             <p className="text-muted-foreground">
               The assistant runs on <span className="text-foreground">{snap.ai.model}</span> through Ollama, free and on this computer: nothing is sent anywhere. Answers are slower than a cloud AI and weaker in some languages. If Ollama is closed, the built-in trainer answers and says so.
@@ -104,7 +109,19 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
           ) : (
             <div className="space-y-3 text-muted-foreground">
               <div>
-                <div className="font-medium text-foreground">Free, on this computer (Ollama)</div>
+                <div className="font-medium text-foreground">Recommended: free and fast (Google Gemini)</div>
+                <ol className="mt-1 list-decimal space-y-1 pl-5">
+                  <li>
+                    Go to <span className="text-foreground">aistudio.google.com</span>, sign in with a Google account and click <span className="text-foreground">Get API key → Create API key</span>.
+                  </li>
+                  <li>
+                    In the project folder, copy <code className="rounded bg-muted px-1">.env.example</code> to <code className="rounded bg-muted px-1">.env</code> and set <code className="rounded bg-muted px-1">GEMINI_API_KEY</code> to the key.
+                  </li>
+                  <li>Restart <code className="rounded bg-muted px-1">npm run dev</code>. This badge turns to “Gemini connected”. (See <code className="rounded bg-muted px-1">docs/gemini-setup.md</code>.)</li>
+                </ol>
+              </div>
+              <div>
+                <div className="font-medium text-foreground">Offline, on this computer (Ollama)</div>
                 <ol className="mt-1 list-decimal space-y-1 pl-5">
                   <li>
                     Install Ollama from <span className="text-foreground">ollama.com</span> and open it.
@@ -132,6 +149,8 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
           )}
         </CardContent>
       </Card>
+
+      <MenuEditor snap={snap} />
 
       <Card className="lg:col-span-2">
         <CardHeader>

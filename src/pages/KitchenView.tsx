@@ -1,4 +1,4 @@
-import { BellRing, Bot, Check, Flame, HandPlatter, HeartPulse, Send, ShieldAlert, Timer, UtensilsCrossed } from 'lucide-react'
+import { MessageCircleQuestion, BellRing, Bot, Check, Flame, HandPlatter, HeartPulse, Send, ShieldAlert, Timer, UtensilsCrossed } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -8,11 +8,12 @@ import { Avatar } from '../components/Avatar.tsx'
 import { AppShell, LiveClock, ShellSkeleton } from '../components/kit.tsx'
 import { TeamCard } from '../components/TeamCard.tsx'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { mmss } from '../lib/format.ts'
+import { minutesAgo, mmss } from '../lib/format.ts'
 import { act, noteId, post, useSnapshot } from '../lib/live.ts'
 import { useRolePage } from '../lib/role.ts'
 
@@ -66,6 +67,9 @@ export default function KitchenView() {
         <Count icon={<Flame className="size-4 text-primary" />} n={tickets.line.length} label="on the line" />
         <Count icon={<Timer className={cn('size-4', late ? 'text-kitchen' : 'text-muted-foreground')} />} n={late} label="running late" tone={late ? 'text-kitchen' : undefined} />
         <Count icon={<HandPlatter className="size-4 text-good" />} n={tickets.pass.length} label="waiting at the pass" />
+        {(snap.questions ?? []).some((q) => !q.answer) && (
+          <Count icon={<MessageCircleQuestion className="size-4 text-primary" />} n={(snap.questions ?? []).filter((q) => !q.answer).length} label="guest questions" tone="text-primary" />
+        )}
         <div className="ml-auto flex flex-wrap gap-1.5" role="radiogroup" aria-label="Station">
           {(['all', ...STATIONS] as const).map((s) => (
             <button
@@ -115,6 +119,7 @@ export default function KitchenView() {
         </div>
 
         <div className="min-w-0 space-y-4">
+          <Questions snap={snap} />
           <AllDay tickets={tickets.line} station={station} />
           <TeamCard snap={snap} meId={snap.config.staff.find((s) => s.role === 'kitchen')?.id ?? 'k_pass'} compact />
           <TellFloor snap={snap} />
@@ -363,5 +368,94 @@ function EightySix({ snap }: { snap: Snap }) {
         })}
       </ul>
     </section>
+  )
+}
+
+const QUICK_ANSWERS = ['Yes', 'No', 'Not spicy', 'Mild', 'Medium spicy', 'Hot', 'Can be made mild', 'Chef will come to the table']
+
+/**
+ * Guests' questions the menu notes couldn't answer, sent by servers. Answer in a tap or a line;
+ * the answer goes back to the server as a card and, if kept, joins the dish's notes for next time.
+ */
+function Questions({ snap }: { snap: Snap }) {
+  const all = snap.questions ?? []
+  const open = all.filter((q) => !q.answer)
+  const recent = all.filter((q) => q.answer).slice(0, 3)
+  if (!all.length) return null
+  const name = (id: string) => snap.config.staff.find((s) => s.id === id)?.name ?? id
+  return (
+    <section className={cn('rounded-2xl border bg-card p-4', open.length && 'border-primary/50 ring-2 ring-primary/15')} aria-label="Guest questions">
+      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <MessageCircleQuestion className="size-4 text-primary" /> Guest questions
+        {open.length > 0 && <span className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground tabular">{open.length}</span>}
+      </h2>
+      <ul className="space-y-3">
+        {open.map((q) => (
+          <QuestionRow key={q.id} q={q} snap={snap} who={name(q.from)} />
+        ))}
+        {recent.map((q) => (
+          <li key={q.id} className="rounded-lg bg-muted/60 p-2.5 text-sm opacity-75">
+            <div className="text-[11px] text-muted-foreground">
+              {name(q.from)} asked{q.tableId ? ` for ${q.tableId}` : ''}
+            </div>
+            <div>{q.text}</div>
+            <div className="mt-1 font-medium">→ {q.answer}</div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function QuestionRow({ q, snap, who }: { q: NonNullable<Snap['questions']>[number]; snap: Snap; who: string }) {
+  const [answer, setAnswer] = useState('')
+  const [save, setSave] = useState(!!q.menuItemId)
+  const [busy, setBusy] = useState(false)
+  const dish = snap.config.menu.find((m) => m.id === q.menuItemId)
+  async function send(text = answer) {
+    if (!text.trim() || busy) return
+    setBusy(true)
+    try {
+      await post('/api/kitchen/answer', { questionId: q.id, answer: text.trim(), save })
+      toast.success(save && dish ? `Answered ${who}, and saved to ${dish.name}` : `Answered ${who}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <li className="rounded-xl border border-primary/30 bg-background p-3">
+      <div className="text-[11px] text-muted-foreground">
+        {who}
+        {q.tableId ? `, ${q.tableId}` : ''}
+        {dish ? ` · ${dish.name}` : ''} · {minutesAgo(q.at, snap.now) < 1 ? 'just now' : `${minutesAgo(q.at, snap.now)} min ago`}
+      </div>
+      <p className="mt-0.5 font-medium">{q.text}</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {QUICK_ANSWERS.map((a) => (
+          <button key={a} type="button" disabled={busy} onClick={() => void send(a)} className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground">
+            {a}
+          </button>
+        ))}
+      </div>
+      <form
+        className="mt-2 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void send()
+        }}
+      >
+        <Input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Or type an answer…" aria-label={`Answer ${who}`} autoComplete="off" />
+        <Button type="submit" size="icon" aria-label="Send answer" disabled={!answer.trim() || busy}>
+          <Send />
+        </Button>
+      </form>
+      {dish && (
+        <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <Checkbox checked={save} onCheckedChange={(v) => setSave(!!v)} /> Save to {dish.name}’s notes so it’s answered at once next time
+        </label>
+      )}
+    </li>
   )
 }

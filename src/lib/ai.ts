@@ -5,6 +5,11 @@ import { getPrefs } from './prefs.ts'
 
 export type { AiAnswer }
 /** An answer still being written: shown as it arrives, without its source badge yet. */
+/** Which AI wrote an answer, in the device's language. */
+export function aiName(t: (k: 'chat.byClaude' | 'chat.byGemini' | 'chat.byOllama' | 'assist.dify' | 'assist.builtIn' | 'home.aiBuiltIn') => string, provider: AiAnswer['source'], builtIn: 'assist.builtIn' | 'home.aiBuiltIn' = 'assist.builtIn'): string {
+  return provider === 'claude' ? t('chat.byClaude') : provider === 'gemini' ? t('chat.byGemini') : provider === 'ollama' ? t('chat.byOllama') : provider === 'dify' ? t('assist.dify') : t(builtIn)
+}
+
 export type LiveAnswer = AiAnswer & { streaming?: boolean }
 
 /** One AI request with loading/error state. The answer streams in as the model writes it. */
