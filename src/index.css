@@ -95,6 +95,28 @@
   --primary-2: #f39158;
 }
 
+/* The introduction film is always light, even when the app is dark: the same light tokens, scoped. */
+.film {
+  color-scheme: light;
+  --background: #fbf8f0;
+  --foreground: #34251d;
+  --card: #fffdf8;
+  --card-foreground: #34251d;
+  --primary: #c4442a;
+  --primary-foreground: #fffaf2;
+  --muted: #f3ece0;
+  --muted-foreground: #7a6658;
+  --accent: #fbe6dc;
+  --accent-foreground: #8f2f17;
+  --destructive: #b42318;
+  --border: #e9dfcf;
+  --good: #23744e;
+  --warn: #94600f;
+  --kitchen: #a8690c;
+  --kitchen-mark: #a8690c;
+  --floor-mark: #d34f2f;
+}
+
 @theme inline {
   --font-sans: "Outfit Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-heading: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
