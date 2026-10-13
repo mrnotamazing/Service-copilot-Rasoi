@@ -66,15 +66,18 @@ function Pressure() {
   const { t, still } = useClock()
   return (
     <>
-      <Headline lines={['Saturday night.', 'Six tables.', 'One head.']} x={110} y={285} size={112} start={300} step={600} accent={2} width={820} />
+      {/* Each line lands on the words of the voice-over: "a Saturday night", "six tables", "one server". */}
+      <Headline lines={['Saturday night.']} x={110} y={285} size={112} start={300} width={820} />
+      <Headline lines={['Six tables.']} x={110} y={285 + 117} size={112} start={6700} width={820} />
+      <Headline lines={['One head.']} x={110} y={285 + 234} size={112} start={9700} accent={0} width={820} />
       {NEEDS.map((x, i) => {
         const col = i % 3
         const row = Math.floor(i / 3)
         const cx = 960 + col * 215
         const cy = 250 + row * 270
-        const ring = still || t < 3600 ? 0 : ((t - 3600 + i * 260) % 1500) / 1500
+        const ring = still || t < 7600 ? 0 : ((t - 7600 + i * 260) % 1500) / 1500
         return (
-          <Reveal key={x.n} at={900 + i * 330} style={{ left: cx - 100, top: cy, width: 200 }}>
+          <Reveal key={x.n} at={6900 + i * 330} style={{ left: cx - 100, top: cy, width: 200 }}>
             <div className="relative mx-auto grid place-items-center rounded-full" style={{ width: 130, height: 130, background: 'var(--card)', border: '3px solid var(--border)', boxShadow: '0 16px 30px -20px color-mix(in oklab, var(--chocolate) 50%, transparent)' }}>
               {x.tone === 'primary' && ring > 0 && <span className="absolute inset-0 rounded-full" style={{ border: '3px solid var(--primary)', opacity: 1 - ring, transform: `scale(${1 + ring * 0.45})` }} />}
               <span className="font-display font-semibold" style={{ fontSize: 46, color: 'var(--chocolate)' }}>
@@ -610,14 +613,14 @@ export interface Scene {
 }
 
 export const SCENES: Scene[] = [
-  { id: 'open', ms: 5500, caption: 'TableMate: the right service, at the right time. The AI copilot for fine-dining servers.', render: () => <Open /> },
-  { id: 'pressure', ms: 6500, caption: 'Saturday night. Six tables. One head.', render: () => <Pressure /> },
-  { id: 'slip', ms: 7000, caption: 'When service slips, the server takes the blame, even when the delay was never hers.', render: () => <Slip /> },
-  { id: 'next3', ms: 9000, caption: 'TableMate shows each server their next three moves, in the order guests need them, each with the reason why. Suggestions, never orders.', render: () => <NextThree /> },
-  { id: 'safety', ms: 8000, caption: 'Safe before fast: a nut allergy and a dish with nuts are flagged the moment the order is fired, and the kitchen is told.', render: () => <Safety /> },
-  { id: 'fair', ms: 8000, caption: 'Delays go to whoever controlled the step. Every table leaves a receipt, so a kitchen delay is never a server’s.', render: () => <Fair /> },
-  { id: 'manager', ms: 9000, caption: 'Managers see the floor, not a leaderboard, and can hand a table to a colleague who speaks the guests’ language.', render: () => <Manager /> },
-  { id: 'practice', ms: 8000, caption: 'Servers practise hard moments privately, with an honest score and an ideal reply.', render: () => <Practice /> },
-  { id: 'everyone', ms: 6500, caption: 'Made for every server: six languages, read-aloud, large text, colour-safe, and alerts that do not need sound.', render: () => <Everyone /> },
-  { id: 'close', ms: 7000, caption: 'Quick. Correct. Together. TableMate.', render: () => <Close /> },
+  { id: 'open', ms: 5300, caption: 'TableMate: the right service, at the right time. The AI copilot for fine-dining servers.', render: () => <Open /> },
+  { id: 'pressure', ms: 12900, caption: 'Saturday night. Six tables. One head.', render: () => <Pressure /> },
+  { id: 'slip', ms: 6400, caption: 'When service slips, the server takes the blame, even when the delay was never hers.', render: () => <Slip /> },
+  { id: 'next3', ms: 9900, caption: 'TableMate shows each server their next three moves, in the order guests need them, each with the reason why. Suggestions, never orders.', render: () => <NextThree /> },
+  { id: 'safety', ms: 7650, caption: 'Safe before fast: a nut allergy and a dish with nuts are flagged the moment the order is fired, and the kitchen is told.', render: () => <Safety /> },
+  { id: 'fair', ms: 8800, caption: 'Delays go to whoever controlled the step. Every table leaves a receipt, so a kitchen delay is never a server’s.', render: () => <Fair /> },
+  { id: 'manager', ms: 8650, caption: 'Managers see the floor, not a leaderboard, and can hand a table to a colleague who speaks the guests’ language.', render: () => <Manager /> },
+  { id: 'practice', ms: 9200, caption: 'Servers practise hard moments privately, with an honest score and an ideal reply.', render: () => <Practice /> },
+  { id: 'everyone', ms: 8000, caption: 'Made for every server: six languages, read-aloud, large text, colour-safe, and alerts that do not need sound.', render: () => <Everyone /> },
+  { id: 'close', ms: 9800, caption: 'Quick. Correct. Together. TableMate.', render: () => <Close /> },
 ]

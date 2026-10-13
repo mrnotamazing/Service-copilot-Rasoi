@@ -1,6 +1,7 @@
 # A soft, warm bed: slow pad chords, a gentle marimba-like arpeggio, a deep sub note. 76 s, 84 bpm.
 import numpy as np, soundfile as sf
-SR=48000; DUR=76.0; N=int(SR*DUR)
+import sys
+SR=48000; DUR=float(sys.argv[2]) if len(sys.argv)>2 else 90.0; N=int(SR*DUR)
 t=np.arange(N)/SR
 beat=60/84; bar=beat*4
 def hz(n): return 440*2**((n-69)/12)

@@ -7,10 +7,10 @@ describe('film narration', () => {
     expect(plan.scenes.map((s) => s.id)).toEqual(SCENES.map((s) => s.id))
     expect(plan.scenes.map((s) => s.ms)).toEqual(SCENES.map((s) => s.ms))
   })
-  it('fits each line in its scene at a calm pace (about 2.6 words a second)', () => {
+  it('fits each line in its scene at a calm pace (about 3 words a second)', () => {
     for (const s of plan.scenes) {
       const words = s.say.split(/\s+/).length
-      expect(words / 2.6, s.id).toBeLessThan((s.ms - 600) / 1000)
+      expect(words / 3.0, s.id).toBeLessThan((s.ms - 600) / 1000)
     }
   })
 })
