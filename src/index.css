@@ -21,7 +21,7 @@
   --card-foreground: #34251d;
   --popover: #fffdf8;
   --popover-foreground: #34251d;
-  --primary: #c4442a; /* brand tomato, deepened a touch so button text passes 4.5:1 */
+  --primary: #b83f26; /* brand tomato, deepened a touch so button text passes 4.5:1 */
   --primary-foreground: #fffaf2;
   --secondary: #f3ece0;
   --secondary-foreground: #34251d;
@@ -32,10 +32,10 @@
   --destructive: #b42318;
   --border: #e9dfcf;
   --input: #e2d6c3;
-  --ring: #c4442a;
+  --ring: #b83f26;
   --good: #23744e;
-  --warn: #94600f;
-  --kitchen: #a8690c;
+  --warn: #86560b;
+  --kitchen: #8a590c;
   --floor-mark: #d34f2f;
   --kitchen-mark: #a8690c;
   --chart-1: #d34f2f;
@@ -45,12 +45,12 @@
   --chart-5: #7a6658;
   --sidebar: #f6f0e5;
   --sidebar-foreground: #34251d;
-  --sidebar-primary: #c4442a;
+  --sidebar-primary: #b83f26;
   --sidebar-primary-foreground: #fffaf2;
   --sidebar-accent: #fbe6dc;
   --sidebar-accent-foreground: #8f2f17;
   --sidebar-border: #e9dfcf;
-  --sidebar-ring: #c4442a;
+  --sidebar-ring: #b83f26;
   --hero: #34251d;
   --hero-foreground: #fbf3e8;
   --primary-2: #ec7a3a;
@@ -102,7 +102,7 @@
   --foreground: #34251d;
   --card: #fffdf8;
   --card-foreground: #34251d;
-  --primary: #c4442a;
+  --primary: #b83f26;
   --primary-foreground: #fffaf2;
   --muted: #f3ece0;
   --muted-foreground: #7a6658;
@@ -111,8 +111,8 @@
   --destructive: #b42318;
   --border: #e9dfcf;
   --good: #23744e;
-  --warn: #94600f;
-  --kitchen: #a8690c;
+  --warn: #86560b;
+  --kitchen: #8a590c;
   --kitchen-mark: #a8690c;
   --floor-mark: #d34f2f;
 }

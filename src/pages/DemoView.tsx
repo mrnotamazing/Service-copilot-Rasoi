@@ -360,7 +360,7 @@ function Feed({ feed }: { feed: FeedItem[] }) {
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">Nothing yet. Start the service or stage a moment, and every step appears here in plain words.</p>
       ) : (
-        <ol className="mt-3 max-h-[420px] space-y-0.5 overflow-y-auto pr-1" aria-live="polite">
+        <ol tabIndex={0} aria-label="Service log" className="mt-3 max-h-[420px] space-y-0.5 overflow-y-auto pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-live="polite">
           {items.map((f) => {
             const Icon = FEED_ICON[f.kind]
             return (

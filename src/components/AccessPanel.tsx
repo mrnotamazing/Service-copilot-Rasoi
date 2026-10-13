@@ -43,12 +43,11 @@ export function AccessButton({ className, variant = 'pill' }: { className?: stri
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label={t('acc.open')}
           title={t('acc.open')}
           className={cn('group inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-background pl-2.5 pr-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent', className)}
         >
           <Settings2 className="size-4 text-primary transition-transform duration-300 group-hover:rotate-45" aria-hidden />
-          <span className="hidden sm:inline">{t('acc.settings')}</span>
+          <span className="max-sm:sr-only">{t('acc.settings')}</span>{' '}
           <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[11px] font-semibold leading-none">{short}</span>
         </button>
       )}

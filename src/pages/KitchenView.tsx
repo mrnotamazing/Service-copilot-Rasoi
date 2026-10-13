@@ -92,7 +92,7 @@ export default function KitchenView() {
               className={cn('min-h-9 rounded-full border px-3 text-sm capitalize transition-colors', station === s ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground')}
             >
               {s === 'all' ? 'All stations' : s}
-              {s !== 'all' && stationCount(s) > 0 && <span className="ml-1 tabular opacity-75">{stationCount(s)}</span>}
+              {s !== 'all' && stationCount(s) > 0 && <span className="ml-1 tabular">{stationCount(s)}</span>}
             </button>
           ))}
         </div>
@@ -351,7 +351,7 @@ function TellFloor({ snap }: { snap: Snap }) {
           </SelectContent>
         </Select>
         <div className="flex gap-2">
-          <Input id="floor-note" name="floor-note" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. mains 5 min, grill backed up…" />
+          <Input id="floor-note" name="floor-note" aria-label="Note to the floor" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. mains 5 min, grill backed up…" />
           <Button type="submit" size="icon" aria-label="Send to floor" disabled={!text.trim()}>
             <Send />
           </Button>
@@ -407,7 +407,7 @@ function Questions({ snap }: { snap: Snap }) {
           <QuestionRow key={q.id} q={q} snap={snap} who={name(q.from)} />
         ))}
         {recent.map((q) => (
-          <li key={q.id} className="rounded-lg bg-muted/60 p-2.5 text-sm opacity-75">
+          <li key={q.id} className="rounded-lg bg-muted/60 p-2.5 text-sm">
             <div className="text-[11px] text-muted-foreground">
               {name(q.from)} asked{q.tableId ? ` for ${q.tableId}` : ''}
             </div>

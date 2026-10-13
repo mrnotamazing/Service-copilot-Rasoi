@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { usePrefs } from '../lib/prefs.ts'
+import { scrollToId, skipToMain } from '../lib/scroll.ts'
 import { useRolePage } from '../lib/role.ts'
 
 // ---------------------------------------------------------------------------
@@ -27,7 +28,7 @@ const LINKS = [
 function Header() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/75">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
+      <a href="#main" onClick={skipToMain} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
         Skip to main content
       </a>
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 md:gap-6 md:px-6">
@@ -37,7 +38,7 @@ function Header() {
         </Link>
         <nav aria-label="On this page" className="hidden items-center gap-1 md:flex">
           {LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="inline-flex h-9 items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground">
+            <a key={l.href} href={l.href} onClick={(e) => scrollToId(e, l.href.slice(1))} className="inline-flex h-9 items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground">
               {l.label}
             </a>
           ))}
@@ -282,7 +283,7 @@ function OnTrackPicture() {
           </div>
           <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-muted px-3.5 py-2.5 text-sm">
             <span className="font-medium">Satay skewers</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-0.5 text-xs font-medium text-primary">
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
               <ShieldCheck className="size-3.5" aria-hidden /> nut allergy
             </span>
           </div>
@@ -332,7 +333,7 @@ function FairPicture() {
 
 function FloorPicture() {
   const tbl = (n: string, extra?: ReactNode, tone?: 'move') => (
-    <span className={cn('relative grid size-12 place-items-center rounded-full border-[3px] bg-card font-display text-sm', tone === 'move' ? 'border-primary' : 'border-border')}>
+    <span key={n} className={cn('relative grid size-12 place-items-center rounded-full border-[3px] bg-card font-display text-sm', tone === 'move' ? 'border-primary' : 'border-border')}>
       {n}
       {extra}
     </span>
@@ -460,7 +461,7 @@ function Product() {
           <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
             <TabsList className="h-auto w-max gap-1 rounded-full bg-background p-1.5 ring-1 ring-border">
               {GROUPS.map((g) => (
-                <TabsTrigger key={g.id} value={g.id} className="h-9 flex-none rounded-full px-5 text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
+                <TabsTrigger key={g.id} value={g.id} className="h-9 flex-none rounded-full px-5 text-sm text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
                   {g.tab}
                 </TabsTrigger>
               ))}

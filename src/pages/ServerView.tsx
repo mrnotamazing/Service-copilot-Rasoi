@@ -97,7 +97,7 @@ export default function ServerView() {
     </>
   )
 
-  const liveDot = <span className={cn('absolute right-1 top-1 size-1.5 rounded-full', connected ? 'bg-good' : 'bg-warn pulse-soft')} aria-label={connected ? t('hdr.live') : t('hdr.reconnecting')} />
+  const liveDot = <span className={cn('absolute right-1 top-1 size-1.5 rounded-full', connected ? 'bg-good' : 'bg-warn pulse-soft')} role="img" aria-label={connected ? t('hdr.live') : t('hdr.reconnecting')} />
 
   if (tablet)
     return (
@@ -115,7 +115,7 @@ export default function ServerView() {
                 type="button"
                 onClick={() => setTab(id)}
                 aria-current={active ? 'page' : undefined}
-                className={cn('relative flex w-16 flex-col items-center gap-1 rounded-2xl py-2.5 text-[11px] font-medium transition-colors', active ? 'text-primary' : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground')}
+                className={cn('relative flex w-16 flex-col items-center gap-1 rounded-2xl py-2.5 text-[11px] font-medium transition-colors', active ? 'text-accent-foreground' : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground')}
               >
                 {active && <motion.span layoutId="rail-pill" className="absolute inset-0 rounded-2xl bg-primary/12" transition={{ type: 'spring', stiffness: 500, damping: 35 }} />}
                 <Icon className="relative size-6" />
@@ -134,7 +134,7 @@ export default function ServerView() {
 
         <div className="flex min-h-0 min-w-0 flex-col">
           {/* Top bar: me, my rank and progress, my streak, the team goal */}
-          <header className="flex items-center gap-4 border-b bg-background/90 px-6 py-3 backdrop-blur">
+          <section aria-label="Your progress" className="flex items-center gap-4 border-b bg-background/90 px-6 py-3 backdrop-blur">
             {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} size={48} />}
             <div className="min-w-0">
               <div className="flex items-center gap-1 text-lg font-semibold leading-tight">
@@ -162,9 +162,10 @@ export default function ServerView() {
             <Link to="?device=phone" className="hidden text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline xl:inline">
               {t('hdr.phoneView')}
             </Link>
-          </header>
+          </section>
 
           <main id="main" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <h1 className="sr-only">{me?.name ?? 'TableMate'}</h1>
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }} className="h-full p-6">
                 {tab === 'home' && (
@@ -234,7 +235,7 @@ export default function ServerView() {
       <div className="h-full md:h-auto" style={zoom ? { zoom } : undefined}>
       <div className="relative mx-auto flex h-full w-full flex-col overflow-hidden bg-background md:h-[864px] md:w-[410px] md:rounded-[3rem] md:border-[10px] md:border-foreground/85 md:shadow-2xl">
         {/* Top bar: who I am, my rank, my streak */}
-        <header className="z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-2.5 backdrop-blur">
+        <section aria-label="Your progress" className="z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-2.5 backdrop-blur">
           {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} />}
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1 font-semibold leading-tight">
@@ -249,9 +250,10 @@ export default function ServerView() {
             <Sparkles />
             {liveDot}
           </Button>
-        </header>
+        </section>
 
         <main id="main" className="flex-1 overflow-y-auto overscroll-contain">
+          <h1 className="sr-only">{me?.name ?? 'TableMate'}</h1>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div key={tab} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.15 }} className="px-4 pb-6 pt-4">
               {tab === 'home' && <FloorTab snap={snap} staffId={staffId} onKudos={() => setTab('profile')} />}
@@ -720,7 +722,7 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
 
   return (
     <div className={cn('flex flex-col', className)}>
-      <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+      <ul tabIndex={0} aria-label="Kitchen messages" className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {thread.length === 0 && (
           <li className="flex h-full flex-col items-center justify-center gap-2 px-6 py-8 text-center text-sm text-muted-foreground">
             <MessageSquareText className="size-8 text-primary/40" />
@@ -733,9 +735,9 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
             <li key={n.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
               <div className={cn('max-w-[80%] rounded-2xl px-3 py-2 text-sm', mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary', n.text.startsWith('ALLERGY') && 'ring-2 ring-warn')}>
                 {n.label && <span className="block text-xs text-muted-foreground">{n.label}</span>}
-                {n.tableId && <span className={cn('mr-1 text-xs font-semibold', mine ? 'opacity-80' : 'text-muted-foreground')}>{n.tableId}</span>}
+                {n.tableId && <span className={cn('mr-1 text-xs font-semibold', mine ? '' : 'text-muted-foreground')}>{n.tableId}</span>}
                 {n.text}
-                <div className={cn('mt-0.5 text-right text-[10px] tabular', mine ? 'opacity-70' : 'text-muted-foreground')}>
+                <div className={cn('mt-0.5 text-right text-[10px] tabular', mine ? '' : 'text-muted-foreground')}>
                   {ago(snap.now, n.at)}
                   {mine && n.ackAt ? ` · ${tr('kitchen.seen')}` : ''}
                 </div>

@@ -10,6 +10,7 @@ import { STATUS_LABEL, STATUS_PROGRESS, clock, useWallClock } from '../lib/forma
 import { cn } from '@/lib/utils'
 import { useT, type Key } from '../i18n/index.ts'
 import { AccessButton } from './AccessPanel.tsx'
+import { skipToMain } from '../lib/scroll.ts'
 
 export function Brand() {
   return (
@@ -25,7 +26,7 @@ export function LiveClock({ ok }: { now?: number; ok: boolean }) {
   const now = useWallClock()
   return (
     <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs tabular text-muted-foreground">
-      <span className={cn('size-1.5 rounded-full', ok ? 'live-ring bg-good' : 'bg-warn pulse-soft')} aria-label={ok ? 'Live' : 'Reconnecting'} />
+      <span className={cn('size-1.5 rounded-full', ok ? 'live-ring bg-good' : 'bg-warn pulse-soft')} role="img" aria-label={ok ? 'Live' : 'Reconnecting'} />
       {clock(now)} IST
     </span>
   )
@@ -136,7 +137,7 @@ export function TopNav() {
   const current = SECTIONS.find((x) => x.match(pathname))
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/75">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
+      <a href="#main" onClick={skipToMain} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
         Skip to main content
       </a>
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 md:gap-6 md:px-6">

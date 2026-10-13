@@ -107,7 +107,7 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
             ) : (
               <ul className="space-y-2">
                 {inbox.slice(0, compact ? 4 : 5).map((n) => (
-                  <li key={n.id} className={cn('flex items-start gap-3 rounded-xl border p-3 text-sm', n.seen && 'opacity-60', !n.seen && n.urgent && 'border-warn/50 bg-warn/10')}>
+                  <li key={n.id} className={cn('flex items-start gap-3 rounded-xl border p-3 text-sm', n.seen && 'border-dashed bg-muted/40', !n.seen && n.urgent && 'border-warn/50 bg-warn/10')}>
                     <div className="min-w-0 flex-1">
                       <p className={cn(n.urgent && 'font-medium text-warn')}>{n.text}</p>
                       <p className="mt-1 text-xs text-muted-foreground">

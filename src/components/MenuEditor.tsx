@@ -25,7 +25,7 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 function Spice({ level }: { level?: MenuItem['spice'] }) {
   if (level === undefined) return <span className="text-xs text-warn">Spice not recorded</span>
   return (
-    <span className="inline-flex items-center gap-0.5" title={SPICE_WORDS[level]} aria-label={`Spice: ${SPICE_WORDS[level]}`}>
+    <span className="inline-flex items-center gap-0.5" title={SPICE_WORDS[level]} role="img" aria-label={`Spice: ${SPICE_WORDS[level]}`}>
       {[1, 2, 3].map((i) => (
         <Flame key={i} className={cn('size-3.5', i <= level ? 'text-primary' : 'text-muted-foreground/30')} aria-hidden />
       ))}

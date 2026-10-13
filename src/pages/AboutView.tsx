@@ -80,6 +80,7 @@ export default function AboutView() {
           </div>
 
           <div className="relative min-w-0">
+            <h2 className="sr-only">What a server sees</h2>
             <div className="mx-auto max-w-[400px] rounded-[2rem] border bg-secondary/50 p-3 shadow-sm">
               <div className="flex items-center justify-between px-3 pb-3 pt-1 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">Aisha, section A</span>
@@ -126,7 +127,7 @@ export default function AboutView() {
               </li>
             ))}
           </ol>
-          <div className="mt-8 overflow-x-auto rounded-2xl border">
+          <div tabIndex={0} role="region" aria-label="How POS events become cards" className="mt-8 overflow-x-auto rounded-2xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="bg-secondary/60 text-muted-foreground">
                 <tr>

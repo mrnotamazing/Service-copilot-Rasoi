@@ -174,23 +174,24 @@ export function FloorPlan({ snap, tables, tasks, picked, onPick, compact, mini }
             table.party?.occasion ? <CakeSlice key="o" className="size-3.5 text-primary" /> : null,
             table.party?.vip ? <Star key="v" className="size-3.5 text-primary" /> : null,
           ].filter(Boolean)
-          const label = [table.name, t.any(`status.${table.status}`), table.party?.size ? t('party.of', { n: table.party.size }) : '', open ? t('table.tasks', { n: open }) : ''].filter(Boolean).join(', ')
+          const extra = [table.party?.size ? t('party.of', { n: table.party.size }) : '', open ? t('table.tasks', { n: open }) : ''].filter(Boolean).join(', ')
           return (
             <button
               key={table.id}
               type="button"
               onClick={() => onPick(table.id)}
               aria-pressed={picked === table.id}
-              aria-label={label}
               className="group absolute rounded-2xl outline-none transition-transform focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.98]"
               style={{ left: pct(cx - w / 2 - reach, W), top: pct(cy - h / 2 - reachY, H), width: pct(w + 2 * reach, W), height: pct(h + 2 * reachY, H) }}
             >
               <span className="absolute inset-0 grid place-items-center">
                 <span className={cn('font-display text-base leading-none', free && 'text-muted-foreground')}>{table.name}</span>
+                {' '}
               </span>
               {/* Status under the table, clear of chairs */}
               <span className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2 whitespace-nowrap text-[10px] leading-tight text-muted-foreground">
                 <span className="font-medium text-foreground/80">{t.any(`status.${table.status}`)}</span> {minutes ? t('tile.min', { n: minutes }) : t('tile.seats', { n: table.seats })}
+                <span className="sr-only">{`, ${extra}`}</span>
                 {table.handover && table.serverId !== snap.config.sections[table.section] && (
                   <span className="mt-0.5 block font-medium text-primary">{t('floor.with', { name: staffName(table.serverId) })}</span>
                 )}

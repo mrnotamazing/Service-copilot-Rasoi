@@ -286,7 +286,7 @@ function Receipt({ v, server, onOpen }: { v: VisitRecord; server: string; onOpen
   const pos = (t: number) => ((t - v.seatedAt) / span) * 100
   const lapses = v.segments.filter((s) => s.lapse)
   return (
-    <button type="button" onClick={onOpen} className="block w-full rounded-xl border bg-background/50 p-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`What happened at ${v.tableName}, ${clock(v.seatedAt)}`}>
+    <button type="button" onClick={onOpen} className="block w-full rounded-xl border bg-background/50 p-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
         <span>
           <span className="font-semibold">{v.tableName}</span> <span className="text-muted-foreground">{v.partySize} guests, served by {server}</span>

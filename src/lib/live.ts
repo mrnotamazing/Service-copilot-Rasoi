@@ -80,7 +80,9 @@ export function useSnapshot(role: Role, staffId?: string): { snap: Snapshot | nu
     return () => {
       closed = true
       clearTimeout(timer)
-      ws?.close()
+      // Closing a socket that is still connecting makes the browser log a warning; let it open, then close.
+      if (ws?.readyState === WebSocket.CONNECTING) ws.addEventListener('open', () => ws?.close(), { once: true })
+      else ws?.close()
     }
   }, [role, staffId])
 
