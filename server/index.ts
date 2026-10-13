@@ -22,10 +22,12 @@ const sim = new Simulator(hub)
 // The assistant's language model, first available wins: Claude (Anthropic key), Google Gemini
 // (GEMINI_API_KEY, free tier, fast), a free local model through Ollama when it's running (set
 // OLLAMA=off to skip), Dify, then the built-in trainer.
-const useClaude = !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
+// AI_PROVIDER=ollama uses the free local model even when a cloud key is also set.
+const localOnly = process.env.AI_PROVIDER === 'ollama'
+const useClaude = !localOnly && !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
 const claude = useClaude ? await import('./claude.ts') : null
 const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
-const geminiMod = !useClaude && geminiKey ? await import('./gemini.ts') : null
+const geminiMod = !useClaude && !localOnly && geminiKey ? await import('./gemini.ts') : null
 const gemini = geminiMod?.createGemini({ key: geminiKey!, model: process.env.GEMINI_MODEL })
 const ollamaMod = !useClaude && !gemini && process.env.OLLAMA !== 'off' ? await import('./ollama.ts') : null
 const ollama = ollamaMod?.createOllama({ host: process.env.OLLAMA_HOST, model: process.env.OLLAMA_MODEL })
