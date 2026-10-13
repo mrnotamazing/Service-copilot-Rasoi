@@ -17,6 +17,8 @@ export const haptic = {
 function vibrate(pattern: number | number[], win = false) {
   const p = getPrefs()
   if (!p.haptics || (win && p.quietCelebrations)) return
+  // Browsers refuse to buzz before the person has touched the page; skip quietly instead of logging an error.
+  if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return
   try {
     navigator.vibrate?.(pattern)
   } catch {
