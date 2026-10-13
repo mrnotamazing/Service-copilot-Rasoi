@@ -1,609 +1,832 @@
-// The introduction to TableMate as a short animated film, made with Motion. It tells the problem
-// first (a server, six tables, a rush, the blame, the retraining that doesn't help) and then what
-// TableMate does about it, in the same order as the project's problem statement.
+// The introduction to TableMate as a hand-drawn explainer film: wobbly pen lines that draw
+// themselves, doodle people, and handwriting. It tells the problem first (a server, six tables, a
+// rush, the blame, the retraining that doesn't help) and then what TableMate does about it, in the
+// same order as the project's problem statement.
 //
-// Every scene is drawn from a clock (`t`, in milliseconds since the scene began), so Pause freezes the
-// story, any scene can be jumped to, and the same code is what gets recorded as the video.
+// Every scene is drawn from a clock (`t`, in milliseconds since the scene began), so Pause freezes
+// the picture, any scene can be jumped to, and the same page is what gets recorded as the video.
+// With Animations off in Settings, scenes show their finished drawings instead of drawing them.
 
-import { AnimatePresence, motion } from 'motion/react'
-import {
-  ArrowRight,
-  Bell,
-  BookOpen,
-  Check,
-  ChefHat,
-  Eye,
-  HandHelping,
-  Languages,
-  Maximize2,
-  MessageSquareText,
-  Pause,
-  Play,
-  RotateCcw,
-  ShieldAlert,
-  SkipBack,
-  SkipForward,
-  Star,
-  Volume2,
-  Vibrate,
-  X,
-} from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { AnimatePresence, motion, useAnimationFrame, useReducedMotion } from 'motion/react'
+import { BookOpen, Maximize2, Pause, Play, RotateCcw, SkipBack, SkipForward } from 'lucide-react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Mascot, Wordmark } from '../brand/marks.tsx'
+import { Mascot } from '../brand/marks.tsx'
 import { TopNav } from '../components/kit.tsx'
+import { usePrefs } from '../lib/prefs.ts'
 import { useRolePage } from '../lib/role.ts'
-
-type Beat = (ms: number) => boolean
+import {
+  arrow,
+  bubble,
+  Canvas,
+  clamp01,
+  GREEN,
+  INK,
+  Ink,
+  inOutCubic,
+  OCHRE,
+  outExpo,
+  PAPER,
+  person,
+  plate,
+  RED,
+  sh,
+  Sketch,
+  star,
+  star5,
+  StageProvider,
+  sweat,
+  table,
+  underline,
+  useAt,
+  useProgress,
+  useStage,
+  type Shape,
+} from './intro/sketch.tsx'
 
 interface Scene {
   id: string
-  /** How long it plays, in ms. */
   ms: number
-  /** The line read as a caption under the picture. */
+  /** Said aloud by the pictures; kept as text for screen readers. */
   caption: string
-  render: (t: number, at: Beat) => ReactNode
+  render: () => ReactNode
 }
 
 // ---------------------------------------------------------------------------
-// Small pieces
+// Pieces shared by scenes
 
-const ease = [0.22, 0.8, 0.2, 1] as const
+const AISHA = person({ kind: 'server', mood: 'smile', seed: 3 })
+const AISHA_WORRY = person({ kind: 'server', mood: 'worry', seed: 3 })
+const AISHA_HAPPY = person({ kind: 'server', mood: 'happy', seed: 3, arms: 'wave' })
+const AISHA_JUGGLE = person({ kind: 'server', mood: 'worry', seed: 4, arms: 'up' })
+const GUEST_ANGRY = person({ kind: 'guest', mood: 'angry', arms: 'point', seed: 9 })
+const CHEF = person({ kind: 'chef', mood: 'flat', seed: 21 })
+const MANAGER = person({ kind: 'manager', mood: 'smile', seed: 33 })
+const PRIYA = person({ kind: 'server', mood: 'smile', seed: 41 })
 
-/** A line of text that rises into place when its moment comes. */
-function Rise({ show, children, className, delay = 0 }: { show: boolean; children: ReactNode; className?: string; delay?: number }) {
+const tick = (x: number, y: number, color = GREEN): Shape[] => [sh.path(`M ${x - 22} ${y} L ${x - 6} ${y + 20} L ${x + 26} ${y - 26}`, { stroke: color, strokeWidth: 8, seed: x + y })]
+const cross = (x: number, y: number, color = RED): Shape[] => [sh.line(x - 22, y - 22, x + 22, y + 22, { stroke: color, strokeWidth: 8 }), sh.line(x + 22, y - 22, x - 22, y + 22, { stroke: color, strokeWidth: 8 })]
+
+/** A gentle bob, so drawn people feel alive without moving much. */
+function useBob(amount = 5, speed = 0.004, phase = 0) {
+  const { t } = useStageTime()
+  return Math.sin(t * speed + phase) * amount
+}
+function useStageTime() {
+  const s = useStage()
+  return s.still ? { ...s, t: 0 } : s
+}
+
+/** Text that types itself word by word (for the long question). */
+function Typed({ text, x, y, size, start, dur, maxWidth, color = INK }: { text: string; x: number; y: number; size: number; start: number; dur: number; maxWidth: number; color?: string }) {
+  const prog = useProgress()
+  const p = prog(start, dur)
+  if (p <= 0) return null
+  const n = Math.ceil(p * text.length)
   return (
-    <motion.div initial={false} animate={{ opacity: show ? 1 : 0, y: show ? 0 : 18 }} transition={{ duration: 0.6, ease, delay }} className={className}>
-      {children}
-    </motion.div>
+    <div className="pointer-events-none absolute whitespace-pre-wrap" style={{ left: `${(x / 1600) * 100}%`, top: `${(y / 900) * 100}%`, width: `${(maxWidth / 1600) * 100}%`, fontSize: `${size / 16}cqw`, color, fontFamily: '"Patrick Hand", cursive', lineHeight: 1.22, transform: 'translateY(-50%)' }}>
+      {text.slice(0, n)}
+      {p < 1 && <span style={{ color: RED }}>|</span>}
+    </div>
   )
 }
 
-/** Big words that arrive one after another. */
-function Words({ text, from = 0, step = 160, t, className }: { text: string; from?: number; step?: number; t: number; className?: string }) {
+// ---------------------------------------------------------------------------
+// 1. Title
+
+const SPARKS = [star(20, 1), star(14, 2), star(24, 3), star(12, 4)]
+
+function Title() {
+  const prog = useProgress()
+  const at = useAt()
+  const run = outExpo(prog(0, 1500))
   return (
-    <span className={className}>
-      {text.split(' ').map((w, i) => (
-        <motion.span key={i} initial={false} animate={{ opacity: t >= from + i * step ? 1 : 0, y: t >= from + i * step ? 0 : 14 }} transition={{ duration: 0.5, ease }} className="mr-[0.28em] inline-block">
-          {w}
-        </motion.span>
+    <>
+      <div className="absolute" style={{ left: '50%', top: '6%', width: '22cqw', transform: `translateX(calc(-50% + ${(1 - run) * -62}cqw))` }}>
+        <Mascot running={!at(1500)} className="w-full" speed={INK} />
+      </div>
+      <Canvas>
+        <Sketch shapes={SPARKS[0]} x={470} y={250} start={2400} dur={500} />
+        <Sketch shapes={SPARKS[1]} x={1180} y={210} start={2600} dur={500} />
+        <Sketch shapes={SPARKS[2]} x={1290} y={420} start={2800} dur={500} />
+        <Sketch shapes={SPARKS[3]} x={330} y={470} start={3000} dur={500} />
+        <Sketch shapes={underline(470, 668, 660, RED, 4)} start={2300} dur={900} />
+      </Canvas>
+      <Ink x={800} y={560} size={200} font="brush" align="center" start={900} dur={1300}>
+        Table<span style={{ color: RED }}>Mate</span>
+      </Ink>
+      <Ink x={800} y={730} size={54} align="center" start={3200} dur={1400}>
+        the right service. at the right time.
+      </Ink>
+      <Ink x={800} y={810} size={36} align="center" start={4400} dur={1200} color={OCHRE}>
+        an AI service copilot for fine-dining servers
+      </Ink>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 2. Meet Aisha: six tables
+
+const TABLES: { x: number; y: number; n: string; note: string; fill: string }[] = [
+  { x: 290, y: 480, n: 'T1', note: 'needs a greeting', fill: OCHRE },
+  { x: 640, y: 350, n: 'T2', note: 'ready to order?', fill: RED },
+  { x: 1000, y: 350, n: 'T3', note: 'mains are cooking', fill: OCHRE },
+  { x: 1320, y: 480, n: 'T4', note: 'wants the bill!', fill: RED },
+  { x: 1400, y: 730, n: 'T5', note: 'check-back due', fill: OCHRE },
+  { x: 200, y: 730, n: 'T6', note: 'dessert, maybe?', fill: RED },
+]
+const TABLE_SHAPES = TABLES.map((tb, i) => table(i + 1, tb.fill))
+const WEB = TABLES.map((tb, i) => [sh.line(800, 640, tb.x, tb.y + 40, { strokeLineDash: [4, 16], strokeWidth: 3, seed: i + 50 })])
+
+function MeetAisha() {
+  const { t, still } = useStageTime()
+  const at = useAt()
+  const bob = useBob(4, 0.005)
+  const worried = at(4300)
+  return (
+    <>
+      <Canvas>
+        {TABLES.map((tb, i) => (
+          <g key={tb.n}>
+            <Sketch shapes={WEB[i]} start={3400 + i * 160} dur={600} opacity={0.5} />
+            <Sketch shapes={TABLE_SHAPES[i]} x={tb.x} y={tb.y} start={1000 + i * 420} dur={700} />
+          </g>
+        ))}
+        <Sketch shapes={worried ? AISHA_WORRY : AISHA} x={800} y={870 + bob} start={300} dur={1500} />
+        {worried &&
+          [0, 1, 2].map((k) => {
+            const cyc = still ? 0.3 : ((t - 4300 + k * 450) % 1350) / 1350
+            return <Sketch key={k} shapes={sweat(k + 1)} x={720 - k * 8 + (k % 2) * 160} y={610 + cyc * 50} scale={0.55} opacity={still ? 1 : 1 - cyc} />
+          })}
+      </Canvas>
+      {TABLES.map((tb, i) => (
+        <Fragment key={tb.n}>
+          <Ink x={tb.x} y={tb.y} size={50} font="brush" align="center" start={1400 + i * 420} dur={400}>
+            {tb.n}
+          </Ink>
+          <Ink x={tb.x} y={tb.y + 104} size={34} align="center" start={1700 + i * 420} dur={700} color={tb.fill === RED ? RED : OCHRE}>
+            {tb.note}
+          </Ink>
+        </Fragment>
       ))}
-    </span>
+      <Ink x={140} y={110} size={120} font="brush" start={200} dur={1000}>
+        Meet Aisha.
+      </Ink>
+      <Ink x={150} y={205} size={42} start={1300} dur={1300} color={OCHRE}>
+        a fine-dining server. saturday, 9 pm.
+      </Ink>
+      <Ink x={1500} y={125} size={84} font="brush" align="right" start={5600} dur={1200} color={RED} rotate={-3}>
+        6 tables. 1 server.
+      </Ink>
+    </>
   )
 }
-
-/** A number that counts up to `to` between two moments. */
-function useCount(t: number, from: number, to: number, ms: number) {
-  const p = Math.min(1, Math.max(0, (t - from) / ms))
-  return Math.round((1 - Math.pow(1 - p, 3)) * to)
-}
-
 
 // ---------------------------------------------------------------------------
-// The scenes
+// 3. They know the SOPs, and still slip
 
-/** 1. Hello: the chef runs in. */
-function Hello({ t, at }: { t: number; at: Beat }) {
+const SOPS = ['greet within 2 minutes', 'check back after the food lands', 'warn about a delay', 'clear plates promptly', 'bring the bill when asked']
+const PLATES = [0, 1, 2, 3, 4].map((i) => plate(i + 7))
+const NOTEBOOK = [
+  sh.rect(110, 150, 640, 570, { fill: PAPER, fillStyle: 'solid', seed: 61 }),
+  ...[0, 1, 2, 3, 4, 5].map((i) => sh.circle(110, 200 + i * 90, 26, { fill: PAPER, fillStyle: 'solid', seed: 70 + i })),
+]
+const CRACK = [sh.line(0, 0, 18, 26, { stroke: RED, seed: 81 }), sh.line(18, 26, 6, 48, { stroke: RED, seed: 82 }), sh.line(18, 26, 44, 34, { stroke: RED, seed: 83 }), sh.line(-6, 12, -34, 18, { stroke: RED, seed: 84 })]
+
+function Slip() {
+  const { t, still } = useStageTime()
+  const at = useAt()
+  const cx = 1180
+  const cy = 380
+  const fall = 5200
+  const lost = 2 // which plate drops
+  const plates = PLATES.map((s, i) => {
+    const a = still ? (i / 5) * Math.PI * 2 : t * 0.0032 + (i / 5) * Math.PI * 2
+    let x = cx + Math.cos(a) * 210
+    let y = cy + Math.sin(a) * 88 - Math.abs(Math.sin(a)) * 30
+    let gone = false
+    if (i === lost && (still || t > fall)) {
+      const dt = still ? 99999 : t - fall
+      const ground = 770
+      const g = 0.0016
+      const fy = y + 0.5 * g * dt * dt
+      if (fy < ground) y = fy
+      else {
+        const bt = dt - Math.sqrt((2 * (ground - y)) / g) // time since first touch
+        const bounce = Math.max(0, 70 * Math.sin(Math.min(bt, 520) * 0.006)) * (bt < 520 ? 1 : 0) // one small playful bounce
+        y = ground - bounce
+        gone = bt > 520
+      }
+    }
+    return { s, x, y, gone, i }
+  })
   return (
-    <div className="absolute inset-0 grid place-items-center">
-      <div className="flex flex-col items-center">
-        <motion.div initial={{ x: '-70cqw' }} animate={{ x: 0 }} transition={{ duration: 1.6, ease }}>
-          <Mascot running={t < 1700} className="w-[22cqw]" speed="var(--hero-foreground)" />
-        </motion.div>
-        <Rise show={at(1500)} className="mt-[1cqw]">
-          <Wordmark className="text-[8.5cqw] leading-none" />
-        </Rise>
-        <Rise show={at(2400)} className="mt-[1.6cqw] text-[2.2cqw] opacity-80">
-          The right service. At the right time.
-        </Rise>
-        <Rise show={at(3600)} className="mt-[2.4cqw] rounded-full border border-hero-foreground/25 px-[1.6cqw] py-[0.5cqw] text-[1.5cqw] opacity-80">
-          An AI service copilot for fine-dining servers
-        </Rise>
-      </div>
-    </div>
+    <>
+      <Canvas>
+        <Sketch shapes={NOTEBOOK} start={200} dur={1200} />
+        {SOPS.map((_, i) => (i < 2 ? <Sketch key={i} shapes={tick(190, 345 + i * 84)} start={1700 + i * 450} dur={400} /> : <Sketch key={i} shapes={cross(190, 345 + i * 84)} start={3300 + (i - 2) * 700} dur={450} />))}
+        <Sketch shapes={AISHA_JUGGLE} x={cx} y={880} start={900} dur={1400} />
+        {plates.map((p) => (
+          <Sketch key={p.i} shapes={p.s} x={p.x} y={p.y} start={1600 + p.i * 250} dur={500} rotate={p.i === lost && p.y > 600 ? 12 : Math.sin((t + p.i * 300) * 0.004) * 6} opacity={p.gone ? 0 : 1} />
+        ))}
+        {at(fall + 1200) && <Sketch shapes={CRACK} x={cx - 90} y={750} start={fall + 1200} dur={500} />}
+      </Canvas>
+      <Ink x={140} y={105} size={90} font="brush" start={200} dur={1200}>
+        She knows the SOPs.
+      </Ink>
+      <Ink x={190} y={235} size={40} start={800} dur={800} color={OCHRE}>
+        learnt on day one
+      </Ink>
+      {SOPS.map((s, i) => (
+        <Ink key={s} x={250} y={345 + i * 84} size={42} start={1500 + i * 450} dur={800}>
+          {s}
+        </Ink>
+      ))}
+      {at(5600) && (
+        <Ink x={1060} y={850} size={74} font="brush" start={fall + 1000} dur={500} color={RED} rotate={-6}>
+          crash!
+        </Ink>
+      )}
+      <Ink x={130} y={790} size={62} font="brush" start={5800} dur={1500} color={RED}>
+        knowing was never the problem.
+      </Ink>
+      <Ink x={130} y={850} size={46} start={7000} dur={1400}>
+        holding six tables in one head is.
+      </Ink>
+    </>
   )
 }
 
-const TABLES = [
-  { n: 'T1', w: 'Needs a greeting', x: 50, y: 14, c: 'warn' },
-  { n: 'T2', w: 'Waiting to order', x: 79, y: 31, c: 'primary' },
-  { n: 'T3', w: 'Mains are cooking', x: 79, y: 69, c: 'kitchen' },
-  { n: 'T4', w: 'Wants the bill', x: 50, y: 86, c: 'warn' },
-  { n: 'T5', w: 'Check-back due', x: 21, y: 69, c: 'primary' },
-  { n: 'T6', w: 'Dessert, maybe?', x: 21, y: 31, c: 'kitchen' },
+// ---------------------------------------------------------------------------
+// 4. The food runs late, and the blame lands on her
+
+const FLAME = [sh.path('M 0 0 L 14 -46 L 28 -12 L 44 -62 L 58 -10 L 74 -44 L 88 0 Z', { fill: RED, fillStyle: 'solid', seed: 91 })]
+const POT = [sh.rect(0, 0, 120, 70, { fill: OCHRE, fillStyle: 'hachure', hachureGap: 10, seed: 92 }), sh.line(-14, 8, 0, 8, { seed: 93 }), sh.line(120, 8, 134, 8, { seed: 94 })]
+const CLOCK = [sh.circle(0, 0, 110, { fill: PAPER, fillStyle: 'solid', seed: 95 }), sh.line(0, 0, 0, -38, { seed: 96 }), sh.line(0, 0, 28, 14, { seed: 97 })]
+const PASS = [sh.rect(0, 0, 250, 40, { fill: PAPER, fillStyle: 'solid', seed: 98 }), sh.line(20, 40, 20, 150, { seed: 99 }), sh.line(230, 40, 230, 150, { seed: 100 })]
+const STAMP = [sh.rect(0, 0, 330, 120, { stroke: RED, strokeWidth: 8, seed: 101 }), sh.rect(10, 10, 310, 100, { stroke: RED, strokeWidth: 3, seed: 102 })]
+
+function Blame() {
+  const at = useAt()
+  const bob = useBob(3, 0.006)
+  return (
+    <>
+      <Canvas>
+        {/* The kitchen */}
+        <Sketch shapes={CHEF} x={210} y={870} scale={0.82} start={600} dur={1100} />
+        <Sketch shapes={POT} x={330} y={800} start={1200} dur={600} />
+        <Sketch shapes={FLAME} x={348} y={800} start={1700} dur={500} />
+        <Sketch shapes={CLOCK} x={300} y={430} scale={0.9} start={2200} dur={800} />
+        <Sketch shapes={PASS} x={470} y={650} scale={0.9} start={1400} dur={700} />
+        {/* Aisha, none the wiser */}
+        <Sketch shapes={at(4800) ? AISHA_WORRY : AISHA} x={810} y={870 + bob} start={900} dur={1200} />
+        {at(3600) && <Sketch shapes={bubble(610, 270, 380, 100, 790, 590)} start={3600} dur={900} />}
+        {/* The guest, not happy */}
+        <Sketch shapes={GUEST_ANGRY} x={1330} y={870} flip start={1100} dur={1200} />
+        {at(4200) && <Sketch shapes={bubble(1020, 150, 520, 130, 1260, 560)} start={4200} dur={1000} />}
+        {at(5200) && <Sketch shapes={arrow(1150, 700, 930, 700, { stroke: RED, strokeWidth: 7 })} start={5200} dur={700} />}
+        {at(5700) && <Sketch shapes={STAMP} x={1010} y={470} scale={0.85} rotate={-8} start={5700} dur={700} />}
+        {at(6800) && <Sketch shapes={arrow(400, 250, 330, 360, { stroke: OCHRE, strokeWidth: 5 }, -20)} start={6800} dur={500} />}
+      </Canvas>
+      <Ink x={130} y={105} size={96} font="brush" start={200} dur={1200}>
+        Then the food runs late.
+      </Ink>
+      <Ink x={300} y={432} size={36} font="brush" align="center" start={2900} dur={500} color={RED}>
+        +8 min
+      </Ink>
+      <Ink x={470} y={625} size={34} start={2100} dur={500} color={OCHRE}>
+        the pass
+      </Ink>
+      <Ink x={130} y={500} size={34} start={2600} dur={900} color={OCHRE}>
+        grill is backed up
+      </Ink>
+      <Ink x={800} y={320} size={36} align="center" start={3800} dur={900} maxWidth={340}>
+        huh? nobody told me…
+      </Ink>
+      <Ink x={1280} y={215} size={44} font="brush" align="center" start={4400} dur={1100} color={RED} maxWidth={480}>
+        WHERE IS OUR FOOD?!
+      </Ink>
+      <Ink x={1150} y={522} size={62} font="brush" align="center" start={5800} dur={500} color={RED} rotate={-8}>
+        BLAME
+      </Ink>
+      <Ink x={130} y={225} size={40} start={6800} dur={1300} color={OCHRE} maxWidth={330}>
+        the delay started way over here
+      </Ink>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 5. The retraining loop
+
+function arcPath(cx: number, cy: number, r: number, a0: number, a1: number) {
+  const p = (a: number) => [cx + r * Math.cos(a), cy + r * Math.sin(a)]
+  const [x0, y0] = p(a0)
+  const [x1, y1] = p(a1)
+  return { d: `M ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1}`, end: [x1, y1, a1] as const }
+}
+const LOOP = [0, 1, 2, 3].map((i) => {
+  const a0 = -Math.PI / 2 + i * (Math.PI / 2) + 0.28
+  const a1 = a0 + Math.PI / 2 - 0.5
+  const { d, end } = arcPath(800, 500, 230, a0, a1)
+  const [ex, ey, ea] = end
+  const hx = ea + Math.PI / 2
+  return [sh.path(d, { strokeWidth: 6, seed: 110 + i }), sh.line(ex, ey, ex - 34 * Math.cos(hx - 0.55), ey - 34 * Math.sin(hx - 0.55), { strokeWidth: 6, seed: 120 + i }), sh.line(ex, ey, ex - 34 * Math.cos(hx + 0.55), ey - 34 * Math.sin(hx + 0.55), { strokeWidth: 6, seed: 130 + i })]
+})
+const LOOP_LABELS = [
+  { x: 800, y: 215, t: 'a step slips', c: INK },
+  { x: 1180, y: 500, t: 'she gets blamed', c: RED },
+  { x: 800, y: 790, t: 'sent to retrain', c: INK },
+  { x: 410, y: 500, t: 'same rush. same slip.', c: RED },
 ]
 
-/** 2. One server, six tables. */
-function SixTables({ t, at }: { t: number; at: Beat }) {
+function Retrain() {
   return (
-    <div className="absolute inset-0 grid grid-cols-[1fr_1.1fr] items-center gap-[3cqw] px-[5cqw]">
-      <div>
-        <Rise show={at(200)} className="text-[1.8cqw] opacity-70">
-          Saturday, 9 pm
-        </Rise>
-        <h2 className="mt-[0.8cqw] font-display text-[5.6cqw] leading-[1.02]">
-          <Words t={t} from={500} text="Six tables." />
-          <br />
-          <Words t={t} from={1100} text="One server." className="text-primary-2" />
-        </h2>
-        <Rise show={at(2600)} className="mt-[1.6cqw] max-w-[34cqw] text-[1.9cqw] leading-snug opacity-80">
-          Each table is at a different step, and every step has a standard to meet.
-        </Rise>
-      </div>
-      <div className="relative mx-auto aspect-square h-[38cqw]">
-        <motion.div initial={false} animate={{ scale: at(300) ? 1 : 0.6, opacity: at(300) ? 1 : 0 }} transition={{ duration: 0.6, ease }} className="absolute left-1/2 top-1/2 grid size-[9cqw] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg">
-          <span className="text-center font-display text-[1.7cqw] leading-tight">One
-            <br />server</span>
-        </motion.div>
-        {TABLES.map((tb, i) => {
-          const on = t >= 900 + i * 380
-          return (
-            <motion.div
-              key={tb.n}
-              initial={false}
-              animate={{ opacity: on ? 1 : 0, scale: on ? 1 : 0.4 }}
-              transition={{ duration: 0.5, ease }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 text-center"
-              style={{ left: `${tb.x}%`, top: `${tb.y}%` }}
-            >
-              <div className="mx-auto grid size-[6.4cqw] place-items-center rounded-full border-[0.35cqw] bg-card font-display text-[2cqw] text-foreground" style={{ borderColor: `var(--${tb.c === 'warn' ? 'warn' : tb.c === 'kitchen' ? 'kitchen' : 'primary'})` }}>
-                {tb.n}
-              </div>
-              <div className="mt-[0.6cqw] whitespace-nowrap text-[1.3cqw] opacity-85">{tb.w}</div>
-            </motion.div>
-          )
-        })}
-      </div>
-    </div>
+    <>
+      <Canvas>
+        {LOOP.map((s, i) => (
+          <Sketch key={i} shapes={s} start={900 + i * 1000} dur={900} />
+        ))}
+      </Canvas>
+      <Ink x={130} y={105} size={96} font="brush" start={200} dur={1200}>
+        So restaurants retrain her.
+      </Ink>
+      {LOOP_LABELS.map((l, i) => (
+        <Ink key={l.t} x={l.x} y={l.y} size={46} align="center" start={800 + i * 1000} dur={900} color={l.c}>
+          {l.t}
+        </Ink>
+      ))}
+      <Ink x={800} y={505} size={64} font="brush" align="center" start={4600} dur={900} color={OCHRE} rotate={-5}>
+        again &amp; again
+      </Ink>
+      <Ink x={800} y={862} size={42} align="center" start={5200} dur={1100} color={RED}>
+        retraining fixes what she knows. the night hasn't changed.
+      </Ink>
+    </>
   )
 }
 
-const STANDARDS = [
-  { s: 'Greet within 2 minutes', ok: true },
-  { s: 'Check back after the food lands', ok: true },
-  { s: 'Warn the table about a delay', ok: false },
-  { s: 'Clear plates promptly', ok: false },
-  { s: 'Bring the bill when asked', ok: false },
+// ---------------------------------------------------------------------------
+// 6. The question
+
+const HMW =
+  'How might we help fine-dining servers keep every table on track in the middle of a rush, so the standards they already know don’t slip, they aren’t left to find out about kitchen delays from their guests, and they aren’t blamed or retrained for lapses that weren’t theirs?'
+const NOTE = [sh.rect(190, 160, 1140, 640, { fill: PAPER, fillStyle: 'solid', seed: 140 }), sh.rect(205, 175, 1110, 610, { strokeWidth: 2, seed: 141 })]
+const TAPE = [sh.rect(0, 0, 150, 46, { fill: RED, fillStyle: 'hachure', hachureGap: 8, seed: 142 })]
+
+function Question() {
+  const bob = useBob(5, 0.005)
+  return (
+    <>
+      <Canvas>
+        <Sketch shapes={NOTE} start={200} dur={1000} rotate={-0.8} x={0} y={0} />
+        <Sketch shapes={TAPE} x={600} y={140} rotate={-4} start={1100} dur={500} />
+        <Sketch shapes={AISHA_WORRY} x={1430} y={870 + bob} scale={0.78} start={1500} dur={1100} />
+        <Sketch shapes={arrow(1250, 560, 1330, 640, { stroke: RED, strokeWidth: 6 }, 20)} start={4500} dur={600} />
+      </Canvas>
+      <Ink x={260} y={240} size={44} start={900} dur={1100} color={OCHRE}>
+        the problem we set out to solve
+      </Ink>
+      <Typed text={HMW} x={265} y={520} size={54} start={1700} dur={7000} maxWidth={1020} />
+      <Ink x={1420} y={330} size={330} font="brush" align="center" start={600} dur={900} color={RED} rotate={12} opacity={0.9}>
+        ?
+      </Ink>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 7. Meet TableMate: the next three
+
+const PHONE = [
+  sh.path('M 930 90 L 1220 90 Q 1260 90 1260 130 L 1260 830 Q 1260 870 1220 870 L 930 870 Q 890 870 890 830 L 890 130 Q 890 90 930 90 Z', { fill: PAPER, fillStyle: 'solid', strokeWidth: 6, seed: 150 }),
+  sh.line(1010, 118, 1140, 118, { strokeWidth: 5, seed: 151 }),
 ]
+const CARDS = [
+  { y: 190, fill: RED, title: 'Check T2’s order before it’s cooked', sub: 'Galouti kebab has nuts (allergy)', note: 'allergy comes first', icon: '!' },
+  { y: 410, fill: OCHRE, title: 'Kitchen: grill is 7 min behind', sub: 'for the whole floor', note: 'heads-up, before they ask', icon: '~' },
+  { y: 630, fill: INK, title: 'Welcome T4', sub: 'party of 4 · birthday', note: 'nobody’s been over yet', icon: '+' },
+]
+const CARD_SHAPES = CARDS.map((c, i) => [sh.rect(920, c.y, 310, 190, { fill: PAPER, fillStyle: 'solid', seed: 160 + i }), sh.circle(970, c.y + 52, 58, { fill: c.fill, fillStyle: 'hachure', hachureGap: 7, seed: 170 + i })])
 
-/** 3. They know the standards, and still slip. */
-function Slip({ t, at }: { t: number; at: Beat }) {
+function NextThree() {
+  const prog = useProgress()
+  const run = outExpo(prog(0, 1200))
   return (
-    <div className="absolute inset-0 grid grid-cols-[1fr_1fr] items-center gap-[4cqw] px-[6cqw]">
-      <div>
-        <h2 className="font-display text-[4.6cqw] leading-[1.06]">
-          <Words t={t} from={200} text="They learnt the standards on day one." />
-        </h2>
-        <Rise show={at(5200)} className="mt-[2cqw] text-[2.3cqw] leading-snug text-primary-2">
-          Knowing was never the problem. Holding six tables in one head is.
-        </Rise>
+    <>
+      <div className="absolute" style={{ left: '8.5%', top: '9%', width: '8cqw', transform: `translateX(${(1 - run) * -20}cqw)` }}>
+        <Mascot running={!useAt()(1300)} className="w-full" speed={INK} />
       </div>
-      <ul className="space-y-[1.1cqw]">
-        {STANDARDS.map((x, i) => {
-          const shown = t >= 800 + i * 350
-          const slipped = !x.ok && t >= 3000 + (i - 2) * 700
-          return (
-            <motion.li key={x.s} initial={false} animate={{ opacity: shown ? 1 : 0, x: shown ? 0 : 30 }} transition={{ duration: 0.5, ease }} className={cn('flex items-center gap-[1.4cqw] rounded-[1.2cqw] border px-[1.8cqw] py-[1.3cqw] text-[1.9cqw] transition-colors duration-500', slipped ? 'border-warn bg-warn/15' : 'border-hero-foreground/20 bg-hero-foreground/5')}>
-              <span className={cn('grid size-[3cqw] shrink-0 place-items-center rounded-full transition-colors duration-500', slipped ? 'bg-warn text-background' : 'bg-good text-background')}>
-                {slipped ? <X className="size-[1.9cqw]" /> : <Check className="size-[1.9cqw]" />}
-              </span>
-              <span className="flex-1">{x.s}</span>
-              {slipped && <span className="text-[1.3cqw] text-warn">missed</span>}
-            </motion.li>
-          )
+      <Canvas>
+        <Sketch shapes={PHONE} start={500} dur={1200} />
+        {CARD_SHAPES.map((s, i) => (
+          <Sketch key={i} shapes={s} start={1900 + i * 1000} dur={800} />
+        ))}
+        {CARDS.map((c, i) => (
+          <Sketch key={c.note} shapes={arrow(1340, c.y + 95, 1275, c.y + 95, { stroke: RED, strokeWidth: 5 })} start={2800 + i * 1000} dur={500} />
+        ))}
+        <Sketch shapes={underline(135, 445, 560, RED, 7)} start={3400} dur={900} />
+      </Canvas>
+      <Ink x={285} y={185} size={92} font="brush" start={300} dur={900}>
+        TableMate
+      </Ink>
+      <Ink x={130} y={385} size={84} font="brush" start={1000} dur={1200}>
+        Only the next three.
+      </Ink>
+      <Ink x={135} y={530} size={44} start={2200} dur={2400} maxWidth={620}>
+        it watches the whole floor and shows her just what matters right now, with a reason for each.
+      </Ink>
+      <Ink x={135} y={720} size={52} font="brush" start={5000} dur={1300} color={RED} maxWidth={620}>
+        a nudge she can ignore. never an order.
+      </Ink>
+      {CARDS.map((c, i) => (
+        <div key={c.title}>
+          <Ink x={970} y={c.y + 52} size={52} font="brush" align="center" start={2200 + i * 1000} dur={300} color={PAPER}>
+            {c.icon}
+          </Ink>
+          <Ink x={1030} y={c.y + 45} size={28} start={2300 + i * 1000} dur={900} maxWidth={190}>
+            {c.title}
+          </Ink>
+          <Ink x={940} y={c.y + 150} size={26} start={2800 + i * 1000} dur={700} color={OCHRE} maxWidth={280}>
+            {c.sub}
+          </Ink>
+          <Ink x={1350} y={c.y + 95} size={30} start={3000 + i * 1000} dur={900} color={RED} maxWidth={230}>
+            {c.note}
+          </Ink>
+        </div>
+      ))}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 8. Everyone in the same loop
+
+const PEOPLE = [
+  { shapes: CHEF, x: 300, y: 790, name: 'kitchen', head: [300, 580] as [number, number] },
+  { shapes: AISHA, x: 800, y: 590, name: 'server', head: [800, 380] as [number, number] },
+  { shapes: MANAGER, x: 1300, y: 790, name: 'manager', head: [1300, 580] as [number, number] },
+]
+const LINKS = [
+  [PEOPLE[0], PEOPLE[1]],
+  [PEOPLE[1], PEOPLE[2]],
+  [PEOPLE[0], PEOPLE[2]],
+].map(([a, b], i) => [sh.line(a.head[0], a.head[1], b.head[0], b.head[1], { strokeLineDash: [4, 16], strokeWidth: 3, seed: 180 + i })])
+const MSGS = [
+  { text: 'mains for T3 in 2 min', from: 0, to: 1, at: 2300 },
+  { text: 'is the burrata made in-house?', from: 1, to: 0, at: 3900 },
+  { text: 'yes! every morning (saved)', from: 0, to: 1, at: 5500 },
+  { text: 'T6 asks for the manager', from: 1, to: 2, at: 6900 },
+]
+const MSG_BUBBLE = (w: number) => bubble(0, 0, w, 70, 20, 90)
+
+function TeamLoop() {
+  const { t, still } = useStageTime()
+  const bob = useBob(4, 0.005)
+  return (
+    <>
+      <Canvas>
+        {LINKS.map((s, i) => (
+          <Sketch key={i} shapes={s} start={1800 + i * 300} dur={700} opacity={0.6} />
+        ))}
+        {PEOPLE.map((p, i) => (
+          <Sketch key={p.name} shapes={p.shapes} x={p.x} y={p.y + (i === 1 ? bob : 0)} scale={0.8} start={500 + i * 400} dur={1000} />
+        ))}
+        {MSGS.map((m) => {
+          const p = still ? 1 : clamp01((t - m.at) / 1500)
+          if (!still && (t < m.at || t > m.at + 2300)) return null
+          const a = PEOPLE[m.from].head
+          const b = PEOPLE[m.to].head
+          const e = inOutCubic(p)
+          const w = m.text.length * 17 + 50
+          const x = a[0] + (b[0] - a[0]) * e - w / 2
+          const y = a[1] + (b[1] - a[1]) * e - 150
+          return <Sketch key={m.text} shapes={MSG_BUBBLE(w)} x={x} y={y} start={still ? 0 : m.at} dur={still ? 1 : 300} />
         })}
-      </ul>
-    </div>
+      </Canvas>
+      <Ink x={130} y={105} size={96} font="brush" start={200} dur={1200}>
+        Everyone in the same loop.
+      </Ink>
+      <Ink x={135} y={200} size={40} start={1100} dur={1900} color={OCHRE} maxWidth={820}>
+        delays, sold-out dishes and guests’ questions reach the right person in one tap.
+      </Ink>
+      {PEOPLE.map((p, i) => (
+        <Ink key={p.name} x={p.x + (i === 1 ? -190 : 0)} y={p.y + (i === 1 ? -150 : 58)} size={48} font="brush" align="center" start={1200 + i * 400} dur={500}>
+          {p.name}
+        </Ink>
+      ))}
+      {MSGS.map((m) => {
+        if (!still && (t < m.at || t > m.at + 2300)) return null
+        const p = still ? 1 : clamp01((t - m.at) / 1500)
+        const a = PEOPLE[m.from].head
+        const b = PEOPLE[m.to].head
+        const e = inOutCubic(p)
+        return (
+          <Ink key={m.text} x={a[0] + (b[0] - a[0]) * e} y={a[1] + (b[1] - a[1]) * e - 115} size={30} align="center" start={still ? 0 : m.at + 150} dur={400}>
+            {m.text}
+          </Ink>
+        )
+      })}
+    </>
   )
 }
 
-/** 4. The blame lands on the server. */
-function Blame({ t, at }: { t: number; at: Beat }) {
-  const stage = t < 2200 ? 0 : t < 4200 ? 1 : 2
+// ---------------------------------------------------------------------------
+// 9. Whose delay was it?
+
+const ROWS = [
+  { label: 'greeting', w: 130, who: 'floor', v: '1.8 min' },
+  { label: 'kitchen prep', w: 400, who: 'kitchen', v: '+8 min late' },
+  { label: 'pass to table', w: 120, who: 'floor', v: '1.2 min' },
+  { label: 'the bill', w: 170, who: 'floor', v: '2 min' },
+]
+const BARS = ROWS.map((r, i) => [sh.rect(470, 330 + i * 100, r.w, 54, { fill: r.who === 'kitchen' ? OCHRE : RED, fillStyle: 'hachure', hachureGap: 9, fillWeight: 3, seed: 200 + i }), sh.rect(470, 330 + i * 100, r.w, 54, { seed: 210 + i })])
+const AXIS = [sh.line(470, 300, 470, 740, { seed: 220 })]
+const STAMP2 = [sh.rect(0, 0, 440, 200, { stroke: RED, strokeWidth: 9, seed: 221 }), sh.rect(12, 12, 416, 176, { stroke: RED, strokeWidth: 3, seed: 222 })]
+
+function Fair() {
   return (
-    <div className="absolute inset-0 px-[6cqw] pt-[5cqw]">
-      <h2 className="font-display text-[4.4cqw] leading-[1.06]">
-        <Words t={t} from={200} text="Then the food runs late." />
-      </h2>
-      <div className="relative mt-[5cqw] grid grid-cols-3 items-start gap-[2cqw]">
-        {[
-          { icon: <ChefHat className="size-[4cqw]" />, n: 'The pass', sub: stage >= 1 ? 'Grill is backed up: +8 min' : 'Mains are cooking', bad: stage >= 1, owner: 'The delay begins here' },
-          { icon: <HandHelping className="size-[4cqw]" />, n: 'The server', sub: stage >= 1 ? 'Doesn’t know yet' : 'Busy at T2', bad: false, owner: stage >= 2 ? 'Takes the blame' : '' },
-          { icon: <Eye className="size-[4cqw]" />, n: 'The guest', sub: stage >= 2 ? '“Where is our food?”' : 'Chatting, happily', bad: stage >= 2, owner: '' },
-        ].map((c, i) => (
-          <motion.div key={c.n} initial={false} animate={{ opacity: at(700 + i * 400) ? 1 : 0, y: at(700 + i * 400) ? 0 : 24 }} transition={{ duration: 0.6, ease }} className={cn('rounded-[1.6cqw] border p-[2cqw] text-center transition-colors duration-500', c.bad ? 'border-warn bg-warn/12' : 'border-hero-foreground/20 bg-hero-foreground/5')}>
-            <div className={cn('mx-auto grid size-[7cqw] place-items-center rounded-full transition-colors duration-500', c.bad ? 'bg-warn text-background' : 'bg-hero-foreground/15')}>{c.icon}</div>
-            <div className="mt-[1.2cqw] font-display text-[2.4cqw]">{c.n}</div>
-            <div className="mt-[0.4cqw] min-h-[2.4cqw] text-[1.7cqw] opacity-85">{c.sub}</div>
-            <div className="mt-[1cqw] min-h-[2cqw] text-[1.4cqw] font-medium text-warn">{c.owner}</div>
-          </motion.div>
+    <>
+      <Canvas>
+        <Sketch shapes={AXIS} start={600} dur={600} />
+        {BARS.map((s, i) => (
+          <Sketch key={i} shapes={s} start={1300 + i * 700} dur={800} />
         ))}
-      </div>
-      <Rise show={at(6000)} className="mt-[3.2cqw] text-center text-[2.3cqw] leading-snug">
-        The server hears about it from the guest, and is judged for it.
-      </Rise>
-    </div>
-  )
-}
-
-/** 5. The retraining loop. */
-function Loop({ t, at }: { t: number; at: Beat }) {
-  const steps = ['A step slips', 'The server is blamed', 'They’re sent to retrain', 'Same rush, same slip']
-  const active = Math.min(3, Math.floor(Math.max(0, t - 900) / 1100))
-  return (
-    <div className="absolute inset-0 grid place-items-center px-[6cqw]">
-      <div className="w-full">
-        <h2 className="text-center font-display text-[4.2cqw] leading-[1.08]">
-          <Words t={t} from={150} text="So restaurants retrain them." />
-        </h2>
-        <div className="mt-[4.5cqw] flex items-center justify-center gap-[1.2cqw]">
-          {steps.map((s, i) => (
-            <div key={s} className="flex items-center gap-[1.2cqw]">
-              <motion.div initial={false} animate={{ opacity: t >= 900 + i * 1100 ? 1 : 0.15, scale: i === active && t >= 900 ? 1.06 : 1 }} transition={{ duration: 0.45, ease }} className={cn('w-[17cqw] rounded-[1.4cqw] border px-[1.4cqw] py-[2cqw] text-center text-[1.9cqw] leading-tight', i === active ? 'border-primary-2 bg-primary/25' : 'border-hero-foreground/25 bg-hero-foreground/5')}>
-                <div className="font-display text-[3cqw] text-primary-2">{i + 1}</div>
-                {s}
-              </motion.div>
-              {i < 3 && <ArrowRight className="size-[2.4cqw] opacity-60" />}
-            </div>
-          ))}
+        <Sketch shapes={STAMP2} x={1140} y={400} rotate={-6} start={4700} dur={800} />
+        <Sketch shapes={AISHA_HAPPY} x={1430} y={880} scale={0.8} start={5800} dur={1100} />
+      </Canvas>
+      <Ink x={130} y={105} size={104} font="brush" start={200} dur={1200}>
+        Whose delay was it?
+      </Ink>
+      <Ink x={135} y={205} size={42} start={900} dur={1800} color={OCHRE} maxWidth={900}>
+        table T3, step by step. each step credited to whoever controlled it.
+      </Ink>
+      {ROWS.map((r, i) => (
+        <div key={r.label}>
+          <Ink x={440} y={357 + i * 100} size={42} align="right" start={1200 + i * 700} dur={600}>
+            {r.label}
+          </Ink>
+          <Ink x={490 + r.w} y={357 + i * 100} size={38} start={1900 + i * 700} dur={600} color={r.who === 'kitchen' ? RED : INK}>
+            {r.v}
+          </Ink>
         </div>
-        <motion.div initial={false} animate={{ opacity: at(5400) ? 1 : 0 }} transition={{ duration: 0.7 }} className="mx-auto mt-[3.5cqw] flex w-fit items-center gap-[1cqw] text-[1.6cqw] opacity-70">
-          <RotateCcw className="size-[2cqw]" /> and round again, next weekend
-        </motion.div>
-        <Rise show={at(6400)} className="mt-[2cqw] text-center text-[2.4cqw] leading-snug text-primary-2">
-          Retraining fixes what they know. Nothing about the night has changed.
-        </Rise>
-      </div>
-    </div>
+      ))}
+      <Ink x={1360} y={462} size={58} font="brush" align="center" start={5000} dur={900} color={RED} rotate={-6}>
+        kitchen’s delay.
+      </Ink>
+      <Ink x={1360} y={535} size={58} font="brush" align="center" start={5600} dur={700} color={RED} rotate={-6}>
+        not Aisha’s.
+      </Ink>
+      <Ink x={135} y={810} size={44} start={7000} dur={1100} color={RED}>
+        kitchen delays are never counted against a server.
+      </Ink>
+    </>
   )
 }
 
-const HMW = 'How might we help fine-dining servers keep every table on track in the middle of a rush, so the standards they already know don’t slip, they aren’t left to find out about kitchen delays from their guests, and they aren’t blamed or retrained for lapses that weren’t theirs?'
+// ---------------------------------------------------------------------------
+// 10. Sharing the floor
 
-/** 6. The question. */
-function Question({ t, at }: { t: number; at: Beat }) {
-  const n = Math.min(HMW.length, Math.max(0, Math.floor((t - 500) / 28)))
-  return (
-    <div className="absolute inset-0 grid place-items-center px-[8cqw]">
-      <div>
-        <Rise show={at(150)} className="text-[1.6cqw] font-medium text-primary-2">
-          The problem we set out to solve
-        </Rise>
-        <p className="mt-[1.6cqw] font-display text-[3.1cqw] leading-[1.25]">
-          {HMW.slice(0, n)}
-          <span className={cn('ml-[0.3cqw] inline-block h-[3cqw] w-[0.3cqw] translate-y-[0.5cqw] bg-primary-2', n >= HMW.length && 'animate-pulse')} aria-hidden />
-        </p>
-      </div>
-    </div>
-  )
-}
+const A_TABLES = [
+  { x: 150, y: 400 },
+  { x: 330, y: 330 },
+  { x: 510, y: 400 },
+  { x: 130, y: 590 },
+  { x: 500, y: 600 },
+]
+const A_SHAPES = A_TABLES.map((_, i) => table(230 + i, i === 4 ? RED : OCHRE))
+const P_TABLES = [
+  { x: 1090, y: 420 },
+  { x: 1290, y: 420 },
+]
+const P_SHAPES = P_TABLES.map((_, i) => table(250 + i, OCHRE))
 
-/** Phone-shaped frame for the product scenes. */
-function Phone({ children, on }: { children: ReactNode; on: boolean }) {
+function Share() {
+  const prog = useProgress()
+  const at = useAt()
+  const bob = useBob(4, 0.005)
+  const mv = inOutCubic(prog(3800, 2200))
+  // T5 leaves Aisha (500, 600) and lands beside Priya (1110, 700)
+  const x5 = 500 + (1110 - 500) * mv
+  const y5 = 600 + (700 - 600) * mv - Math.sin(mv * Math.PI) * 160
   return (
-    <motion.div initial={false} animate={{ opacity: on ? 1 : 0, y: on ? 0 : 40 }} transition={{ duration: 0.8, ease }} className="relative h-[40cqw] w-[19.4cqw] overflow-hidden rounded-[2.8cqw] border-[0.6cqw] border-hero-foreground/80 bg-background text-foreground shadow-2xl">
-      {children}
-    </motion.div>
-  )
-}
-
-function Card({ icon, title, hint, why, on, tone }: { icon: ReactNode; title: string; hint: string; why: string; on: boolean; tone?: 'warn' }) {
-  return (
-    <motion.div initial={false} animate={{ opacity: on ? 1 : 0, y: on ? 0 : 36, scale: on ? 1 : 0.96 }} transition={{ duration: 0.6, ease }} className={cn('mb-[0.9cqw] rounded-[1.2cqw] border bg-card p-[1cqw]', tone === 'warn' && 'border-warn')}>
-      <div className="flex items-start gap-[0.8cqw]">
-        <span className={cn('grid size-[2.6cqw] shrink-0 place-items-center rounded-full', tone === 'warn' ? 'bg-warn/20 text-warn' : 'bg-secondary text-primary')}>{icon}</span>
-        <div className="min-w-0">
-          <div className="text-[1.15cqw] font-semibold leading-tight">{title}</div>
-          <div className="mt-[0.25cqw] text-[0.95cqw] leading-tight text-muted-foreground">{hint}</div>
-        </div>
-      </div>
-      <div className="mt-[0.7cqw] w-fit rounded-full bg-secondary px-[0.8cqw] py-[0.2cqw] text-[0.85cqw] text-muted-foreground">{why}</div>
-    </motion.div>
-  )
-}
-
-/** 7. Meet TableMate: the next three. */
-function NextThree({ t, at }: { t: number; at: Beat }) {
-  return (
-    <div className="absolute inset-0 grid grid-cols-[1.1fr_auto] items-center gap-[6cqw] px-[7cqw]">
-      <div>
-        <Rise show={at(150)} className="flex items-center gap-[1cqw]">
-          <Mascot className="w-[6cqw]" speed="var(--hero-foreground)" />
-          <Wordmark className="text-[3.4cqw]" />
-        </Rise>
-        <h2 className="mt-[1.6cqw] font-display text-[4.6cqw] leading-[1.05]">
-          <Words t={t} from={600} text="Only the next three." />
-        </h2>
-        <Rise show={at(1800)} className="mt-[1.6cqw] max-w-[38cqw] text-[2cqw] leading-snug opacity-85">
-          It watches the whole floor and shows each server the three things that matter right now, in order, with a reason for each.
-        </Rise>
-        <Rise show={at(4200)} className="mt-[1.4cqw] text-[1.9cqw] text-primary-2">
-          A nudge they can ignore. Never an order.
-        </Rise>
-      </div>
-      <Phone on={at(500)}>
-        <div className="border-b px-[1.2cqw] py-[1cqw]">
-          <div className="text-[1.3cqw] font-semibold">Aisha</div>
-          <div className="text-[0.9cqw] text-muted-foreground">Next up</div>
-        </div>
-        <div className="p-[1cqw]">
-          <Card on={at(1500)} tone="warn" icon={<ShieldAlert className="size-[1.5cqw]" />} title="Check T2’s order before it’s cooked" hint="Galouti kebab has nuts (allergy)" why="Why first: allergy comes first" />
-          <Card on={at(2500)} icon={<Bell className="size-[1.5cqw]" />} title="Kitchen: grill is backed up, about 7 minutes" hint="For the whole floor" why="Due in the next 2 minutes" />
-          <Card on={at(3500)} icon={<HandHelping className="size-[1.5cqw]" />} title="Welcome T4" hint="Party of 4 · birthday" why="No one has been to this table for 3 min" />
-        </div>
-      </Phone>
-    </div>
-  )
-}
-
-/** 8. The loop between kitchen, servers and manager. */
-function Loopback({ t, at }: { t: number; at: Beat }) {
-  const nodes = [
-    { n: 'Kitchen', x: 18, y: 62, icon: <ChefHat className="size-[3.2cqw]" /> },
-    { n: 'Server', x: 50, y: 28, icon: <HandHelping className="size-[3.2cqw]" /> },
-    { n: 'Manager', x: 82, y: 62, icon: <BookOpen className="size-[3.2cqw]" /> },
-  ]
-  const msgs = [
-    { s: 'Mains for T3 in 2 min', from: 0, to: 1, at: 1500 },
-    { s: 'Is the burrata made in-house?', from: 1, to: 0, at: 3000 },
-    { s: 'Yes, every morning. Saved for next time.', from: 0, to: 1, at: 4500 },
-    { s: 'T6 asks to see the manager', from: 1, to: 2, at: 6000 },
-  ]
-  return (
-    <div className="absolute inset-0 px-[6cqw] pt-[5cqw]">
-      <h2 className="font-display text-[4.2cqw] leading-[1.06]">
-        <Words t={t} from={200} text="Everyone in the same loop." />
-      </h2>
-      <Rise show={at(900)} className="mt-[1cqw] max-w-[44cqw] text-[1.9cqw] opacity-80">
-        Delays, sold-out dishes and guests’ questions reach the right person in one tap.
-      </Rise>
-      <div className="relative mt-[2cqw] h-[26cqw]">
-        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 size-full" aria-hidden>
-          {[[0, 1], [1, 2], [0, 2]].map(([a, b], k) => (
-            <motion.line key={k} x1={nodes[a].x} y1={nodes[a].y} x2={nodes[b].x} y2={nodes[b].y} stroke="var(--hero-foreground)" strokeOpacity="0.25" strokeWidth="0.35" strokeDasharray="1.2 1.6" vectorEffect="non-scaling-stroke" initial={false} animate={{ pathLength: t >= 700 + k * 250 ? 1 : 0 }} transition={{ duration: 0.8, ease }} />
-          ))}
-        </svg>
-        {nodes.map((nd, i) => (
-          <motion.div key={nd.n} initial={false} animate={{ opacity: at(500 + i * 250) ? 1 : 0, scale: at(500 + i * 250) ? 1 : 0.6 }} transition={{ duration: 0.5, ease }} className="absolute -translate-x-1/2 -translate-y-1/2 text-center" style={{ left: `${nd.x}%`, top: `${nd.y}%` }}>
-            <div className="mx-auto grid size-[8cqw] place-items-center rounded-full bg-primary text-primary-foreground">{nd.icon}</div>
-            <div className="mt-[0.6cqw] font-display text-[2cqw]">{nd.n}</div>
-          </motion.div>
+    <>
+      <Canvas>
+        {A_TABLES.slice(0, 4).map((tb, i) => (
+          <Sketch key={i} shapes={A_SHAPES[i]} x={tb.x} y={tb.y} scale={0.62} start={1000 + i * 250} dur={600} />
         ))}
-        {msgs.map((m) => {
-          const a = nodes[m.from]
-          const b = nodes[m.to]
-          const p = Math.min(1, Math.max(0, (t - m.at) / 1100))
-          const visible = t >= m.at && t < m.at + 1500
-          return (
-            <div key={m.s} className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${a.x + (b.x - a.x) * p}%`, top: `${a.y + (b.y - a.y) * p - 9}%`, opacity: visible ? (p < 0.9 ? 1 : 1 - (p - 0.9) * 10) : 0 }}>
-              <div className="flex items-center gap-[0.6cqw] whitespace-nowrap rounded-full bg-background px-[1.4cqw] py-[0.8cqw] text-[1.45cqw] text-foreground shadow-lg">
-                <MessageSquareText className="size-[1.6cqw] text-primary" /> {m.s}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-/** 9. Whose delay was it? */
-function Fair({ t, at }: { t: number; at: Beat }) {
-  const rows = [
-    { s: 'Greeting', who: 'floor', w: 22, v: '1.8 min', late: false },
-    { s: 'Kitchen prep', who: 'kitchen', w: 62, v: '+8 min late', late: true },
-    { s: 'Pass to table', who: 'floor', w: 20, v: '1.2 min', late: false },
-    { s: 'Bill', who: 'floor', w: 24, v: '2 min', late: false },
-  ]
-  return (
-    <div className="absolute inset-0 grid grid-cols-[1fr_1.25fr] items-center gap-[4cqw] px-[6cqw]">
-      <div>
-        <h2 className="font-display text-[4.6cqw] leading-[1.05]">
-          <Words t={t} from={200} text="Whose delay was it?" />
-        </h2>
-        <Rise show={at(1400)} className="mt-[1.6cqw] max-w-[34cqw] text-[2cqw] leading-snug opacity-85">
-          Every visit is broken into steps, and each delay is credited to whoever controlled that step.
-        </Rise>
-        <Rise show={at(5200)} className="mt-[1.6cqw] text-[2.2cqw] leading-snug text-primary-2">
-          Kitchen delays are never counted against a server.
-        </Rise>
-      </div>
-      <div className="rounded-[1.8cqw] border border-hero-foreground/20 bg-hero-foreground/5 p-[2.4cqw]">
-        <div className="mb-[1.4cqw] flex items-center justify-between text-[1.4cqw] opacity-80">
-          <span>Table T3, step by step</span>
-          <span className="flex gap-[1.2cqw]">
-            <span className="flex items-center gap-[0.4cqw]"><i className="size-[1cqw] rounded-full" style={{ background: 'var(--floor-mark)' }} /> floor</span>
-            <span className="flex items-center gap-[0.4cqw]"><i className="size-[1cqw] rounded-full" style={{ background: 'var(--kitchen-mark)' }} /> kitchen</span>
-          </span>
-        </div>
-        {rows.map((r, i) => (
-          <div key={r.s} className="mb-[1.5cqw] last:mb-0">
-            <div className="mb-[0.4cqw] flex justify-between text-[1.5cqw]">
-              <span>{r.s}</span>
-              <span className={cn(r.late && 'font-semibold text-warn')}>{r.v}</span>
-            </div>
-            <div className="h-[1.5cqw] overflow-hidden rounded-full bg-hero-foreground/10">
-              <motion.div initial={false} animate={{ width: t >= 900 + i * 600 ? `${r.w}%` : '0%' }} transition={{ duration: 1, ease }} className="h-full rounded-full" style={{ background: r.who === 'kitchen' ? 'var(--kitchen-mark)' : 'var(--floor-mark)' }} />
-            </div>
-          </div>
+        <Sketch shapes={at(3800) ? AISHA : AISHA_WORRY} x={330} y={880 + bob} scale={0.9} start={500} dur={1100} />
+        {P_TABLES.map((tb, i) => (
+          <Sketch key={i} shapes={P_SHAPES[i]} x={tb.x} y={tb.y} scale={0.62} start={1400 + i * 250} dur={600} />
         ))}
-        <motion.div initial={false} animate={{ opacity: at(4200) ? 1 : 0, scale: at(4200) ? 1 : 0.9 }} transition={{ duration: 0.5, ease }} className="mt-[1.8cqw] rounded-[1cqw] border border-primary-2 bg-primary/20 px-[1.6cqw] py-[1.1cqw] text-[1.7cqw]">
-          Kitchen delay: <b>not Aisha’s.</b>
-        </motion.div>
-      </div>
-    </div>
+        <Sketch shapes={PRIYA} x={1290} y={880} scale={0.9} start={900} dur={1100} />
+        <Sketch shapes={A_SHAPES[4]} x={x5} y={y5} scale={0.62} start={1900} dur={600} />
+        {at(2700) && !at(3800) && <Sketch shapes={bubble(540, 440, 300, 90, 510, 570)} start={2700} dur={700} />}
+        {at(4500) && <Sketch shapes={bubble(800, 480, 330, 90, 1110, 640)} start={4800} dur={700} />}
+        {at(6200) && <Sketch shapes={arrow(560, 760, 1000, 760, { stroke: OCHRE, strokeWidth: 5 }, 30)} start={6200} dur={700} />}
+      </Canvas>
+      <Ink x={130} y={105} size={104} font="brush" start={200} dur={1100}>
+        Sharing the floor.
+      </Ink>
+      <Ink x={135} y={205} size={42} start={900} dur={1500} color={OCHRE} maxWidth={900}>
+        for the load, or for the guests’ language.
+      </Ink>
+      {A_TABLES.slice(0, 4).map((tb, i) => (
+        <Ink key={i} x={tb.x} y={tb.y} size={34} font="brush" align="center" start={1300 + i * 250} dur={300}>
+          {`T${i + 1}`}
+        </Ink>
+      ))}
+      <Ink x={x5} y={y5} size={34} font="brush" align="center" start={2100} dur={300}>
+        T5
+      </Ink>
+      {P_TABLES.map((tb, i) => (
+        <Ink key={i} x={tb.x} y={tb.y} size={34} font="brush" align="center" start={1700 + i * 250} dur={300}>
+          {`T${i + 6}`}
+        </Ink>
+      ))}
+      {!at(3800) && (
+        <Ink x={330} y={730} size={38} font="brush" align="center" start={1700} dur={500} color={RED}>
+          5 tables!
+        </Ink>
+      )}
+      <Ink x={1290} y={560} size={36} font="brush" align="center" start={2100} dur={600} color={OCHRE}>
+        speaks Bengali
+      </Ink>
+      {at(2700) && !at(3800) && (
+        <Ink x={690} y={485} size={36} align="center" start={2900} dur={500} maxWidth={280}>
+          guests prefer বাংলা
+        </Ink>
+      )}
+      <Ink x={1005} y={545} size={34} align="center" start={5000} dur={900} maxWidth={300}>
+        T5 is yours for this visit
+      </Ink>
+      <Ink x={800} y={790} size={42} align="center" start={6400} dur={1400} color={RED}>
+        both get a note. T5 goes back afterwards.
+      </Ink>
+    </>
   )
 }
 
-/** 10. Floor balance: a table handed to a colleague who speaks the guests' language. */
-function Handover({ t, at }: { t: number; at: Beat }) {
-  const moved = t >= 3600
+// ---------------------------------------------------------------------------
+// 11. Practice, privately
+
+const EYE = [sh.curve([[-48, 0], [0, -30], [48, 0], [0, 30], [-48, 0]], { seed: 240 }), sh.circle(0, 0, 22, { fill: INK, fillStyle: 'solid', seed: 241 }), sh.line(-58, 34, 58, -34, { stroke: RED, strokeWidth: 7, seed: 242 })]
+const SCORE_BAD = [sh.circle(0, 0, 130, { stroke: RED, strokeWidth: 7, seed: 243 })]
+const SCORE_GOOD = [sh.circle(0, 0, 130, { stroke: GREEN, strokeWidth: 7, seed: 244 })]
+const STARS = [0, 1, 2].map((i) => star5(32, 250 + i))
+
+function Practice() {
+  const prog = useProgress()
+  const bad = Math.round(inOutCubic(prog(3500, 600)) * 12)
+  const good = Math.round(inOutCubic(prog(6500, 900)) * 92)
   return (
-    <div className="absolute inset-0 px-[6cqw] pt-[5cqw]">
-      <h2 className="font-display text-[4.2cqw] leading-[1.06]">
-        <Words t={t} from={200} text="Sharing the floor." />
-      </h2>
-      <Rise show={at(900)} className="mt-[1cqw] max-w-[46cqw] text-[1.9cqw] opacity-80">
-        The manager sees who is stretched, and can hand a table to a colleague, for the load or for the guests’ language.
-      </Rise>
-      <div className="relative mt-[3cqw] grid grid-cols-2 gap-[8cqw]">
-        {[
-          { n: 'Aisha', note: moved ? '4 tables' : '5 tables: over the limit', bad: !moved, tables: moved ? ['T1', 'T2', 'T3', 'T4'] : ['T1', 'T2', 'T3', 'T4'] },
-          { n: 'Priya', note: moved ? '3 tables · speaks Bengali' : '2 tables · speaks Bengali', bad: false, tables: moved ? ['T6', 'T7', 'T5'] : ['T6', 'T7'] },
-        ].map((c, i) => (
-          <motion.div key={c.n} initial={false} animate={{ opacity: at(800 + i * 300) ? 1 : 0, y: at(800 + i * 300) ? 0 : 24 }} transition={{ duration: 0.6, ease }} className={cn('rounded-[1.6cqw] border p-[2cqw] transition-colors duration-500', c.bad ? 'border-warn bg-warn/10' : 'border-hero-foreground/20 bg-hero-foreground/5')}>
-            <div className="font-display text-[2.4cqw]">{c.n}</div>
-            <div className={cn('text-[1.5cqw]', c.bad ? 'text-warn' : 'opacity-75')}>{c.note}</div>
-            <div className="mt-[1.4cqw] flex min-h-[5.4cqw] flex-wrap gap-[0.8cqw]">
-              {c.tables.map((tb) => (
-                <motion.span key={tb} layout transition={{ duration: 0.8, ease }} className={cn('grid size-[5cqw] place-items-center rounded-full bg-card font-display text-[1.7cqw] text-foreground', tb === 'T5' && 'ring-[0.3cqw] ring-primary-2')}>
-                  {tb}
-                </motion.span>
-              ))}
-              {i === 0 && !moved && (
-                <motion.span layout className="grid size-[5cqw] place-items-center rounded-full bg-card font-display text-[1.7cqw] text-foreground ring-[0.3cqw] ring-primary-2">T5</motion.span>
-              )}
-            </div>
-          </motion.div>
+    <>
+      <Canvas>
+        <Sketch shapes={bubble(140, 170, 640, 140, 220, 340)} start={500} dur={900} />
+        <Sketch shapes={bubble(640, 380, 520, 90, 1120, 480)} start={2400} dur={800} />
+        <Sketch shapes={SCORE_BAD} x={1330} y={430} scale={0.8} start={3300} dur={600} />
+        <Sketch shapes={bubble(330, 570, 700, 150, 1020, 720)} start={5000} dur={900} />
+        <Sketch shapes={SCORE_GOOD} x={1330} y={690} scale={0.8} start={6300} dur={600} />
+        {STARS.map((s, i) => (
+          <Sketch key={i} shapes={s} x={1250 + i * 80} y={830} start={7400 + i * 300} dur={400} />
         ))}
-      </div>
-      <motion.div initial={false} animate={{ opacity: at(2200) && !moved ? 1 : 0 }} className="absolute right-[6cqw] top-[22cqw] flex items-center gap-[0.8cqw] rounded-full bg-primary px-[1.6cqw] py-[0.7cqw] text-[1.5cqw] text-primary-foreground">
-        <Languages className="size-[1.8cqw]" /> T5’s guests prefer বাংলা
-      </motion.div>
-      <motion.div initial={false} animate={{ opacity: at(4600) ? 1 : 0, y: at(4600) ? 0 : 16 }} transition={{ duration: 0.5, ease }} className="mt-[3cqw] flex items-center justify-center gap-[1cqw] text-[1.9cqw]">
-        <Check className="size-[2.2cqw] text-good" /> Both servers get a note, and T5 goes back to Aisha after the visit.
-      </motion.div>
-    </div>
+        <Sketch shapes={EYE} x={170} y={820} scale={0.9} start={7700} dur={700} />
+      </Canvas>
+      <Ink x={130} y={95} size={84} font="brush" start={200} dur={1100}>
+        Practise the hard moments.
+      </Ink>
+      <Ink x={170} y={235} size={42} start={700} dur={1500} maxWidth={580}>
+        “my lamb is lukewarm and we waited forty minutes!”
+      </Ink>
+      <Ink x={690} y={425} size={46} start={2600} dur={1000} color={INK}>
+        “the chef died, sorry.”
+      </Ink>
+      <Ink x={1330} y={430} size={92} font="brush" align="center" start={3500} dur={600} color={RED}>
+        {String(bad)}
+      </Ink>
+      <Ink x={1330} y={540} size={34} align="center" start={4000} dur={900} color={RED} maxWidth={300}>
+        an excuse, and it ignores the complaint
+      </Ink>
+      <Ink x={365} y={645} size={40} start={5200} dur={1500} maxWidth={640}>
+        “I’m so sorry. Let me replace it right away; about 10 minutes.”
+      </Ink>
+      <Ink x={1330} y={690} size={92} font="brush" align="center" start={6400} dur={900} color={GREEN}>
+        {String(good)}
+      </Ink>
+      <Ink x={250} y={822} size={42} start={7900} dur={1100} color={OCHRE}>
+        private. only she sees it.
+      </Ink>
+    </>
   )
 }
 
-/** 11. Practising privately. */
-function Rehearsal({ t, at }: { t: number; at: Beat }) {
-  const poor = useCount(t, 2400, 12, 700)
-  const good = useCount(t, 5600, 92, 1100)
-  return (
-    <div className="absolute inset-0 grid grid-cols-[1fr_1.15fr] items-center gap-[4cqw] px-[6cqw]">
-      <div>
-        <h2 className="font-display text-[4.6cqw] leading-[1.05]">
-          <Words t={t} from={200} text="Practise the hard moments, privately." />
-        </h2>
-        <Rise show={at(1400)} className="mt-[1.6cqw] max-w-[34cqw] text-[2cqw] leading-snug opacity-85">
-          Honest scores on what a reply actually says, and an ideal reply to compare with.
-        </Rise>
-        <Rise show={at(7000)} className="mt-[1.4cqw] flex items-center gap-[0.8cqw] text-[1.9cqw] text-primary-2">
-          <Eye className="size-[2.2cqw]" /> Only the server sees it.
-        </Rise>
-      </div>
-      <div className="space-y-[1.2cqw] text-[1.6cqw]">
-        <Rise show={at(500)} className="max-w-[78%] rounded-[1.4cqw] rounded-bl-none bg-hero-foreground/12 px-[1.6cqw] py-[1.1cqw]">
-          “My lamb is lukewarm, and we waited forty minutes for it.”
-          <div className="mt-[0.3cqw] text-[1.2cqw] opacity-60">A guest</div>
-        </Rise>
-        <Rise show={at(1800)} className="ml-auto max-w-[78%] rounded-[1.4cqw] rounded-br-none bg-primary px-[1.6cqw] py-[1.1cqw] text-primary-foreground">
-          “The chef died, sorry.”
-          <div className="mt-[0.5cqw] flex items-center gap-[0.8cqw] text-[1.3cqw]">
-            <span className="rounded-full bg-background/90 px-[0.9cqw] py-[0.2cqw] font-semibold text-warn">{at(2400) ? poor : 0}/100</span>
-            <span className="opacity-90">An excuse, and it ignores the complaint</span>
-          </div>
-        </Rise>
-        <Rise show={at(4400)} className="ml-auto max-w-[84%] rounded-[1.4cqw] rounded-br-none bg-primary px-[1.6cqw] py-[1.1cqw] text-primary-foreground">
-          “I’m so sorry. Let me replace it right away; it’ll be with you in about 10 minutes.”
-          <div className="mt-[0.5cqw] flex items-center gap-[0.8cqw] text-[1.3cqw]">
-            <span className="rounded-full bg-background/90 px-[0.9cqw] py-[0.2cqw] font-semibold text-good">{at(5600) ? good : 0}/100</span>
-            <span className="flex gap-[0.2cqw]">
-              {[0, 1, 2].map((s) => (
-                <Star key={s} className={cn('size-[1.6cqw] transition-opacity duration-500', at(6400 + s * 250) ? 'opacity-100' : 'opacity-20')} fill="currentColor" />
-              ))}
-            </span>
-          </div>
-        </Rise>
-      </div>
-    </div>
-  )
-}
+// ---------------------------------------------------------------------------
+// 12. Everyone is welcome
 
 const HELLOS = [
-  { t: 'Welcome', l: 'English' },
-  { t: 'स्वागत है', l: 'हिन्दी' },
-  { t: 'स्वागत छ', l: 'नेपाली' },
-  { t: 'স্বাগতম', l: 'বাংলা' },
-  { t: 'வரவேற்கிறோம்', l: 'தமிழ்' },
-  { t: 'Bienvenidos', l: 'Español' },
+  { t: 'Welcome', l: 'English', x: 300, y: 330 },
+  { t: 'स्वागत है', l: 'हिन्दी', x: 800, y: 260 },
+  { t: 'স্বাগতম', l: 'বাংলা', x: 1290, y: 330 },
+  { t: 'வரவேற்கிறோம்', l: 'தமிழ்', x: 300, y: 560 },
+  { t: 'स्वागत छ', l: 'नेपाली', x: 800, y: 520 },
+  { t: 'Bienvenidos', l: 'Español', x: 1290, y: 560 },
+]
+const HELLO_BUBBLES = HELLOS.map((h) => bubble(h.x - 190, h.y - 62, 380, 124, h.x - 120, h.y + 112))
+const ICONS = [
+  { x: 280, label: 'read aloud', shapes: [sh.path('M -26 -14 L -6 -14 L 22 -36 L 22 36 L -6 14 L -26 14 Z', { seed: 260 }), sh.curve([[36, -18], [48, 0], [36, 18]], { seed: 261 }), sh.curve([[48, -34], [68, 0], [48, 34]], { seed: 262 })] },
+  { x: 620, label: 'big text', shapes: [sh.line(-30, 30, 0, -34, { seed: 263 }), sh.line(0, -34, 30, 30, { seed: 264 }), sh.line(-16, 8, 16, 8, { seed: 265 })] },
+  { x: 960, label: 'flash alerts', shapes: [sh.path('M -8 -36 L -26 4 L -4 4 L -14 36 L 28 -8 L 4 -8 L 14 -36 Z', { fill: RED, fillStyle: 'solid', seed: 266 })] },
+  { x: 1300, label: 'vibration', shapes: [sh.rect(-18, -34, 36, 68, { seed: 267 }), sh.curve([[-34, -20], [-42, 0], [-34, 20]], { seed: 268 }), sh.curve([[34, -20], [42, 0], [34, 20]], { seed: 269 })] },
 ]
 
-/** 12. Everyone is welcome. */
-function Welcome({ t, at }: { t: number; at: Beat }) {
-  const i = Math.min(HELLOS.length - 1, Math.floor(Math.max(0, t - 700) / 800))
+function Welcome() {
+  const { t, still } = useStageTime()
   return (
-    <div className="absolute inset-0 grid place-items-center px-[6cqw]">
-      <div className="text-center">
-        <h2 className="font-display text-[4cqw] leading-[1.06]">
-          <Words t={t} from={150} text="Built for the people who actually work here." />
-        </h2>
-        <div className="mt-[3cqw] h-[9cqw]">
-          <AnimatePresence mode="wait">
-            <motion.div key={i} initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -24 }} transition={{ duration: 0.4, ease }}>
-              <div className="font-display text-[6.4cqw] leading-none text-primary-2">{HELLOS[i].t}</div>
-              <div className="mt-[0.8cqw] text-[1.6cqw] opacity-70">{HELLOS[i].l}</div>
-            </motion.div>
-          </AnimatePresence>
+    <>
+      <Canvas>
+        {HELLO_BUBBLES.map((s, i) => (
+          <Sketch key={i} shapes={s} y={still ? 0 : Math.sin(t * 0.003 + i) * 5} start={800 + i * 450} dur={700} />
+        ))}
+        {ICONS.map((ic, i) => (
+          <Sketch key={ic.label} shapes={ic.shapes} x={ic.x} y={745} start={4200 + i * 500} dur={600} />
+        ))}
+      </Canvas>
+      <Ink x={800} y={105} size={86} font="brush" align="center" start={200} dur={1500} maxWidth={1400}>
+        built for the people who actually work here.
+      </Ink>
+      {HELLOS.map((h, i) => (
+        <div key={h.l}>
+          <Ink x={h.x} y={h.y - 8} size={h.t.length > 11 ? 44 : 56} font="brush" align="center" start={1100 + i * 450} dur={600} color={i % 2 ? RED : INK}>
+            {h.t}
+          </Ink>
+          <Ink x={h.x} y={h.y + 40} size={30} align="center" start={1500 + i * 450} dur={400} color={OCHRE}>
+            {h.l}
+          </Ink>
         </div>
-        <div className="mt-[3cqw] flex flex-wrap justify-center gap-[1.2cqw]">
-          {[
-            { i: <Volume2 className="size-[2cqw]" />, s: 'Read aloud' },
-            { i: <Eye className="size-[2cqw]" />, s: 'Large text' },
-            { i: <Bell className="size-[2cqw]" />, s: 'Flash alerts' },
-            { i: <Vibrate className="size-[2cqw]" />, s: 'Vibration' },
-            { i: <MessageSquareText className="size-[2cqw]" />, s: 'Simple words' },
-          ].map((c, k) => (
-            <Rise key={c.s} show={at(5000 + k * 250)} className="flex items-center gap-[0.8cqw] rounded-full border border-hero-foreground/25 px-[1.6cqw] py-[0.8cqw] text-[1.6cqw]">
-              {c.i} {c.s}
-            </Rise>
-          ))}
-        </div>
-      </div>
-    </div>
+      ))}
+      {ICONS.map((ic, i) => (
+        <Ink key={ic.label} x={ic.x} y={822} size={36} align="center" start={4500 + i * 500} dur={600}>
+          {ic.label}
+        </Ink>
+      ))}
+    </>
   )
 }
 
-/** 13. Close. */
-function Close({ t, at }: { t: number; at: Beat }) {
+// ---------------------------------------------------------------------------
+// 13. Close
+
+function Close() {
+  const prog = useProgress()
+  const at = useAt()
+  const run = outExpo(prog(0, 1500))
+  const words = [
+    { w: 'Quick.', x: 330, c: INK },
+    { w: 'Correct.', x: 800, c: RED },
+    { w: 'Together.', x: 1280, c: INK },
+  ]
   return (
-    <div className="absolute inset-0 grid place-items-center">
-      <div className="flex flex-col items-center text-center">
-        <motion.div initial={{ x: '60cqw' }} animate={{ x: 0 }} transition={{ duration: 1.4, ease }}>
-          <Mascot running={t < 1500} className="w-[16cqw]" speed="var(--hero-foreground)" />
-        </motion.div>
-        <h2 className="mt-[2cqw] font-display text-[6.2cqw] leading-none">
-          <Words t={t} from={1200} step={500} text="Quick. Correct. Together." />
-        </h2>
-        <Rise show={at(3400)} className="mt-[2.4cqw] text-[2.1cqw] opacity-85">
-          <Wordmark className="text-[2.4cqw]" /> · an AI service copilot for fine-dining servers
-        </Rise>
-        <Rise show={at(4400)} className="mt-[1cqw] text-[1.5cqw] opacity-60">
-          OB Project · Working Group B3
-        </Rise>
+    <>
+      <div className="absolute" style={{ left: '50%', top: '4%', width: '21cqw', transform: `translateX(calc(-50% + ${(1 - run) * 60}cqw))` }}>
+        <Mascot running={!at(1500)} className="w-full" speed={INK} />
       </div>
-    </div>
+      <Canvas>
+        {words.map((w, i) => (
+          <Sketch key={w.w} shapes={underline(w.x - 190, 640, 380, w.c === RED ? RED : OCHRE, 300 + i)} start={2200 + i * 700} dur={700} />
+        ))}
+      </Canvas>
+      {words.map((w, i) => (
+        <Ink key={w.w} x={w.x} y={560} size={140} font="brush" align="center" start={1400 + i * 700} dur={800} color={w.c}>
+          {w.w}
+        </Ink>
+      ))}
+      <Ink x={800} y={770} size={48} align="center" start={4300} dur={1500}>
+        TableMate · an AI service copilot for fine-dining servers
+      </Ink>
+      <Ink x={800} y={840} size={36} align="center" start={5400} dur={900} color={OCHRE}>
+        OB Project · Working Group B3
+      </Ink>
+    </>
   )
 }
 
 const SCENES: Scene[] = [
-  { id: 'hello', ms: 6000, caption: 'TableMate: the right service, at the right time.', render: (t, at) => <Hello t={t} at={at} /> },
-  { id: 'tables', ms: 8200, caption: 'A fine-dining server looks after six tables at once, each at a different step.', render: (t, at) => <SixTables t={t} at={at} /> },
-  { id: 'slip', ms: 8000, caption: 'They know the standards. In a rush, some still slip.', render: (t, at) => <Slip t={t} at={at} /> },
-  { id: 'blame', ms: 8000, caption: 'When the food runs late, the server hears it from the guest and takes the blame, even if the delay began at the pass.', render: (t, at) => <Blame t={t} at={at} /> },
-  { id: 'loop', ms: 8200, caption: 'The usual answer is retraining, which fixes what they know, not what the night asks of them.', render: (t, at) => <Loop t={t} at={at} /> },
-  { id: 'question', ms: 10500, caption: 'How might we help servers keep every table on track, without blame for what wasn’t theirs?', render: (t, at) => <Question t={t} at={at} /> },
-  { id: 'next3', ms: 8000, caption: 'TableMate shows each server only the next three things that matter, in order, with a reason.', render: (t, at) => <NextThree t={t} at={at} /> },
-  { id: 'loopback', ms: 8200, caption: 'Kitchen, servers and manager work from the same picture.', render: (t, at) => <Loopback t={t} at={at} /> },
-  { id: 'fair', ms: 8000, caption: 'Every delay is credited to whoever controlled that step, so a kitchen delay is never a server’s.', render: (t, at) => <Fair t={t} at={at} /> },
-  { id: 'share', ms: 8000, caption: 'The manager can hand a table to a colleague who speaks the guests’ language, or has more room.', render: (t, at) => <Handover t={t} at={at} /> },
-  { id: 'practice', ms: 9000, caption: 'Servers practise the hard moments privately, with honest scores and an ideal reply.', render: (t, at) => <Rehearsal t={t} at={at} /> },
-  { id: 'welcome', ms: 7500, caption: 'Six languages, read-aloud, large text and alerts that don’t depend on sound.', render: (t, at) => <Welcome t={t} at={at} /> },
-  { id: 'close', ms: 7500, caption: 'Quick. Correct. Together.', render: (t, at) => <Close t={t} at={at} /> },
+  { id: 'title', ms: 6500, caption: 'TableMate: the right service, at the right time.', render: () => <Title /> },
+  { id: 'aisha', ms: 8500, caption: 'Meet Aisha, a fine-dining server, on a Saturday night with six tables, each at a different step.', render: () => <MeetAisha /> },
+  { id: 'sops', ms: 9500, caption: 'She knows the standards she learnt on day one, but holding six tables in one head, some still slip.', render: () => <Slip /> },
+  { id: 'blame', ms: 9000, caption: 'When the food runs late, the guest blames her, even though the delay started in the kitchen and nobody told her.', render: () => <Blame /> },
+  { id: 'retrain', ms: 7500, caption: 'The usual answer is retraining, which fixes what she knows but not what the night asks of her.', render: () => <Retrain /> },
+  { id: 'question', ms: 10500, caption: 'How might we help servers keep every table on track, without blame for what was never theirs?', render: () => <Question /> },
+  { id: 'next3', ms: 8500, caption: 'TableMate shows each server only the next three things that matter, with a reason for each.', render: () => <NextThree /> },
+  { id: 'loop', ms: 9000, caption: 'Kitchen, server and manager work from the same picture.', render: () => <TeamLoop /> },
+  { id: 'fair', ms: 9000, caption: 'Every delay is credited to whoever controlled that step, so a kitchen delay is never a server’s.', render: () => <Fair /> },
+  { id: 'share', ms: 8500, caption: 'The manager can hand a table to a colleague who speaks the guests’ language, or has more room.', render: () => <Share /> },
+  { id: 'practice', ms: 9500, caption: 'Servers practise the hard moments privately, with an honest score and an ideal reply.', render: () => <Practice /> },
+  { id: 'welcome', ms: 7500, caption: 'Six languages, read-aloud, large text and alerts that do not depend on sound.', render: () => <Welcome /> },
+  { id: 'close', ms: 7500, caption: 'Quick. Correct. Together.', render: () => <Close /> },
 ]
 
 const TOTAL = SCENES.reduce((n, s) => n + s.ms, 0)
@@ -617,23 +840,17 @@ export default function Intro() {
   const first = Math.max(0, Math.min(SCENES.length - 1, Number(params.get('scene') ?? 0) || 0))
   const bare = params.get('bare') === '1'
   const [i, setI] = useState(first)
-  const [t, setT] = useState(0)
+  const [t, setT] = useState(() => Math.max(0, Number(params.get('t') ?? 0) || 0))
   const [playing, setPlaying] = useState(params.get('play') !== '0')
   const stage = useRef<HTMLDivElement>(null)
   const scene = SCENES[i]
+  const device = useReducedMotion()
+  const still = usePrefs().reduceMotion || !!device
 
-  // The clock: while playing, time moves on; at a scene's end, the next one begins.
-  useEffect(() => {
-    if (!playing) return
-    let last = performance.now()
-    const id = setInterval(() => {
-      const now = performance.now()
-      const dt = now - last
-      last = now
-      setT((x) => x + dt)
-    }, 60)
-    return () => clearInterval(id)
-  }, [playing])
+  // The clock: while playing, time moves on every frame; at a scene's end the next one begins.
+  useAnimationFrame((_, delta) => {
+    if (playing) setT((x) => x + Math.min(delta, 100))
+  })
   useEffect(() => {
     if (t < scene.ms) return
     if (i < SCENES.length - 1) {
@@ -644,6 +861,23 @@ export default function Intro() {
       setT(scene.ms)
     }
   }, [t, i, scene.ms])
+
+  // For rendering the film frame by frame: jump to any scene and moment, paused.
+  useEffect(() => {
+    if (!bare) return
+    const w = window as unknown as { __tm?: { seek: (scene: number, ms: number) => void; scenes: number[] } }
+    w.__tm = {
+      seek: (n, ms) => {
+        setPlaying(false)
+        setI(n)
+        setT(Math.min(ms, SCENES[n].ms - 1))
+      },
+      scenes: SCENES.map((x) => x.ms),
+    }
+    return () => {
+      delete w.__tm
+    }
+  }, [bare])
 
   const go = useCallback((n: number) => {
     setI(Math.max(0, Math.min(SCENES.length - 1, n)))
@@ -671,7 +905,7 @@ export default function Intro() {
     return () => window.removeEventListener('keydown', on)
   }, [go, i, toggle])
 
-  const at: Beat = (ms) => t >= ms
+  const ctx = useMemo(() => ({ t, still }), [t, still])
   const elapsed = SCENES.slice(0, i).reduce((n, s) => n + s.ms, 0) + Math.min(t, scene.ms)
 
   return (
@@ -682,7 +916,7 @@ export default function Intro() {
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
               <h1 className="font-display text-2xl md:text-3xl">Meet TableMate</h1>
-              <p className="text-sm text-muted-foreground">A {Math.round(TOTAL / 1000 / 6) / 10}-minute film about the problem and what TableMate does about it.</p>
+              <p className="text-sm text-muted-foreground">A {Math.round(TOTAL / 1000 / 6) / 10}-minute hand-drawn film about the problem and what TableMate does about it.</p>
             </div>
             <Button asChild variant="outline" size="sm" className="rounded-full">
               <Link to="/about">
@@ -691,20 +925,29 @@ export default function Intro() {
             </Button>
           </div>
         )}
-        <div ref={stage} className="@container relative aspect-video w-full overflow-hidden bg-hero font-sans text-hero-foreground sm:rounded-3xl" role="region" aria-label="TableMate introduction">
-          {/* Soft light behind the picture */}
-          <div className="pointer-events-none absolute inset-0 opacity-60" style={{ background: 'radial-gradient(60% 70% at 50% 0%, color-mix(in oklab, var(--primary) 28%, transparent), transparent 70%)' }} aria-hidden />
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={scene.id} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}>
-              {scene.render(t, at)}
-            </motion.div>
-          </AnimatePresence>
-          {/* Caption */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-[5cqw] pb-[1.6cqw] pt-[5cqw]">
-            <p key={scene.id} className="mx-auto max-w-[78cqw] text-center text-[1.55cqw] leading-snug text-hero-foreground/95" aria-live="polite">
-              {scene.caption}
-            </p>
-          </div>
+        {/* The paper: a fixed look that follows the brand, whichever theme the app is in. */}
+        <div
+          ref={stage}
+          className={cn('@container relative aspect-video w-full overflow-hidden', !bare && 'sm:rounded-3xl')}
+          role="region"
+          aria-label="TableMate introduction"
+          style={{
+            background: PAPER,
+            color: INK,
+            backgroundImage: 'radial-gradient(color-mix(in oklab, var(--chocolate) 14%, transparent) 1.2px, transparent 1.6px)',
+            backgroundSize: '2.2cqw 2.2cqw',
+          }}
+        >
+          <StageProvider value={ctx}>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div key={scene.id} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: [0.215, 0.61, 0.355, 1] }}>
+                {scene.render()}
+              </motion.div>
+            </AnimatePresence>
+          </StageProvider>
+          <p className="sr-only" aria-live="polite" key={scene.id}>
+            {scene.caption}
+          </p>
           {ended && !bare && (
             <button type="button" onClick={toggle} className="absolute right-[2cqw] top-[2cqw] flex items-center gap-[0.8cqw] rounded-full bg-primary px-[1.8cqw] py-[0.9cqw] text-[1.5cqw] font-medium text-primary-foreground">
               <RotateCcw className="size-[1.8cqw]" /> Watch again
@@ -739,7 +982,7 @@ export default function Intro() {
             <Maximize2 />
           </Button>
         </div>
-        {!bare && <p className="mt-2 text-xs text-muted-foreground">Space to pause, arrow keys to change scene, F for full screen. Turn Animations off in Settings and the scenes still play, with less movement.</p>}
+        {!bare && <p className="mt-2 text-xs text-muted-foreground">Space to pause, arrow keys to change scene, F for full screen. With Animations off in Settings, each scene shows its finished drawing.</p>}
       </main>
     </div>
   )
