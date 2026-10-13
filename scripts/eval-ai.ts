@@ -59,12 +59,13 @@ const cases: Case[] = [
   { id: 'manager coaching', req: chat('A server was rude to a guest. How should I give feedback?', {}, M), check: has(/private|specific|listen|follow.?up/i, 'private, specific feedback') },
 ]
 
-const rows: { name: string; score: number; passed: number; total: number; p50: number; failures: string[] }[] = []
+const rows: { name: string; score: number; passed: number; total: number; p50: number; failures: string[]; unavailable: number }[] = []
 for (const p of providers) {
   console.log(`\n${p.name}: ${await p.describe()}`)
   if (p.refresh) await p.refresh()
   const ai = createAi(hub, { chat: [p.model] })
   let passed = 0
+  let unavailable = 0
   const ms: number[] = []
   const failures: string[] = []
   for (const c of cases) {
@@ -75,23 +76,28 @@ for (const p of providers) {
       a = await ai.ask(c.req).catch((e) => ({ text: String(e), source: 'built-in' as const }))
       took = Date.now() - t0
       if (a.source === p.name) break
-      await sleep(8000) // a rate limit: wait, then one more try
+      await sleep(25_000) // a rate limit: wait, then one more try
     }
     const why = a!.source !== p.name ? `no answer from the model (${a!.notice ?? 'built-in used'})` : c.check(a!)
+    const noModel = a!.source !== p.name
+    if (noModel) unavailable++
     if (!why) (passed++, ms.push(took))
     else failures.push(`${c.id}: ${why}`)
     console.log(`  ${why ? '✗' : '✓'} ${c.id.padEnd(34)} ${String(took).padStart(6)} ms${why ? '  ' + why : ''}`)
-    await sleep(p.name === 'cloud' || p.name === 'gemini' ? 1500 : 0)
+    await sleep(p.name === 'cloud' || p.name === 'gemini' ? 4000 : 0) // stay inside free-tier limits
   }
   const p50 = ms.sort((x, y) => x - y)[Math.floor(ms.length / 2)] ?? 0
-  // Quality is the share of checks passed; a model that takes over 8 s a question loses up to 10 points.
-  const score = Math.max(0, Math.round((passed / cases.length) * 100 - Math.min(10, Math.max(0, p50 - 8000) / 1000)))
-  rows.push({ name: p.name, score, passed, total: cases.length, p50, failures })
+  // Quality is the share of answered questions that passed; availability (answered at all) counts for 20%;
+  // a model that takes over 8 s a question loses up to 10 points.
+  const answered = cases.length - unavailable
+  const quality = answered ? passed / answered : 0
+  const score = Math.max(0, Math.round(quality * 100 * (0.8 + 0.2 * (answered / cases.length)) - Math.min(10, Math.max(0, p50 - 8000) / 1000)))
+  rows.push({ name: p.name, score, passed, total: cases.length, p50, failures, unavailable })
 }
 
 rows.sort((a, b) => b.score - a.score)
 console.log('\nResult (best first)')
-for (const r of rows) console.log(`  ${r.name.padEnd(8)} ${String(r.score).padStart(3)}/100   ${r.passed}/${r.total} checks   median ${r.p50} ms`)
+for (const r of rows) console.log(`  ${r.name.padEnd(8)} ${String(r.score).padStart(3)}/100   ${r.passed}/${r.total - r.unavailable} answered checks passed   ${r.unavailable} unanswered   median ${r.p50} ms`)
 mkdirSync(join(root, 'data'), { recursive: true })
 writeFileSync(join(root, 'data/ai-ranking.json'), JSON.stringify({ updated: new Date().toISOString(), scores: Object.fromEntries(rows.map((r) => [r.name, r.score])), detail: rows }, null, 2))
 console.log('\nSaved data/ai-ranking.json. The server asks the best model first and falls through the rest; the built-in trainer is always the last resort.')

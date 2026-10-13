@@ -39,6 +39,8 @@ export interface ChatModel {
   checkFacts?: boolean
   /** A slower local model: send a compact prompt (only the training notes that matter for this question). */
   compact?: boolean
+  /** A cloud model with a small free allowance: send the compact prompt (fewer tokens), but trust its judgement fully. */
+  lean?: boolean
   /** Which model is answering, for the Setup page (e.g. "gemma3:4b"). */
   label?(): string | undefined
   /** `reminder` restates the format and length in one line; small local models follow it far better than the long system prompt. */
@@ -537,7 +539,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
         const t0 = Date.now()
         try {
           const full = built.system ?? { stable: quickSystem(hub.config), live: `Reply in ${language}.` }
-          const system = model.compact && built.compact ? { ...built.compact, reminder: full.reminder } : full
+          const system = (model.compact || model.lean) && built.compact ? { ...built.compact, reminder: full.reminder } : full
           const stream = quick || built.streamable ? (t: string) => ((started = true), onText?.(t)) : undefined
           const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], stream, { maxTokens: quick ? (QUICK_TOKENS[req.kind] ?? 240) : undefined, signal: ctrl.signal, json: built.json })
           const bad = unusable(answer)

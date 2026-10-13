@@ -79,7 +79,7 @@ export function createOpenAi(cfg: { key: string; url: string; models: string[]; 
       method: 'POST',
       headers: { authorization: `Bearer ${cfg.key}`, 'content-type': 'application/json' },
       signal: o?.signal ? AbortSignal.any([AbortSignal.timeout(45_000), o.signal]) : AbortSignal.timeout(45_000),
-      body: JSON.stringify({ model: name, stream: true, temperature: 0.6, max_tokens: o?.maxTokens ?? 1024, messages, ...(/gpt-oss/.test(name) ? { reasoning_effort: 'low' } : {}) }),
+      body: JSON.stringify({ model: name, stream: true, temperature: 0.6, max_tokens: o?.maxTokens ?? 600, messages, ...(/gpt-oss/.test(name) ? { reasoning_effort: 'low' } : {}) }),
     })
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } | string }
@@ -117,6 +117,7 @@ export function createOpenAi(cfg: { key: string; url: string; models: string[]; 
 
   const model: ChatModel = {
     name: 'cloud',
+    lean: true,
     label: () => `${cfg.id ?? 'cloud'}: ${lastGood ?? models[0]}`,
     async reply(system, turns, onText, o) {
       await discovered
