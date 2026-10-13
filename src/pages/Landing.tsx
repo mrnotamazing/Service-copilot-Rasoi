@@ -1,8 +1,8 @@
 // The front door at "/": what TableMate is, the problem it answers, what it does, who it is for, and
 // the ways in (the live demo, the film, the real screens). It stands apart from the app's own menu.
 
-import { Accessibility, ArrowRight, BellRing, Check, ChefHat, Clapperboard, Eye, HeartHandshake, Languages, LayoutDashboard, Lock, Play, Receipt, ShieldCheck, Sparkles, Timer, Type, Users, Volume2 } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
+import { Accessibility, ArrowRight, BellRing, Check, ChefHat, Clapperboard, Eye, HeartHandshake, Languages, Lock, Play, Receipt, ShieldCheck, Sparkles, Timer, Type, Users, Volume2 } from 'lucide-react'
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Mascot, Mark, TAGLINE, Wordmark } from '../brand/marks.tsx'
@@ -25,12 +25,41 @@ const LINKS = [
   { href: '#everyone', label: 'For everyone' },
 ]
 
+/**
+ * The header's lower edge is the service line: it fills as the page is read, with the chef running
+ * along it while the page moves. Position follows the scroll; the running legs stop for reduced motion.
+ */
+function ScrollChef() {
+  const device = useReducedMotion()
+  const still = usePrefs().reduceMotion || !!device
+  const { scrollYProgress } = useScroll()
+  const left = useTransform(scrollYProgress, (v) => `${v * 100}%`)
+  const width = useTransform(scrollYProgress, (v) => `${v * 100}%`)
+  const [running, setRunning] = useState(false)
+  const timer = useRef<number | undefined>(undefined)
+  useMotionValueEvent(scrollYProgress, 'change', () => {
+    if (still) return
+    setRunning(true)
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setRunning(false), 160)
+  })
+  return (
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px]" aria-hidden>
+      <motion.div className="h-full bg-primary" style={{ width }} />
+      <motion.div className="absolute bottom-[3px] w-9 -translate-x-full" style={{ left }}>
+        <Mascot running={running} className="w-full" speed="var(--muted-foreground)" />
+      </motion.div>
+    </div>
+  )
+}
+
 function Header() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <a href="#main" onClick={skipToMain} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
         Skip to main content
       </a>
+      <ScrollChef />
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 md:gap-6 md:px-6">
         <Link to="/" className="inline-flex items-center gap-2" aria-label="TableMate home">
           <Mark className="h-6 w-auto text-tomato" />
@@ -486,35 +515,78 @@ function Product() {
 }
 
 // ---------------------------------------------------------------------------
-// Who it is for: each role has a real screen.
+// Who it is for: one moment, seen from each screen.
 
-const TEAMS: { to: string; title: string; body: string; Icon: typeof Users; cta: string }[] = [
-  { to: '/servers', title: 'Servers', body: 'A phone app with the next three moves, their tables, the kitchen chat, private practice and progress.', Icon: Users, cta: 'Open a server’s phone' },
-  { to: '/kitchen', title: 'Kitchen', body: 'Tickets with timers, food at the pass, notes to the floor, and a board to switch dishes off.', Icon: ChefHat, cta: 'Open the kitchen pass' },
-  { to: '/manager', title: 'Managers', body: 'The live floor, why things are happening, the next fifteen minutes, and one tap to share a table.', Icon: LayoutDashboard, cta: 'Open the manager view' },
-]
+function Screen({ role, to, cta, children, className }: { role: string; to: string; cta: string; children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('flex min-w-0 flex-col', className)}>
+      <h3 className="font-display text-2xl">{role}</h3>
+      <div className="mt-3 flex-1 rounded-3xl border bg-card p-4 shadow-sm md:p-5">{children}</div>
+      <Link to={to} className="group mt-3 inline-flex items-center gap-1.5 self-start text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        {cta} <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+      </Link>
+    </div>
+  )
+}
 
 function Teams() {
   return (
     <section id="teams" className="scroll-mt-16 border-t">
       <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
-        <h2 className="max-w-[24ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">A screen for each job. Open the one that is yours.</h2>
-        <ul className="rise-stagger mt-10 grid gap-4 md:grid-cols-3">
-          {TEAMS.map(({ to, title, body, Icon, cta }) => (
-            <li key={to}>
-              <Link to={to} className="lift group flex h-full flex-col rounded-3xl border bg-card p-6 hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className="grid size-12 place-items-center rounded-2xl bg-primary/12 text-primary">
-                  <Icon className="size-6" aria-hidden />
-                </span>
-                <h3 className="mt-5 font-display text-2xl">{title}</h3>
-                <p className="mt-2 flex-1 text-pretty leading-relaxed text-muted-foreground">{body}</p>
-                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
-                  {cta} <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <h2 className="max-w-[22ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">One moment, three screens.</h2>
+        <p className="mt-4 max-w-[58ch] text-pretty text-lg text-muted-foreground">
+          It is 8:42 on a busy Saturday and the grill falls behind. Here is what each person sees, and what they do next. Open any of them to try it for real.
+        </p>
+        <div className="mt-10 grid items-start gap-8 lg:grid-cols-[0.85fr_1.15fr_1fr] lg:gap-6">
+          <Screen role="The server" to="/servers" cta="Open a server’s phone">
+            <div className="rounded-2xl border border-primary/60 bg-background p-4 shadow-md">
+              <div className="font-display text-base leading-snug">Tell Table 2 the mains are late</div>
+              <div className="mt-1 flex items-start gap-1.5 text-[13px] leading-snug text-muted-foreground">
+                <Sparkles className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+                <span>The grill is 6 minutes behind. A heads-up now beats an apology later.</span>
+              </div>
+              <div className="mt-3 rounded-full bg-primary py-2 text-center text-sm font-medium text-primary-foreground">Told them</div>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">She tells the table before they ask. The guest hears it from her, calmly.</p>
+          </Screen>
+          <Screen role="The kitchen" to="/kitchen" cta="Open the kitchen pass" className="lg:mt-10">
+            <ul className="divide-y text-sm">
+              {[
+                ['T2 · Mains', '+6:10', true],
+                ['T6 · Mains', '+3:40', true],
+                ['T9 · Starters', '1:20', false],
+              ].map(([t, time, late]) => (
+                <li key={String(t)} className="flex items-center gap-3 py-2.5">
+                  <span className="min-w-0 flex-1 font-medium">{t}</span>
+                  <span className={cn('tabular', late ? 'font-medium text-kitchen' : 'text-muted-foreground')}>{time}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm">
+              <ChefHat className="size-4 shrink-0 text-kitchen" aria-hidden />
+              <span className="min-w-0 flex-1">Grill backed up, about 5 min</span>
+              <span className="rounded-full bg-background px-2 py-0.5 text-xs text-good">Sent to the floor</span>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">One note reaches every server at once. No one walks the pass to ask.</p>
+          </Screen>
+          <Screen role="The manager" to="/manager" cta="Open the manager view" className="lg:mt-4">
+            <div className="flex items-start gap-3 rounded-2xl bg-accent/60 p-3.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-background text-primary">
+                <Sparkles className="size-5" aria-hidden />
+              </span>
+              <p className="text-sm font-medium leading-snug">The grill is behind on 3 tables. This is a kitchen pattern, not a server one.</p>
+            </div>
+            <ul className="mt-3 space-y-2 text-sm">
+              <li className="flex items-center gap-2">
+                <Check className="size-4 text-good" strokeWidth={3} aria-hidden /> Aisha’s steps: all within standard
+              </li>
+              <li className="flex items-center gap-2">
+                <Lock className="size-4 text-muted-foreground" aria-hidden /> No ranking of people, only where time goes
+              </li>
+            </ul>
+            <p className="mt-3 text-sm text-muted-foreground">She sees the cause, not a slow server, and can step in at the grill.</p>
+          </Screen>
+        </div>
       </div>
     </section>
   )
