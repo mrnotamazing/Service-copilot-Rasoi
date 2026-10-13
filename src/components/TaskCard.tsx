@@ -152,7 +152,7 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
             <button
               type="button"
               onClick={() => speakTask(words.title, words.hint, { title: task.title, hint: task.hint })}
-              className="-my-1 -mr-1 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="-my-1 -mr-1 grid size-8 pointer-coarse:size-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label={t('card.read')}
               title={t('card.read')}
             >

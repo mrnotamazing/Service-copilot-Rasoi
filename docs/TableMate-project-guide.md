@@ -326,6 +326,10 @@ Opened from **Settings** in the header (it also shows the current language). Sav
 A page for the audience covering the problem, how a card is born, fairness, AI on the floor, inclusion, the theory behind the design, adoption, motivation without surveillance, the technology, AI where words matter, and how it will be tested.
 
 
+### 5.10a Design references (`docs/`)
+
+`docs/design-tokens.md` lists every colour token with its light and dark value and the computed contrast of the pairs that matter. `docs/personas-and-journeys.md` has the four proto-personas, a journey map for one table on a Saturday night, the hypotheses to test and a usability test script for the demo. Touch screens get 44 px controls through `pointer-coarse:` variants in the Button, Input and Select components. The link preview image is `public/og.png`.
+
 ### 5.10b The landing page (`/`)
 
 The front door, in `src/pages/Landing.tsx`: it says what TableMate is before anyone opens a screen. A header with Settings and **Try the demo**; a hero with the promise and a phone you can use (tap the top card's button and the next move slides up; left alone it plays by itself, and it stays still when Animations are off); the problem in three plain points; a four-tab tour of the product (**On track**, **Fair**, **Balanced floor**, **Growing**), each with a picture of the real thing; a card for each role (server, kitchen, manager) that opens the real screen; the principles (suggestions never orders, safety is rules, never a ranking, works without the AI); languages and access; and a closing panel with **Open the demo**, **Watch the film** and **Read how it works**. The page copy is English; the app screens it links to are in all six languages. The running chef (`src/components/RunningChef.tsx`) runs along the rule under the hero. A second chef runs along the header's lower edge as the page is read (the line fills with the scroll; the legs stop when motion is reduced). The "One moment, three screens" section shows the same 8:42 grill delay as the server, the kitchen and the manager see it, each linking to the real screen.

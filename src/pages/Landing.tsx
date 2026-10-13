@@ -53,7 +53,28 @@ function ScrollChef() {
   )
 }
 
+/** The section in view, so the header can show where the visitor is. */
+function useSection(ids: string[]) {
+  const [active, setActive] = useState('')
+  useEffect(() => {
+    const els = ids.map((id) => document.getElementById(id)).filter((e): e is HTMLElement => !!e)
+    const io = new IntersectionObserver(
+      (entries) => {
+        const hit = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+        if (hit) setActive(hit.target.id)
+        else if (window.scrollY < 300) setActive('')
+      },
+      { rootMargin: '-35% 0px -55% 0px', threshold: [0, 0.1, 0.5] },
+    )
+    els.forEach((e) => io.observe(e))
+    return () => io.disconnect()
+  }, [ids])
+  return active
+}
+const SECTION_IDS = LINKS.map((l) => l.href.slice(1))
+
 function Header() {
+  const active = useSection(SECTION_IDS)
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <a href="#main" onClick={skipToMain} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
@@ -61,20 +82,23 @@ function Header() {
       </a>
       <ScrollChef />
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 md:gap-6 md:px-6">
-        <Link to="/" className="inline-flex items-center gap-2" aria-label="TableMate home">
+        <Link to="/" className="inline-flex min-h-11 items-center gap-2" aria-label="TableMate home">
           <Mark className="h-6 w-auto text-tomato" />
           <Wordmark className="text-xl leading-none" />
         </Link>
         <nav aria-label="On this page" className="hidden items-center gap-1 md:flex">
           {LINKS.map((l) => (
-            <a key={l.href} href={l.href} onClick={(e) => scrollToId(e, l.href.slice(1))} className="inline-flex h-9 items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground">
+            <a key={l.href} href={l.href} onClick={(e) => scrollToId(e, l.href.slice(1))}
+              aria-current={active === l.href.slice(1) ? 'location' : undefined}
+              className={cn('inline-flex h-9 items-center rounded-lg px-3 text-sm transition-colors hover:bg-secondary/60 hover:text-foreground', active === l.href.slice(1) ? 'bg-secondary font-medium text-foreground' : 'text-muted-foreground')}
+            >
               {l.label}
             </a>
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-1.5">
           <AccessButton />
-          <Button asChild size="sm" className="h-9 rounded-full px-4">
+          <Button asChild size="sm" className="h-9 rounded-full px-4 pointer-coarse:h-11">
             <Link to="/demo">Try the demo</Link>
           </Button>
         </div>
@@ -490,7 +514,7 @@ function Product() {
           <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
             <TabsList className="h-auto w-max gap-1 rounded-full bg-background p-1.5 ring-1 ring-border">
               {GROUPS.map((g) => (
-                <TabsTrigger key={g.id} value={g.id} className="h-9 flex-none rounded-full px-5 text-sm text-muted-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
+                <TabsTrigger key={g.id} value={g.id} className="h-9 flex-none rounded-full px-5 text-sm text-muted-foreground pointer-coarse:h-11 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
                   {g.tab}
                 </TabsTrigger>
               ))}
@@ -522,7 +546,7 @@ function Screen({ role, to, cta, children, className }: { role: string; to: stri
     <div className={cn('flex min-w-0 flex-col', className)}>
       <h3 className="font-display text-2xl">{role}</h3>
       <div className="mt-3 flex-1 rounded-3xl border bg-card p-4 shadow-sm md:p-5">{children}</div>
-      <Link to={to} className="group mt-3 inline-flex items-center gap-1.5 self-start text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Link to={to} className="group mt-1 inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {cta} <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </Link>
     </div>
@@ -670,6 +694,23 @@ function Finale() {
           Start a simulated Saturday service, play a server, and watch the kitchen and the manager react. Presenting? One tap sets up a service already 100 minutes in, with something to show on
           every screen.
         </p>
+        <ol className="mt-6 grid max-w-[44rem] gap-3 text-[15px] sm:grid-cols-3">
+          {[
+            ['Open the demo', 'and press Start service.'],
+            ['Tap Set up a presentation', 'and pick the server you play.'],
+            ['Follow the seven stops', 'each one has something to show.'],
+          ].map(([a, b], i) => (
+            <li key={a} className="flex gap-3 border-t border-hero-foreground/25 pt-3">
+              <span className="font-display text-lg tabular-nums text-primary-2" aria-hidden>
+                {i + 1}
+              </span>
+              <span>
+                <span className="font-medium">{a}</span> <span className="opacity-80">{b}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-3 text-sm opacity-75">About two minutes, and no account needed.</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="h-12 rounded-full px-6 text-base">
             <Link to="/demo">
@@ -700,13 +741,13 @@ function Footer() {
           <span className="ml-2">{TAGLINE}</span>
         </div>
         <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <Link to="/demo" className="hover:text-foreground">
+          <Link to="/demo" className="inline-flex min-h-11 min-w-11 items-center justify-center hover:text-foreground">
             Demo
           </Link>
-          <Link to="/about" className="hover:text-foreground">
+          <Link to="/about" className="inline-flex min-h-11 items-center hover:text-foreground">
             How it works
           </Link>
-          <Link to="/intro" className="hover:text-foreground">
+          <Link to="/intro" className="inline-flex min-h-11 min-w-11 items-center justify-center hover:text-foreground">
             Film
           </Link>
           <span>OB Project · Working Group B3</span>

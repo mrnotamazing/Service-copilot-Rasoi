@@ -787,7 +787,7 @@ function Chip({ children, active, onClick }: { children: ReactNode; active?: boo
     <button
       type="button"
       onClick={onClick}
-      className={cn('shrink-0 rounded-full border px-3 py-1 text-xs transition-colors', active ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground')}
+      className={cn('shrink-0 rounded-full border px-3 py-1 text-xs transition-colors pointer-coarse:min-h-11 pointer-coarse:px-4 pointer-coarse:text-sm', active ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground')}
     >
       {children}
     </button>

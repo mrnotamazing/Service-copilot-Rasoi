@@ -44,7 +44,7 @@ export function AccessButton({ className, variant = 'pill' }: { className?: stri
           type="button"
           onClick={() => setOpen(true)}
           title={t('acc.open')}
-          className={cn('group inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-background pl-2.5 pr-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent', className)}
+          className={cn('group inline-flex h-9 pointer-coarse:h-11 shrink-0 items-center gap-1.5 rounded-full border bg-background pl-2.5 pr-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent', className)}
         >
           <Settings2 className="size-4 text-primary transition-transform duration-300 group-hover:rotate-45" aria-hidden />
           <span className="max-sm:sr-only">{t('acc.settings')}</span>{' '}

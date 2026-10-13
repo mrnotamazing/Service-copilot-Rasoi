@@ -14,7 +14,7 @@ import { skipToMain } from '../lib/scroll.ts'
 
 export function Brand() {
   return (
-    <Link to="/" className="inline-flex items-center gap-2" aria-label="TableMate home">
+    <Link to="/" className="inline-flex min-h-11 items-center gap-2" aria-label="TableMate home">
       <Mark className="h-6 w-auto text-tomato" />
       <Wordmark className="text-xl leading-none" />
     </Link>

@@ -89,7 +89,7 @@ export default function KitchenView() {
               role="radio"
               aria-checked={station === s}
               onClick={() => setStation(s)}
-              className={cn('min-h-9 rounded-full border px-3 text-sm capitalize transition-colors', station === s ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground')}
+              className={cn('min-h-9 pointer-coarse:min-h-11 rounded-full border px-3 text-sm capitalize transition-colors', station === s ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground')}
             >
               {s === 'all' ? 'All stations' : s}
               {s !== 'all' && stationCount(s) > 0 && <span className="ml-1 tabular">{stationCount(s)}</span>}
@@ -323,7 +323,7 @@ function TellFloor({ snap }: { snap: Snap }) {
       <h2 className="mb-2 text-sm font-semibold">Quick update to the floor</h2>
       <div className="mb-2 flex flex-wrap gap-1.5">
         {['Mains in 5 min', 'Grill is backed up', 'Ready to fire', 'Running low on bread'].map((q) => (
-          <button key={q} type="button" onClick={() => void send(q)} className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground">
+          <button key={q} type="button" onClick={() => void send(q)} className="rounded-full border bg-background px-2.5 py-1 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3.5 text-muted-foreground hover:text-foreground">
             {q}
           </button>
         ))}
@@ -371,8 +371,8 @@ function EightySix({ snap }: { snap: Snap }) {
         {snap.config.menu.map((m) => {
           const off = snap.unavailable.includes(m.id)
           return (
-            <li key={m.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
-              <label htmlFor={`stock-${m.id}`} className={cn('cursor-pointer', off && 'text-muted-foreground line-through')}>
+            <li key={m.id} className="flex items-center justify-between gap-2 py-1.5 text-sm pointer-coarse:min-h-12">
+              <label htmlFor={`stock-${m.id}`} className={cn('flex min-h-8 flex-1 cursor-pointer items-center', off && 'text-muted-foreground line-through')}>
                 {m.name}
               </label>
               <Switch id={`stock-${m.id}`} checked={!off} onCheckedChange={(on) => void act('item.stock', { menuItemId: m.id, available: on }, 'kitchen')} aria-label={`${m.name} available`} />
@@ -447,7 +447,7 @@ function QuestionRow({ q, snap, who }: { q: NonNullable<Snap['questions']>[numbe
       <p className="mt-0.5 font-medium">{q.text}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {QUICK_ANSWERS.map((a) => (
-          <button key={a} type="button" disabled={busy} onClick={() => void send(a)} className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-secondary hover:text-foreground">
+          <button key={a} type="button" disabled={busy} onClick={() => void send(a)} className="rounded-full border bg-background px-2.5 py-1 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
             {a}
           </button>
         ))}

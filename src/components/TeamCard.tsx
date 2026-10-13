@@ -144,10 +144,10 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
                   </div>
                   <div className="truncate text-xs text-muted-foreground tabular">{roleLine(s, snap)}</div>
                 </div>
-                <Button size="sm" variant="ghost" className="h-9" onClick={() => setCompose({ mode: 'note', to: [s.id] })} aria-label={`Send ${s.name} a note`}>
+                <Button size="sm" variant="ghost" className="h-9 pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setCompose({ mode: 'note', to: [s.id] })} aria-label={`Send ${s.name} a note`}>
                   <MessageSquarePlus /> {!compact && <span className="hidden md:inline">Note</span>}
                 </Button>
-                <Button size="sm" variant="ghost" className="h-9 text-primary" onClick={() => setCompose({ mode: 'kudos', to: [s.id] })} aria-label={`Give ${s.name} kudos`}>
+                <Button size="sm" variant="ghost" className="h-9 pointer-coarse:h-11 pointer-coarse:min-w-11 text-primary" onClick={() => setCompose({ mode: 'kudos', to: [s.id] })} aria-label={`Give ${s.name} kudos`}>
                   <HeartHandshake /> {!compact && <span className="hidden md:inline">Kudos</span>}
                 </Button>
               </li>
