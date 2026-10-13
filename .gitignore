@@ -7,3 +7,4 @@ dist-demo
 
 # Generated film audio and frames
 film-cache/
+data/ai-ranking.json
