@@ -7,7 +7,7 @@
 // With Animations off in Settings, scenes show their finished frames instead of animating.
 
 import { AnimatePresence, motion, useAnimationFrame, useReducedMotion } from 'motion/react'
-import { BookOpen, Maximize2, Pause, Play, RotateCcw, SkipBack, SkipForward } from 'lucide-react'
+import { BookOpen, Maximize2, Pause, Play, RotateCcw, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,8 @@ import { clamp01, ClockProvider, Stage } from './intro/kit.tsx'
 import { SCENES } from './intro/scenes.tsx'
 
 const TOTAL = SCENES.reduce((n, s) => n + s.ms, 0)
+// The voice-over and music, one track timed to the whole film. The single-file demo embeds it as window.__TM_VOICE.
+const VOICE = (typeof window !== 'undefined' && (window as unknown as { __TM_VOICE?: string }).__TM_VOICE) || `${import.meta.env.BASE_URL}TableMate-voiceover.mp3`
 
 /** A thin service line along the foot of the middle scenes, with the chef running along it as the film plays. */
 function ServiceLine({ elapsed, scene }: { elapsed: number; scene: number }) {
@@ -50,6 +52,10 @@ export default function Intro() {
   const [t, setT] = useState(() => Math.max(0, Number(params.get('t') ?? 0) || 0))
   const [playing, setPlaying] = useState(params.get('play') !== '0')
   const stage = useRef<HTMLDivElement>(null)
+  const audio = useRef<HTMLAudioElement | null>(null)
+  const [muted, setMuted] = useState(false)
+  // Browsers only let sound start after a tap; until then the player says so instead of staying silent.
+  const [blocked, setBlocked] = useState(false)
   const scene = SCENES[i]
   const device = useReducedMotion()
   const still = usePrefs().reduceMotion || !!device
@@ -113,6 +119,21 @@ export default function Intro() {
   }, [go, i, toggle])
 
   const elapsed = SCENES.slice(0, i).reduce((n, s) => n + s.ms, 0) + Math.min(t, scene.ms)
+
+  // Sound follows the clock: it plays and pauses with the film, and jumps when a scene is skipped.
+  useEffect(() => {
+    const a = audio.current
+    if (!a || bare) return
+    if (!playing || muted) {
+      a.pause()
+      return
+    }
+    const want = elapsed / 1000
+    if (Math.abs(a.currentTime - want) > 0.45) a.currentTime = Math.min(want, Math.max(0, (a.duration || want) - 0.05))
+    if (a.paused) {
+      a.play().then(() => setBlocked(false), () => setBlocked(true))
+    }
+  }, [playing, muted, bare, Math.floor(elapsed / 250)]) // eslint-disable-line react-hooks/exhaustive-deps
   const ctx = useMemo(() => ({ t, still, elapsed }), [t, still, elapsed])
 
   return (
@@ -134,6 +155,7 @@ export default function Intro() {
         )}
         {/* The film is always light and on brand, whichever theme the app is in. */}
         <div ref={stage} className={cn('film @container relative aspect-video w-full overflow-hidden', !bare && 'sm:rounded-3xl')} role="region" aria-label="TableMate introduction" style={{ background: 'var(--cream)', color: 'var(--chocolate)' }}>
+          {!bare && <audio ref={audio} src={VOICE} preload="auto" />}
           <ClockProvider value={ctx}>
             <Stage>
               <ServiceLine elapsed={elapsed} scene={i} />
@@ -147,6 +169,11 @@ export default function Intro() {
           <p className="sr-only" aria-live="polite" key={scene.id}>
             {scene.caption}
           </p>
+          {blocked && playing && !muted && !bare && (
+            <button type="button" onClick={() => void audio.current?.play().then(() => setBlocked(false), () => undefined)} className="absolute bottom-[2cqw] left-[2cqw] flex items-center gap-[0.8cqw] rounded-full bg-primary px-[1.8cqw] py-[0.9cqw] text-[1.5cqw] font-medium text-primary-foreground">
+              <Volume2 className="size-[1.8cqw]" /> Tap for sound
+            </button>
+          )}
           {ended && !bare && (
             <button type="button" onClick={toggle} className="absolute right-[2cqw] top-[2cqw] flex items-center gap-[0.8cqw] rounded-full bg-primary px-[1.8cqw] py-[0.9cqw] text-[1.5cqw] font-medium text-primary-foreground">
               <RotateCcw className="size-[1.8cqw]" /> Watch again
@@ -177,6 +204,9 @@ export default function Intro() {
           <span className="hidden w-24 text-right text-xs tabular text-muted-foreground sm:block">
             {Math.floor(elapsed / 60000)}:{String(Math.floor((elapsed % 60000) / 1000)).padStart(2, '0')} / {Math.floor(TOTAL / 60000)}:{String(Math.floor((TOTAL % 60000) / 1000)).padStart(2, '0')}
           </span>
+          <Button size="icon" variant="ghost" aria-label={muted ? 'Turn sound on' : 'Turn sound off'} aria-pressed={!muted} onClick={() => setMuted((m) => !m)}>
+            {muted ? <VolumeX /> : <Volume2 />}
+          </Button>
           <Button size="icon" variant="ghost" aria-label="Full screen" onClick={() => void stage.current?.requestFullscreen?.()}>
             <Maximize2 />
           </Button>
