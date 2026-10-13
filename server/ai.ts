@@ -14,6 +14,7 @@ import { predictReady } from '../shared/predict.ts'
 import { menuForNeed, safetyIssues } from '../shared/safety.ts'
 import { istClock } from '../shared/time.ts'
 import { type Audience, findLessons, type Lesson, lessonsFor, MANAGER_STARTERS, STARTERS } from '../shared/training.ts'
+import { createRanker, type Ranker } from './ranker.ts'
 import type { Hub } from './hub.ts'
 import { parseWhatIf, runWhatIf, whatIfText } from './whatif.ts'
 
@@ -113,9 +114,11 @@ export interface AiAnswer {
 
 export interface DifyOptions {
   /** A conversational model (Claude or Ollama), preferred over Dify when present. */
-  chat?: ChatModel
+  /** Models best first. When one fails or answers badly, the next is asked; the built-in trainer is last. */
+  chat?: ChatModel | ChatModel[]
+  ranker?: Ranker
   /** Turns a model error into a short reason for the notice. */
-  chatErrorReason?: (e: unknown) => string
+  chatErrorReason?: (e: unknown, model?: ChatModel) => string
   url?: string
   key?: string
   fetchImpl?: typeof fetch
@@ -126,7 +129,10 @@ const MIN = 60_000
 
 export function createAi(hub: Hub, opts: DifyOptions = {}) {
   const dify = opts.url && opts.key ? { url: opts.url.replace(/\/+$/, ''), key: opts.key } : null
-  const model = opts.chat ?? null
+  const models = [opts.chat ?? []].flat()
+  const ranker = opts.ranker ?? createRanker()
+  /** The models that can answer now, best first. */
+  const candidates = () => ranker.order(models.filter((m) => m.available?.() ?? true).map((m) => m.name)).map((n) => models.find((m) => m.name === n)!)
   const doFetch = opts.fetchImpl ?? fetch
 
   const name = (id?: string) => hub.config.staff.find((s) => s.id === id)?.name ?? 'the team'
@@ -500,14 +506,16 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     }
   }
 
-  const modelReady = () => !!model && (model.available?.() ?? true)
-
   return {
     get provider(): AiProvider {
-      return modelReady() ? model!.name : dify ? 'dify' : 'built-in'
+      return candidates()[0]?.name ?? (dify ? 'dify' : 'built-in')
     },
     get modelLabel(): string | undefined {
-      return modelReady() ? model!.label?.() : undefined
+      return candidates()[0]?.label?.()
+    },
+    /** Which models are ready, in the order they are asked, for the Setup page and health check. */
+    get lineup() {
+      return ranker.snapshot(models.map((m) => m.name)).map((r) => ({ ...r, ready: models.find((m) => m.name === r.name)?.available?.() ?? true }))
     },
     /** `onText` receives the answer so far while a model writes it (plain-text answers only). */
     async ask(req: AiRequest, onText?: (text: string) => void): Promise<AiAnswer> {
@@ -517,29 +525,36 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       const fallback = built.fallback
       if (built.instant) return { text: fallback, source: 'built-in', ...built.extra }
       let notice: string | undefined
-      if (model && modelReady()) {
+      const line = candidates()
+      for (const [n, model] of line.entries()) {
         // Quick buttons ("What do I say?", briefings, summaries…) carry their facts in the prompt, so they
         // get a short system prompt, a length cap, streaming, and a deadline for the first words.
+        // With another model waiting, a slow one gets less time before the next takes over.
         const quick = !built.system
         const ctrl = new AbortController()
         let started = false
-        const deadline = quick ? setTimeout(() => !started && ctrl.abort(), QUICK_FIRST_WORDS_MS) : undefined
+        const deadline = quick ? setTimeout(() => !started && ctrl.abort(), n < line.length - 1 ? QUICK_FIRST_WORDS_MS / 2 : QUICK_FIRST_WORDS_MS) : undefined
+        const t0 = Date.now()
         try {
           const full = built.system ?? { stable: quickSystem(hub.config), live: `Reply in ${language}.` }
           const system = model.compact && built.compact ? { ...built.compact, reminder: full.reminder } : full
           const stream = quick || built.streamable ? (t: string) => ((started = true), onText?.(t)) : undefined
           const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], stream, { maxTokens: quick ? (QUICK_TOKENS[req.kind] ?? 240) : undefined, signal: ctrl.signal, json: built.json })
+          const bad = unusable(answer)
+          if (bad) throw new Error(bad)
           const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name }
           if (model.checkFacts && built.facts?.length) out.text = `${out.text}\n\nFrom the menu: ${built.facts.join('\n')}`
+          ranker.ok(model.name, Date.now() - t0)
           return out
         } catch (e) {
-          notice = ctrl.signal.aborted ? 'The AI took too long, so this is the built-in answer.' : `${opts.chatErrorReason?.(e) ?? (e instanceof Error ? e.message : String(e))}. Showing the built-in answer.`
-          if (!dify) return { text: fallback, source: 'built-in', notice, ...built.extra }
+          ranker.fail(model.name)
+          console.warn(`[ai] ${model.name} couldn't answer (${e instanceof Error ? e.message : e}); ${n < line.length - 1 ? 'asking the next model' : 'no model left'}`.slice(0, 220))
+          notice = ctrl.signal.aborted ? 'The AI took too long, so this is the built-in answer.' : `${opts.chatErrorReason?.(e, model) ?? (e instanceof Error ? e.message : String(e))}. Showing the built-in answer.`
         } finally {
           clearTimeout(deadline)
         }
       }
-      if (!dify) return { text: fallback, source: 'built-in', ...built.extra }
+      if (!dify) return { text: fallback, source: 'built-in', notice, ...built.extra }
       try {
         const answer = await callDify(prompt, req)
         return { ...built.extra, ...(built.parse ? built.parse(answer) : { text: answer }), source: 'dify' }
@@ -552,6 +567,14 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
 }
 
 export class AiError extends Error {}
+
+/** Why an answer can't be shown, or null when it is fine: empty, a repeat of the instructions, or an echo of the prompt. */
+export function unusable(answer: string): string | null {
+  const t = answer.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+  if (t.length < 2) return 'The AI returned an empty answer'
+  if (/Service standards:|Training notes \(the house|Practice rubric \(for role-plays\)|You are TableMate, the assistant inside/i.test(t)) return 'The AI repeated its instructions'
+  return null
+}
 
 /** The fields of a scored practice turn, as a response schema (Gemini's format). */
 const PRACTICE_JSON = {
@@ -634,6 +657,20 @@ interface Built {
  * The long, stable part of the assistant's instructions. `lessons` narrows the training notes to the
  * ones that matter for this question (for slower local models); by default all of them are included.
  */
+/** What the app itself does and its rules, so any model can explain TableMate correctly and stay within it. */
+const PRODUCT_FACTS = (manager: boolean) => [
+  'About TableMate (the app you live in; answer questions about it from this):',
+  '- Orders, seatings and table changes arrive from the POS. TableMate turns them into each server’s top 3 task cards, in the order guests need them, each with the reason why. Cards are suggestions, never orders: a server can always use their own judgement.',
+  '- Safety first: when an order contains something a guest is allergic to or avoids, the card is flagged the moment the order is fired and the kitchen is told. The kitchen confirms; TableMate never decides an allergen is safe.',
+  '- Fair delays: every step of a visit (greeted, order in, mains ready, bill) is credited to whoever controlled it, the floor or the kitchen. A kitchen delay is never a server’s, and each finished table leaves a receipt showing where the time went.',
+  '- The kitchen screen shows what to cook and what is late; dish questions from servers go to the chef through the kitchen relay and the answer comes back to the server.',
+  manager
+    ? '- Managers see the floor, tables, sections, load, language needs and delays, never a ranking of people. They can hand a table to a colleague who speaks the guests’ language, run a what-if (for example an extra grill cook), and read the shift summary. Never produce a leaderboard or compare individuals.'
+    : '- A server’s personal stats (XP, level, streak, badges) are private to their own screen; managers never see a ranking and there is no leaderboard. The team goal is shared.',
+  '- Practice room: private role-plays of hard moments, each reply scored 0-100 with a short coaching note and an ideal reply; the other side’s patience rises or falls with the replies; XP is earned with a daily cap. It is for learning, not assessment.',
+  '- Everyone: six languages (English, Hindi, Nepali, Bengali, Tamil, Spanish), read aloud, large text, colour-safe palettes, flash alerts that need no sound, reduced motion, and a simple-words mode.',
+]
+
 export function stableSystem(cfg: RestaurantConfig, audience: Audience = 'server', lessons: Lesson[] = lessonsFor(audience)): string {
   const manager = audience === 'manager'
   return [
@@ -654,6 +691,8 @@ export function stableSystem(cfg: RestaurantConfig, audience: Audience = 'server
     `- ${INCLUSIVE_STYLE}`,
     '- Multilingual: reply in the language the person writes in (English, Hindi, Nepali, Bengali, Tamil, Spanish and others), in a natural, spoken register. Keep dish names as written on the menu.',
     '- If they ask for simple words, use short sentences and everyday words, one idea per sentence, and explain any restaurant term.',
+    '',
+    ...PRODUCT_FACTS(manager),
     '',
     'Service standards:',
     ...sopFacts(cfg),

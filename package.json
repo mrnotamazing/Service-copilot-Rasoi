@@ -12,7 +12,8 @@
     "build:demo": "tsc --noEmit && VITE_STANDALONE=1 vite build --base ./ --outDir dist-demo && node scripts/inline-demo.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "doctor": "tsx --env-file-if-exists=.env scripts/doctor.ts"
+    "doctor": "tsx --env-file-if-exists=.env scripts/doctor.ts",
+    "eval:ai": "tsx --env-file-if-exists=.env scripts/eval-ai.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

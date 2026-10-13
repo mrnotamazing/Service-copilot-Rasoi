@@ -25,6 +25,16 @@ Data (events and setup) is kept in `data/`; mount it as a volume so it survives 
 Keys live only on the server. The browser asks `/api/tts` and `/api/ai`; it never sees a key.
 Voice requests are capped at 600 characters, 30 a minute per caller, and repeated text is served from a cache.
 
+## AI models: always one that answers
+
+The server keeps a line-up of every AI model it has a key for and asks them best first. If one is rate limited, offline or gives an unusable answer (empty, or repeating its instructions), the next answers at once, and the one that failed rests for 30 seconds, then 2 minutes, then 10 while it keeps failing. The built-in trainer is always the last resort.
+
+Default order: Claude, Gemini, free cloud AI (Groq, Cerebras or OpenRouter), Ollama (local). Change it with `AI_PRIORITY=cloud,gemini,ollama,claude`; use only the local model with `AI_PROVIDER=ollama`.
+
+Every model gets the same knowledge: the restaurant's standards, menu with ingredient tags, training notes, the app's own rules (suggestions not orders, safety check, fair delays, private stats, no rankings) and the practice rubric.
+
+Run `npm run eval:ai` (optionally `npm run eval:ai gemini`) to test each model on the same 20 checks (safety, fairness, languages, scoring, product knowledge, clean formatting). It prints a report and writes `data/ai-ranking.json`; a model that scores clearly better is asked first from then on. `GET /api/health` shows the line-up and how each model is doing.
+
 ## Before you roll out
 
 - `npm run typecheck && npm test && npm run build` (CI runs these, plus `npm audit` on production dependencies).

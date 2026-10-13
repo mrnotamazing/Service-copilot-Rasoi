@@ -11,6 +11,8 @@ import { createApi } from './api.ts'
 import { fileStore } from './fileStore.ts'
 import { Hub } from './hub.ts'
 import { Simulator } from './simulator.ts'
+import { loadProviders } from './providers.ts'
+import { createRanker } from './ranker.ts'
 import { createTts, TtsError } from './tts.ts'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
@@ -19,26 +21,16 @@ const INGEST_KEY = process.env.COPILOT_INGEST_KEY // required for POS webhooks w
 
 const hub = new Hub(fileStore(join(root, 'data/events.ndjson'), join(root, 'data/config.json')))
 const sim = new Simulator(hub)
-// The assistant's language model, first available wins: Claude (Anthropic key), Google Gemini
-// (GEMINI_API_KEY, free tier, fast), a free local model through Ollama when it's running (set
-// OLLAMA=off to skip), Dify, then the built-in trainer.
-// AI_PROVIDER=ollama uses the free local model even when a cloud key is also set.
-const localOnly = process.env.AI_PROVIDER === 'ollama'
-const useClaude = !localOnly && !!(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN)
-const claude = useClaude ? await import('./claude.ts') : null
-const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
-const geminiMod = !useClaude && !localOnly && geminiKey ? await import('./gemini.ts') : null
-const gemini = geminiMod?.createGemini({ key: geminiKey!, model: process.env.GEMINI_MODEL })
-const cloudCfg = !useClaude && !gemini && !localOnly ? (await import('./openai.ts')).fromEnv(process.env) : null
-const cloudMod = cloudCfg ? await import('./openai.ts') : null
-const cloud = cloudCfg ? cloudMod!.createOpenAi(cloudCfg) : null
-const ollamaMod = !useClaude && !gemini && !cloud && process.env.OLLAMA !== 'off' ? await import('./ollama.ts') : null
-const ollama = ollamaMod?.createOllama({ host: process.env.OLLAMA_HOST, model: process.env.OLLAMA_MODEL })
+// The assistant's language models, best first (Claude, Gemini, a free cloud AI, Ollama): when one is
+// busy, rate limited or offline the next answers, and the built-in trainer is the last resort.
+const providers = await loadProviders()
+const ranker = createRanker({ file: join(root, 'data/ai-ranking.json') })
 const api = createApi(hub, sim, {
   url: process.env.DIFY_API_URL,
   key: process.env.DIFY_API_KEY,
-  chat: claude?.createClaude() ?? gemini?.model ?? cloud?.model ?? ollama?.model,
-  chatErrorReason: claude?.claudeErrorReason ?? geminiMod?.geminiErrorReason ?? cloudMod?.cloudErrorReason ?? ollamaMod?.ollamaErrorReason,
+  chat: providers.map((p) => p.model),
+  ranker,
+  chatErrorReason: (e, m) => providers.find((p) => p.model === m)?.reason(e) ?? (e instanceof Error ? e.message : String(e)),
 })
 const snapshot = api.snapshot
 // Natural read-aloud voice (ElevenLabs). Without a key the app uses the device's own voice.
@@ -111,7 +103,7 @@ function ingestAll(events: IncomingEvent[]) {
 
 type Handler = (req: IncomingMessage, body: Record<string, unknown>, url: URL) => unknown
 const routes: Record<string, Handler> = {
-  'GET /api/health': () => ({ ok: true, events: hub.events.length, ai: useClaude ? 'claude' : gemini ? 'gemini' : cloud ? 'cloud' : ollama ? 'ollama' : process.env.DIFY_API_URL && process.env.DIFY_API_KEY ? 'dify' : 'built-in', voice: tts ? 'elevenlabs' : 'device' }),
+  'GET /api/health': () => ({ ok: true, events: hub.events.length, ai: api.provider, lineup: api.lineup, voice: tts ? 'elevenlabs' : 'device' }),
   'GET /api/tts/status': () => ({ enabled: !!tts }),
   'GET /api/snapshot': (_r, _b, url) => snapshot((url.searchParams.get('role') as Role) ?? 'manager', url.searchParams.get('staffId') ?? undefined),
   'GET /api/events/export': () => hub.events,
@@ -211,19 +203,6 @@ wss.on('connection', (ws, req) => {
 })
 
 server.listen(PORT, async () => {
-  const st = ollama ? await ollama.refresh() : null
-  const ai = useClaude
-    ? `Claude (${process.env.ANTHROPIC_MODEL || 'claude-opus-5-5'})`
-    : gemini
-      ? `Google Gemini (${await gemini.resolveModel()})`
-    : cloud
-      ? `Free cloud AI (${cloud.model.label?.()})`
-    : st?.model
-      ? `Ollama (${st.model}, free and local)`
-      : process.env.DIFY_API_URL && process.env.DIFY_API_KEY
-        ? `Dify at ${process.env.DIFY_API_URL}`
-        : st?.running
-          ? `built-in. Ollama is running but has no model: run "ollama pull ${ollamaMod!.SUGGESTED_MODEL}"`
-          : 'built-in (set GEMINI_API_KEY for free, fast AI; or start Ollama; or set ANTHROPIC_API_KEY for Claude)'
-  console.log(`Service Copilot API on http://localhost:${PORT} · AI: ${ai}`)
+  const lines = await Promise.all(providers.map(async (p) => `${await p.describe()}`))
+  console.log(`Service Copilot API on http://localhost:${PORT} · AI: ${lines.length ? lines.join(' → ') + ' → built-in' : 'built-in (add GROQ_API_KEY for free, fast AI; or GEMINI_API_KEY; or start Ollama; or ANTHROPIC_API_KEY for Claude)'}`)
 })

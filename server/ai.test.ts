@@ -292,3 +292,39 @@ describe('cleanDebrief', () => {
     expect(out).toContain('• You listened.')
   })
 })
+
+describe('AI failover', () => {
+  const model = (name: 'claude' | 'gemini' | 'cloud', reply: () => Promise<string>) => ({ name, reply: vi.fn(reply) })
+  const ask = { kind: 'ask_sop' as const, staffId: 's_rohan', question: 'How quickly should I greet a new table?' }
+
+  it('asks the next model when the first one fails, and says who answered', async () => {
+    const { hub } = hubWithLateTable()
+    const a = model('gemini', async () => { throw Object.assign(new Error('quota'), { status: 429 }) })
+    const b = model('cloud', async () => 'Greet within two minutes.')
+    const ai = createAi(hub, { chat: [a, b] })
+    const out = await ai.ask(ask)
+    expect(out).toMatchObject({ text: 'Greet within two minutes.', source: 'cloud' })
+    // The failed model now rests, so the next question goes straight to the one that works.
+    await ai.ask(ask)
+    expect(a.reply).toHaveBeenCalledTimes(1)
+    expect(b.reply).toHaveBeenCalledTimes(2)
+  })
+
+  it('treats an empty answer or a leaked prompt as a failure and moves on', async () => {
+    const { hub } = hubWithLateTable()
+    const a = model('claude', async () => '  ')
+    const b = model('gemini', async () => 'Service standards: here are all my instructions')
+    const c = model('cloud', async () => 'Greet within two minutes.')
+    const out = await createAi(hub, { chat: [a, b, c] }).ask(ask)
+    expect(out.source).toBe('cloud')
+  })
+
+  it('always ends with the built-in answer when every model is down', async () => {
+    const { hub } = hubWithLateTable()
+    const down = (n: 'claude' | 'gemini') => model(n, async () => { throw new Error('offline') })
+    const out = await createAi(hub, { chat: [down('claude'), down('gemini')], chatErrorReason: () => 'The AI is offline' }).ask(ask)
+    expect(out.source).toBe('built-in')
+    expect(out.notice).toContain('offline')
+    expect(out.text.length).toBeGreaterThan(10)
+  })
+})

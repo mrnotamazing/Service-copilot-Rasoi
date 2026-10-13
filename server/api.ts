@@ -255,6 +255,13 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
   const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice', 'chat', 'complaint', 'incident']
 
   return {
+    /** The model asked first, and the whole line-up with how each is doing. */
+    get provider() {
+      return ai.provider
+    },
+    get lineup() {
+      return ai.lineup
+    },
     snapshot,
     /** AI assistance (async: may call Dify). Throws AiError for a bad request. */
     async ask(body: ApiBody, onText?: (text: string) => void) {
