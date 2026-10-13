@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createGemini, geminiErrorReason, pickFlash } from './gemini.ts'
+import { createGemini, fallbackModels, geminiErrorReason, pickFlash } from './gemini.ts'
 
 const sse = (...texts: string[]) => texts.map((t) => `data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: t }] } }] })}\n\n`).join('')
 
@@ -54,5 +54,39 @@ describe('retired Gemini models', () => {
     expect(await g.model.reply({ stable: '', live: '' }, [{ role: 'user', text: 'x' }])).toBe('ready')
     expect(urls.at(-1)).toMatch(/gemini-3.8-flash:streamGenerateContent/)
     expect(g.model.label?.()).toBe('gemini-3.8-flash')
+  })
+
+  it('lists the other Flash models newest first, lite last, skipping image, audio and preview ones', () => {
+    expect(fallbackModels(['models/gemini-2.5-flash', 'models/gemini-3.5-flash-lite', 'models/gemini-3.8-flash', 'models/gemini-3.1-flash-lite', 'models/gemini-3.5-flash', 'models/gemini-3.1-flash-image', 'models/gemini-2.5-flash-preview-tts', 'models/gemini-3-flash-preview', 'models/gemma-4-31b-it'])).toEqual([
+      'gemini-3.8-flash',
+      'gemini-3.5-flash',
+      'gemini-2.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-flash-lite',
+    ])
+  })
+
+  it('tries the next model when one is busy or over its free limit, and keeps using the one that worked', async () => {
+    const urls: string[] = []
+    const fetchImpl = vi.fn(async (url: string) => {
+      urls.push(url)
+      if (url.endsWith('/models?pageSize=200')) return new Response(JSON.stringify({ models: ['gemini-3.8-flash', 'gemini-3.5-flash'].map((name) => ({ name: `models/${name}`, supportedGenerationMethods: ['generateContent'] })) }), { status: 200 })
+      if (url.includes('gemini-3.8-flash')) return new Response(JSON.stringify({ error: { message: 'This model is currently experiencing high demand.' } }), { status: 503 })
+      return new Response(sse('hello'), { status: 200 })
+    })
+    const g = createGemini({ key: 'k', fetchImpl: fetchImpl as unknown as typeof fetch })
+    expect(await g.model.reply({ stable: '', live: '' }, [{ role: 'user', text: 'x' }])).toBe('hello')
+    const asked = urls.filter((u) => u.includes(':streamGenerateContent'))
+    expect(asked.map((u) => u.match(/models\/([\w.-]+):/)![1])).toEqual(['gemini-3.8-flash', 'gemini-3.5-flash'])
+    // Next time it starts with the model that worked.
+    await g.model.reply({ stable: '', live: '' }, [{ role: 'user', text: 'y' }])
+    expect(urls.filter((u) => u.includes(':streamGenerateContent')).slice(2).map((u) => u.match(/models\/([\w.-]+):/)![1])).toEqual(['gemini-3.5-flash'])
+  })
+
+  it('does not hide a rejected key behind other models', async () => {
+    const fetchImpl = vi.fn(async (url: string) => (url.includes('/models?') ? new Response(JSON.stringify({ models: [] }), { status: 200 }) : new Response(JSON.stringify({ error: { message: 'API key not valid' } }), { status: 400 })))
+    const g = createGemini({ key: 'bad', model: 'gemini-3.5-flash', fetchImpl: fetchImpl as unknown as typeof fetch })
+    await expect(g.model.reply({ stable: '', live: '' }, [{ role: 'user', text: 'x' }])).rejects.toThrow(/API key/)
+    expect(fetchImpl.mock.calls.filter(([u]) => String(u).includes(':streamGenerateContent'))).toHaveLength(1)
   })
 })

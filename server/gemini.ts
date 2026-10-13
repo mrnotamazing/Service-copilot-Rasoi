@@ -31,6 +31,28 @@ export function pickFlash(names: string[]): string | null {
   return best(stable) ?? best(ids.filter((id) => /^gemini-\d+(?:\.\d+)?-flash/.test(id) && !/lite|image|tts|audio|live|embedding/.test(id)))
 }
 
+/**
+ * Other Flash models the key can use, in the order to try them when one is busy or out of free quota
+ * (each model has its own limit and its own busy spells): newest first, with the lite versions last.
+ */
+export function fallbackModels(names: string[]): string[] {
+  const ids = names.map((n) => n.replace(/^models\//, ''))
+  const version = (id: string) => Number(id.match(/^gemini-(\d+(?:\.\d+)?)-/)?.[1] ?? 0)
+  const ok = ids.filter((id) => /^gemini-\d+(?:\.\d+)?-flash(?:-lite)?$/.test(id))
+  const full = ok.filter((id) => !id.endsWith('-lite')).sort((a, b) => version(b) - version(a))
+  const lite = ok.filter((id) => id.endsWith('-lite')).sort((a, b) => version(b) - version(a))
+  return [...full, ...lite]
+}
+
+/** Errors worth trying another model for: busy, over quota, a retired model or a slow answer. */
+const RETRY_STATUS = new Set([404, 429, 500, 502, 503, 504])
+const isRetryable = (e: unknown) => {
+  const status = (e as { status?: number }).status ?? 0
+  // A 400 that isn't about the key means this model won't take our request: another model might.
+  if (status === 400) return !/api key/i.test(e instanceof Error ? e.message : '')
+  return RETRY_STATUS.has(status) || (e instanceof Error && e.name === 'TimeoutError')
+}
+
 type Thinking = { thinkingBudget: number } | { thinkingLevel: string } | null
 
 export function createGemini(opts: { key: string; model?: string; fetchImpl?: typeof fetch }) {
@@ -40,13 +62,19 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
   // Short answers for busy staff: thinking off (or as low as the model allows), so words start at once.
   const thinkingTries: Thinking[] = [{ thinkingBudget: 0 }, { thinkingLevel: 'low' }, null]
   let thinking = 0
+  /** Models this key can use, for falling back; and when each last failed (to rest it for a minute). */
+  let others: string[] = []
+  const rested = new Map<string, number>()
+  let lastGood: string | null = null
 
   async function resolveModel(): Promise<string> {
     if (model) return model
     try {
       const res = await doFetch(`${BASE}/models?pageSize=200`, { headers, signal: AbortSignal.timeout(5000) })
       const data = (await res.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] }
-      model = pickFlash((data.models ?? []).filter((m) => m.supportedGenerationMethods?.includes('generateContent')).map((m) => m.name)) ?? DEFAULT_GEMINI_MODEL
+      const names = (data.models ?? []).filter((m) => m.supportedGenerationMethods?.includes('generateContent')).map((m) => m.name)
+      others = fallbackModels(names)
+      model = pickFlash(names) ?? DEFAULT_GEMINI_MODEL
     } catch {
       model = DEFAULT_GEMINI_MODEL
     }
@@ -58,7 +86,35 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
     name: 'gemini',
     label: () => model ?? undefined,
     async reply(system, turns: ChatTurn[], onText, o) {
-      let name = await resolveModel()
+      const first = await resolveModel()
+      const now = Date.now()
+      // Try the model that last worked, then the chosen one, then the others; skip any that failed in the last minute.
+      const order = [...new Set([lastGood, first, ...others].filter((m): m is string => !!m))]
+      const ready = order.filter((m) => (rested.get(m) ?? 0) < now)
+      const tries = (ready.length ? ready : order).slice(0, 8)
+      let lastError: unknown
+      for (const name of tries) {
+        try {
+          const text = await replyWith(name, system, turns, onText, o)
+          lastGood = name
+          return text
+        } catch (e) {
+          lastError = e
+          if (o?.signal?.aborted || !isRetryable(e)) {
+            console.warn(`[gemini] ${name} failed: ${(e as { status?: number }).status ?? ''} ${(e as Error).message}`.slice(0, 240))
+            throw e
+          }
+          rested.set(name, Date.now() + 60_000)
+          console.warn(`[gemini] ${name} couldn't answer (${(e as { status?: number }).status ?? (e as Error).name}); trying the next model`)
+        }
+      }
+      throw lastError
+    },
+  }
+
+  async function replyWith(startName: string, system: Parameters<ChatModel['reply']>[0], turns: ChatTurn[], onText: Parameters<ChatModel['reply']>[2], o: Parameters<ChatModel['reply']>[3]): Promise<string> {
+    {
+      let name = startName
       let switched = false
       let json = o?.json
       const contents = turns.map((t, i) => ({
@@ -136,7 +192,7 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
         if (!text) throw new Error('Gemini returned an empty answer')
         return text
       }
-    },
+    }
   }
   return { model: chat, resolveModel }
 }
