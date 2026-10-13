@@ -11,6 +11,7 @@ import { createApi } from './api.ts'
 import { fileStore } from './fileStore.ts'
 import { Hub } from './hub.ts'
 import { Simulator } from './simulator.ts'
+import { createTts, TtsError } from './tts.ts'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const PORT = Number(process.env.COPILOT_PORT ?? 4000)
@@ -35,6 +36,8 @@ const api = createApi(hub, sim, {
   chatErrorReason: claude?.claudeErrorReason ?? geminiMod?.geminiErrorReason ?? ollamaMod?.ollamaErrorReason,
 })
 const snapshot = api.snapshot
+// Natural read-aloud voice (ElevenLabs). Without a key the app uses the device's own voice.
+const tts = process.env.ELEVENLABS_API_KEY ? createTts({ key: process.env.ELEVENLABS_API_KEY, voiceId: process.env.ELEVENLABS_VOICE_ID, model: process.env.ELEVENLABS_MODEL }) : null
 
 // ---------------------------------------------------------------------------
 // Live updates over WebSocket (throttled, plus a 1s heartbeat so timers move).
@@ -81,8 +84,15 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   }
 }
 
+const SECURITY_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'x-frame-options': 'SAMEORIGIN',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+}
+
 function send(res: ServerResponse, status: number, body: unknown) {
-  res.writeHead(status, { 'content-type': 'application/json' })
+  res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', ...SECURITY_HEADERS })
   res.end(JSON.stringify(body))
 }
 
@@ -96,7 +106,8 @@ function ingestAll(events: IncomingEvent[]) {
 
 type Handler = (req: IncomingMessage, body: Record<string, unknown>, url: URL) => unknown
 const routes: Record<string, Handler> = {
-  'GET /api/health': () => ({ ok: true, events: hub.events.length }),
+  'GET /api/health': () => ({ ok: true, events: hub.events.length, voice: tts ? 'elevenlabs' : 'device' }),
+  'GET /api/tts/status': () => ({ enabled: !!tts }),
   'GET /api/snapshot': (_r, _b, url) => snapshot((url.searchParams.get('role') as Role) ?? 'manager', url.searchParams.get('staffId') ?? undefined),
   'GET /api/events/export': () => hub.events,
 
@@ -135,6 +146,17 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         }
         return
       }
+      if (req.method === 'POST' && url.pathname === '/api/tts') {
+        if (!tts) return send(res, 503, { error: 'Voice is not set up' })
+        try {
+          const caller = String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? 'anon').split(',')[0].trim()
+          const audio = await tts.synth(String((body as Record<string, unknown>).text ?? ''), caller)
+          res.writeHead(200, { 'content-type': 'audio/mpeg', 'content-length': audio.length, 'cache-control': 'private, max-age=86400', ...SECURITY_HEADERS })
+          return void res.end(audio)
+        } catch (e) {
+          return send(res, e instanceof TtsError ? e.status : 502, { error: e instanceof Error ? e.message : 'The voice service failed' })
+        }
+      }
       if (req.method === 'POST' && url.pathname === '/api/ai') {
         try {
           return send(res, 200, await api.ask(body as Record<string, unknown>))
@@ -157,7 +179,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
-const MIME: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' }
+const MIME: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg', '.mp4': 'video/mp4', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml' }
 function serveStatic(pathname: string, res: ServerResponse) {
   const dist = join(root, 'dist')
   let file = normalize(join(dist, pathname))
@@ -166,7 +188,9 @@ function serveStatic(pathname: string, res: ServerResponse) {
     res.writeHead(404, { 'content-type': 'text/plain' })
     return res.end('Web app not built. Run `npm run dev` (development) or `npm run build` first.')
   }
-  res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream' })
+  // Hashed build assets never change; the page itself must always be fresh.
+  const immutable = /[\\/]assets[\\/]/.test(file)
+  res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache', ...SECURITY_HEADERS })
   createReadStream(file).pipe(res)
 }
 

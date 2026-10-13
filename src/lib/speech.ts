@@ -1,4 +1,5 @@
-// Read aloud with the device's own speech engine (no audio leaves the device).
+// Read aloud. When the server has a natural voice set up (ElevenLabs), that reads; otherwise, and
+// whenever it can't, the device's own speech engine does (no audio leaves the device).
 // Text is first made "speakable" (T3 becomes "Table 3", 2× becomes "2", dish names get the
 // pronunciation guide), then read sentence by sentence with the most natural voice available.
 
@@ -97,7 +98,68 @@ function sentences(text: string): string[] {
     .filter(Boolean)
 }
 
+// ---------------------------------------------------------------------------
+// The natural voice. Languages the multilingual model reads well; others use the device voice.
+
+const CLOUD_LANGS = new Set<Lang>(['en', 'es', 'hi', 'ta'])
+let cloudReady: Promise<boolean> | null = null
+let player: HTMLAudioElement | null = null
+let playing = 0
+
+/** True once the server has said it has a natural voice. Asked once; a missing server means the device voice. */
+export function cloudVoiceAvailable(): Promise<boolean> {
+  cloudReady ??= (async () => {
+    try {
+      const r = await fetch('/api/tts/status', { signal: AbortSignal.timeout(4000) })
+      return r.ok && !!((await r.json()) as { enabled?: boolean }).enabled
+    } catch {
+      return false
+    }
+  })()
+  return cloudReady
+}
+
+/** Plain words for the natural voice: it says dish names itself, so no respelling. */
+function cloudText(text: string, lang: Lang) {
+  return plainSpeakable(text, lang).replace(/\s+([,.;:!?])/g, '$1').trim()
+}
+
+async function speakCloud(text: string, lang: Lang, ticket: number): Promise<boolean> {
+  try {
+    const r = await fetch('/api/tts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: cloudText(text, lang).slice(0, 600) }), signal: AbortSignal.timeout(20000) })
+    if (!r.ok) return false
+    const url = URL.createObjectURL(await r.blob())
+    if (ticket !== playing) return true // something newer started or it was stopped: drop this clip
+    player?.pause()
+    const a = new Audio(url)
+    player = a
+    a.playbackRate = Math.min(1.5, Math.max(0.7, getPrefs().speechRate))
+    a.onended = a.onerror = () => URL.revokeObjectURL(url)
+    await a.play()
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function speak(text: string, opts: { lang?: Lang; interrupt?: boolean } = {}) {
+  const s = synth()
+  if (!text.trim()) return
+  const want = opts.lang ?? getPrefs().lang
+  if (CLOUD_LANGS.has(want) && typeof Audio !== 'undefined') {
+    const ticket = ++playing
+    s?.cancel()
+    void cloudVoiceAvailable().then(async (ok) => {
+      if (ticket !== playing) return
+      if (ok && (await speakCloud(text, want, ticket))) return
+      if (ticket === playing) speakDevice(text, opts)
+    })
+    return
+  }
+  speakDevice(text, opts)
+}
+
+function speakDevice(text: string, opts: { lang?: Lang; interrupt?: boolean } = {}) {
   const s = synth()
   if (!s || !text.trim()) return
   let lang = opts.lang ?? getPrefs().lang
@@ -134,5 +196,7 @@ export function speakTask(title: string, hint: string, english?: { title: string
 }
 
 export function stopSpeaking() {
+  playing++
+  player?.pause()
   synth()?.cancel()
 }

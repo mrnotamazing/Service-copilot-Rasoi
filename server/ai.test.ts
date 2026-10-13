@@ -282,3 +282,13 @@ describe('practice judging', () => {
     expect(a.text).toMatch(/hot food/)
   })
 })
+
+describe('cleanDebrief', () => {
+  it('strips the end marker, stars line and markdown', async () => {
+    const { cleanDebrief } = await import('./ai.ts')
+    const out = cleanDebrief('[END] *** **Debrief:**\n* You listened.\n* Name the allergen.\nSTARS: 2')
+    expect(out).not.toMatch(/\[END\]|\*|STARS/)
+    expect(out).toContain('Debrief:')
+    expect(out).toContain('• You listened.')
+  })
+})

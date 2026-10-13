@@ -361,7 +361,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             }
             if (req.finish) {
               // Stars follow the scores the replies actually got, so the debrief and the XP agree.
-              return { ...builtIn, text: answer.replace(/STARS:\s*[1-3]\s*$/i, '').trim(), feedback: undefined }
+              return { ...builtIn, text: cleanDebrief(answer) || builtIn.text, feedback: undefined }
             }
             if (opening) {
               const line = field('GUEST') ?? answer.split('\n').filter((l) => !/^\s*COACH:/i.test(l)).join('\n').trim()
@@ -568,6 +568,19 @@ const PRACTICE_JSON = {
 }
 
 /** A reply given as JSON fields becomes the labelled text the parser reads; anything else is unchanged. */
+/** A debrief as plain readable text: no end marker, stars line, stray rules or markdown emphasis. */
+export function cleanDebrief(raw: string): string {
+  return raw
+    .replace(/\[END\]/gi, '')
+    .replace(/STARS:\s*[1-3]\s*$/im, '')
+    .replace(/^\s*(?:\*{3,}|-{3,}|_{3,})\s*$/gm, '')
+    .replace(/\*{3,}/g, '')
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/^\s*\*\s+/gm, '• ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export function fromJson(raw: string): string {
   const m = raw.trim().replace(/^```(?:json)?\s*|\s*```$/g, '').match(/\{[\s\S]*\}/)
   if (!m) return raw

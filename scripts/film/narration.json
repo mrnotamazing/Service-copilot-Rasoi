@@ -1,0 +1,16 @@
+{
+  "voice": "JBFqnCBsd6RMkjVDRZzb",
+  "model": "eleven_multilingual_v2",
+  "scenes": [
+    { "id": "open", "ms": 5500, "say": "Every great dinner is a small miracle. Someone makes it happen.", "sfx": { "text": "soft warm restaurant ambience, distant murmur of diners, one gentle cutlery chime", "at": 0, "seconds": 4, "gain": 0.5 } },
+    { "id": "pressure", "ms": 6500, "say": "Friday, seven-forty. Twelve tables, one tray, and a hundred tiny things that mustn't be forgotten.", "sfx": { "text": "busy restaurant kitchen clatter, pans and plates, quick and rhythmic, short", "at": 0, "seconds": 5, "gain": 0.45 } },
+    { "id": "slip", "ms": 7000, "say": "Then, the water never arrives. Nobody's fault. Just a very human, very busy night.", "sfx": { "text": "a single wine glass clink followed by a soft comedic oops slide-down tone", "at": 2200, "seconds": 2, "gain": 0.6 } },
+    { "id": "next3", "ms": 9000, "say": "Meet TableMate. A quiet friend on your phone, whispering the next three moves. Suggestions, never orders.", "sfx": { "text": "three soft gentle notification chimes ascending, clean and friendly", "at": 1400, "seconds": 3, "gain": 0.55 } },
+    { "id": "safety", "ms": 8000, "say": "Allergy on table four? It catches that before the plate leaves the pass. Some mistakes can't be taken back.", "sfx": { "text": "soft alert ping then a reassuring success chime", "at": 1800, "seconds": 2.5, "gain": 0.55 } },
+    { "id": "fair", "ms": 8000, "say": "And when things run late, it tells the truth: floor, or kitchen. No blame games. Just clarity.", "sfx": { "text": "soft airy whoosh transition, gentle", "at": 400, "seconds": 1.5, "gain": 0.5 } },
+    { "id": "manager", "ms": 9000, "say": "Managers get the whole room at a glance. Flow, not scoreboards. Support, never surveillance.", "sfx": { "text": "soft digital ding with a gentle shimmer", "at": 1200, "seconds": 2, "gain": 0.5 } },
+    { "id": "practice", "ms": 8000, "say": "Dreading a tough guest? Rehearse it first, privately, with a coach who actually talks back.", "sfx": { "text": "two soft chat message pops, one sent one received", "at": 1500, "seconds": 2, "gain": 0.55 } },
+    { "id": "everyone", "ms": 6500, "say": "In your language. On your phone. For everyone on the team.", "sfx": { "text": "warm friendly chime, bright and short", "at": 600, "seconds": 1.5, "gain": 0.5 } },
+    { "id": "close", "ms": 7000, "say": "TableMate. Be there for every guest.", "sfx": { "text": "gentle bell sparkle resolving on a warm major chord", "at": 1200, "seconds": 3.5, "gain": 0.6 } }
+  ]
+}
