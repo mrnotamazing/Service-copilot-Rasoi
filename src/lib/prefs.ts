@@ -4,6 +4,7 @@
 import { useSyncExternalStore } from 'react'
 
 export type Lang = 'en' | 'hi' | 'ne' | 'bn' | 'ta' | 'es'
+const LANG_IDS: Lang[] = ['en', 'hi', 'ne', 'bn', 'ta', 'es']
 
 export interface Prefs {
   lang: Lang
@@ -46,9 +47,25 @@ const KEY = 'tablemate-prefs'
 let prefs: Prefs = load()
 const listeners = new Set<() => void>()
 
+/** Saved settings from an older version (or a hand edit) must never stop the app from opening: keep only valid values. */
+export function sanitizePrefs(raw: unknown): Prefs {
+  const saved = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const out: Record<string, unknown> = { ...DEFAULT_PREFS }
+  for (const [k, def] of Object.entries(DEFAULT_PREFS)) {
+    const v = saved[k]
+    if (v === undefined) continue
+    if (typeof def === 'boolean' ? typeof v === 'boolean' : typeof def === 'number' ? typeof v === 'number' && Number.isFinite(v) : typeof v === 'string') out[k] = v
+  }
+  if (!LANG_IDS.includes(out.lang as Lang)) out.lang = DEFAULT_PREFS.lang
+  if (!['standard', 'large', 'xlarge'].includes(out.textSize as string)) out.textSize = DEFAULT_PREFS.textSize
+  const voices = saved.voices
+  if (voices && typeof voices === 'object' && !Array.isArray(voices)) out.voices = voices
+  return out as unknown as Prefs
+}
+
 function load(): Prefs {
   try {
-    return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(KEY) ?? '{}') }
+    return sanitizePrefs(JSON.parse(localStorage.getItem(KEY) ?? '{}'))
   } catch {
     return { ...DEFAULT_PREFS }
   }
