@@ -106,7 +106,7 @@ function ingestAll(events: IncomingEvent[]) {
 
 type Handler = (req: IncomingMessage, body: Record<string, unknown>, url: URL) => unknown
 const routes: Record<string, Handler> = {
-  'GET /api/health': () => ({ ok: true, events: hub.events.length, voice: tts ? 'elevenlabs' : 'device' }),
+  'GET /api/health': () => ({ ok: true, events: hub.events.length, ai: useClaude ? 'claude' : gemini ? 'gemini' : ollama ? 'ollama' : process.env.DIFY_API_URL && process.env.DIFY_API_KEY ? 'dify' : 'built-in', voice: tts ? 'elevenlabs' : 'device' }),
   'GET /api/tts/status': () => ({ enabled: !!tts }),
   'GET /api/snapshot': (_r, _b, url) => snapshot((url.searchParams.get('role') as Role) ?? 'manager', url.searchParams.get('staffId') ?? undefined),
   'GET /api/events/export': () => hub.events,
