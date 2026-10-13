@@ -66,7 +66,7 @@ function Pressure() {
   const { t, still } = useClock()
   return (
     <>
-      <Headline lines={['Saturday night.', 'Six tables.', 'One head.']} x={110} y={235} size={112} start={300} step={600} accent={2} width={820} />
+      <Headline lines={['Saturday night.', 'Six tables.', 'One head.']} x={110} y={285} size={112} start={300} step={600} accent={2} width={820} />
       {NEEDS.map((x, i) => {
         const col = i % 3
         const row = Math.floor(i / 3)
@@ -100,8 +100,8 @@ function Slip() {
   const x = outExpo(prog(3800, 500))
   return (
     <>
-      <Headline lines={['When service slips,', 'the server takes', 'the blame.']} x={110} y={220} size={86} start={300} step={550} accent={2} width={760} />
-      <Sub at={2300} x={114} y={560} width={640}>
+      <Headline lines={['When service slips,', 'the server takes', 'the blame.']} x={110} y={265} size={86} start={300} step={550} accent={2} width={760} />
+      <Sub at={2300} x={114} y={600} width={640}>
         Even when the delay was never hers.
       </Sub>
 
@@ -112,9 +112,9 @@ function Slip() {
           </span>
           <div className="flex-1">
             <div className="font-semibold" style={{ fontSize: 31 }}>
-              Kitchen · Table 4 mains
+              Kitchen · Table 4
             </div>
-            <div style={{ fontSize: 24, color: 'var(--muted-foreground)' }}>Held up at the grill</div>
+            <div style={{ fontSize: 24, color: 'var(--muted-foreground)' }}>Mains held up at the grill</div>
           </div>
           <Pill tone="kitchen" size={28}>
             +14 min
@@ -175,9 +175,9 @@ const MOVES: Move[] = [
 ]
 const SLOT_Y = [112, 328, 494]
 
-function MoveCard({ m, slot, opacity, x = 0, lead, press }: { m: Move; slot: number; opacity: number; x?: number; lead: boolean; press: number }) {
+function MoveCard({ m, slot, opacity, x = 0, y = 0, lead, press }: { m: Move; slot: number; opacity: number; x?: number; y?: number; lead: boolean; press: number }) {
   return (
-    <div className="absolute" style={{ left: 16, top: slot, width: 344, opacity, transform: `translateX(${x}px)` }}>
+    <div className="absolute" style={{ left: 16, top: slot, width: 344, opacity, transform: `translate(${x}px, ${y}px)` }}>
       <div style={{ background: 'var(--card)', borderRadius: 24, border: lead ? '3px solid var(--primary)' : '2px solid var(--border)', padding: '18px 20px', minHeight: lead ? undefined : 150, boxShadow: lead ? '0 16px 30px -20px color-mix(in oklab, var(--primary) 60%, transparent)' : undefined }}>
         <div className="font-semibold" style={{ fontSize: 28, lineHeight: 1.15 }}>
           {m.title}
@@ -206,25 +206,25 @@ function NextThree() {
   const y = (from: number, to: number) => lerp(SLOT_Y[from], SLOT_Y[to], shift)
   return (
     <>
-      <Headline lines={['Your next', 'three moves.']} x={110} y={250} size={118} start={300} step={600} accent={1} width={760} />
-      <Sub at={1700} x={114} y={540} width={660}>
+      <Headline lines={['Your next', 'three moves.']} x={110} y={200} size={118} start={300} step={600} accent={1} width={760} />
+      <Sub at={1700} x={114} y={490} width={660}>
         Only what matters now, in the order guests need it, each with the reason why.
       </Sub>
-      <Reveal at={2700} style={{ left: 114, top: 700 }}>
+      <Reveal at={2700} style={{ left: 114, top: 650 }}>
         <Pill tone="primary" size={30}>
           Suggestions, never orders
         </Pill>
       </Reveal>
 
       <Reveal at={500} dy={60} dur={1100} style={{ left: 940, top: 30 }}>
-        <Phone w={400} h={760} style={{ position: 'relative' }}>
+        <Phone w={400} h={700} style={{ position: 'relative' }}>
           <div className="flex items-baseline justify-between" style={{ padding: '30px 24px 0' }}>
             <span className="font-display font-semibold" style={{ fontSize: 34 }}>
               Next up
             </span>
             <span style={{ fontSize: 22, color: 'var(--muted-foreground)' }}>{shift > 0.5 ? '1 done' : '0 done'}</span>
           </div>
-          <MoveCard m={MOVES[0]} slot={SLOT_Y[0]} opacity={arrive(0) * (1 - out)} x={out * 140} lead press={press} />
+          <MoveCard m={MOVES[0]} slot={SLOT_Y[0]} opacity={arrive(0) * (1 - out)} y={-out * 34} lead press={press} />
           <MoveCard m={MOVES[1]} slot={y(1, 0)} opacity={arrive(1)} lead={shift > 0.9} press={1} />
           <MoveCard m={MOVES[2]} slot={y(2, 1)} opacity={arrive(2)} lead={false} press={1} />
           <MoveCard m={MOVES[3]} slot={SLOT_Y[2]} opacity={enter} x={(1 - enter) * 60} lead={false} press={1} />
@@ -315,13 +315,13 @@ function Fair() {
   const count = Math.round(14 * clamp01(prog(4300, 1200)))
   return (
     <>
-      <Headline lines={['Delays go to whoever', 'controlled the step.']} x={110} y={90} size={88} start={300} step={550} accent={1} width={1300} />
-      <Sub at={1500} x={114} y={300} width={1100} size={31}>
+      <Headline lines={['Delays go to whoever', 'controlled the step.']} x={110} y={80} size={88} start={300} step={550} accent={1} width={1300} />
+      <Sub at={1500} x={114} y={285} width={1100} size={31}>
         Every finished table leaves a receipt: each step against its standard, credited to the kitchen or the floor.
       </Sub>
 
-      <Reveal at={1900} style={{ left: 110, top: 410, width: 1380 }}>
-        <Card style={{ height: 388, padding: '30px 44px', display: 'flex', gap: 56 }}>
+      <Reveal at={1900} style={{ left: 110, top: 398, width: 1380 }}>
+        <Card style={{ height: 392, padding: '30px 44px', display: 'flex', gap: 56 }}>
           <div style={{ width: 700 }}>
             <div className="font-semibold" style={{ fontSize: 31, marginBottom: 10 }}>
               Table 4 · 1 h 42 min
@@ -526,7 +526,7 @@ const ACCESS: { icon: ReactNode; label: string }[] = [
   { icon: <Volume2 size={36} aria-hidden />, label: 'Read aloud' },
   { icon: <Type size={36} aria-hidden />, label: 'Large text' },
   { icon: <Eye size={36} aria-hidden />, label: 'Colour-safe' },
-  { icon: <BellRing size={36} aria-hidden />, label: 'Flash and buzz alerts' },
+  { icon: <BellRing size={36} aria-hidden />, label: 'Flash alerts' },
 ]
 
 function Everyone() {
@@ -537,7 +537,7 @@ function Everyone() {
         In their language, at their pace, in a way that works for them.
       </Sub>
       {LANGS.map((l, i) => (
-        <Reveal key={l} at={900 + i * 230} style={{ left: 880 + (i % 2) * 330, top: 110 + Math.floor(i / 2) * 130, width: 300 }}>
+        <Reveal key={l} at={900 + i * 230} style={{ left: 880 + (i % 2) * 330, top: 90 + Math.floor(i / 2) * 130, width: 300 }}>
           <Card style={{ height: 100, display: 'grid', placeItems: 'center', borderRadius: 24 }}>
             <span className="font-semibold" style={{ fontSize: 40 }}>
               {l}
@@ -546,7 +546,7 @@ function Everyone() {
         </Reveal>
       ))}
       {ACCESS.map((a, i) => (
-        <Reveal key={a.label} at={2300 + i * 260} style={{ left: 880 + (i % 2) * 330, top: 540 + Math.floor(i / 2) * 140, width: 300 }}>
+        <Reveal key={a.label} at={2300 + i * 260} style={{ left: 880 + (i % 2) * 330, top: 510 + Math.floor(i / 2) * 135, width: 300 }}>
           <div className="flex items-center gap-4" style={{ height: 112, padding: '0 22px', borderRadius: 24, background: 'var(--accent)', color: 'var(--accent-foreground)' }}>
             {a.icon}
             <span className="font-medium" style={{ fontSize: 26, lineHeight: 1.15 }}>
@@ -569,7 +569,7 @@ function Close() {
   const words = ['Quick.', 'Correct.', 'Together.']
   return (
     <>
-      <div className="absolute flex justify-center" style={{ left: 0, top: 110, width: W, gap: 56 }}>
+      <div className="absolute flex justify-center" style={{ left: 0, top: 150, width: W, gap: 56 }}>
         {words.map((w, i) => {
           const p = outExpo(prog(500 + i * 650, 900))
           return (
@@ -579,20 +579,20 @@ function Close() {
           )
         })}
       </div>
-      <div className="absolute" style={{ left: 640, top: 330, width: 320, color: 'var(--chocolate)', opacity: clamp01(prog(2800, 400) * 2), transform: `translateX(${lerp(-1000, 0, run)}px)` }}>
+      <div className="absolute" style={{ left: 640, top: 360, width: 320, color: 'var(--chocolate)', opacity: clamp01(prog(2800, 400) * 2), transform: `translateX(${lerp(-1000, 0, run)}px)` }}>
         <Mascot running={!at(4200)} className="w-full" speed="var(--chocolate)" />
       </div>
-      <Reveal at={4200} dur={1000} dy={30} style={{ left: 0, top: 590, width: W }}>
+      <Reveal at={4200} dur={1000} dy={30} style={{ left: 0, top: 610, width: W }}>
         <div className="text-center font-display font-semibold tracking-[-0.035em]" style={{ fontSize: 130, lineHeight: 1, color: 'var(--chocolate)' }} translate="no">
           Table<span style={{ color: 'var(--tomato)' }}>Mate</span>
         </div>
       </Reveal>
-      <Reveal at={5000} style={{ left: 0, top: 745, width: W }}>
+      <Reveal at={5000} style={{ left: 0, top: 765, width: W }}>
         <div className="text-center font-medium uppercase" style={{ fontSize: 30, letterSpacing: '0.3em' }}>
           The right service. At the right time.
         </div>
       </Reveal>
-      <Reveal at={5800} style={{ left: 0, top: 820, width: W }}>
+      <Reveal at={5800} style={{ left: 0, top: 835, width: W }}>
         <div className="text-center" style={{ fontSize: 26, color: 'var(--muted-foreground)' }}>
           OB Project · Working Group B3
         </div>
