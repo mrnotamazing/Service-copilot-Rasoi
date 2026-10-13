@@ -474,6 +474,7 @@ export const en = {
   'practice.ideal': "Ideal reply",
   'practice.showIdeal': "See an ideal reply",
   'practice.feel': "How they feel",
+  'practice.builtinNote': "AI isn’t connected, so this practice uses ready-made replies and can’t follow what you say. Connect AI in Demo & setup → Setup for real conversations.",
   'practice.mood.better': "Calmer",
   'practice.mood.same': "Not convinced yet",
   'practice.mood.worse': "More upset",

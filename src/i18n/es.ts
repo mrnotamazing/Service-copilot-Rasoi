@@ -453,6 +453,7 @@ export const es: Record<Key, string> = {
   'practice.ideal': "Respuesta ideal",
   'practice.showIdeal': "Ver una respuesta ideal",
   'practice.feel': "Cómo se siente",
+  'practice.builtinNote': "La IA no está conectada, así que esta práctica usa respuestas preparadas y no sigue lo que dices. Conecta la IA en Demo y ajustes → Configuración para conversaciones reales.",
   'practice.mood.better': "Se calma",
   'practice.mood.same': "Aún no le convence",
   'practice.mood.worse': "Se enfada más",

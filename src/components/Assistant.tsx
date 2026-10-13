@@ -205,6 +205,11 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {practice && provider === 'built-in' && (
+        <p role="note" className="mx-4 mb-2 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-foreground">
+          {t('practice.builtinNote')}
+        </p>
+      )}
       {practice && <PatienceMeter messages={messages} other={other} />}
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-3" aria-live="polite">
         {!practice && messages.length === 0 && (

@@ -453,6 +453,7 @@ export const ne: Record<Key, string> = {
   'practice.ideal': "आदर्श जवाफ",
   'practice.showIdeal': "आदर्श जवाफ हेर्नुहोस्",
   'practice.feel': "उहाँलाई कस्तो लागिरहेको छ",
+  'practice.builtinNote': "AI जोडिएको छैन, त्यसैले यो अभ्यासले पहिले नै तयार जवाफ दिन्छ र तपाईंको कुरा बुझ्दैन। साँचो कुराकानीका लागि डेमो र सेटअप → सेटअपमा AI जोड्नुहोस्।",
   'practice.mood.better': "शान्त हुनुभयो",
   'practice.mood.same': "अझै सन्तुष्ट हुनुहुन्न",
   'practice.mood.worse': "झन् रिसाउनुभयो",

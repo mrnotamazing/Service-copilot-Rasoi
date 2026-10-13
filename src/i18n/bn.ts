@@ -453,6 +453,7 @@ export const bn: Record<Key, string> = {
   'practice.ideal': "আদর্শ উত্তর",
   'practice.showIdeal': "আদর্শ উত্তর দেখুন",
   'practice.feel': "ওঁর কেমন লাগছে",
+  'practice.builtinNote': "AI সংযুক্ত নেই, তাই এই অনুশীলনে আগে থেকে তৈরি উত্তর দেওয়া হয় এবং আপনার কথা বোঝা হয় না। আসল কথোপকথনের জন্য ডেমো ও সেটআপ → সেটআপে AI সংযুক্ত করুন।",
   'practice.mood.better': "শান্ত হয়েছেন",
   'practice.mood.same': "এখনও সন্তুষ্ট নন",
   'practice.mood.worse': "আরও বিরক্ত",
