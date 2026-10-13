@@ -326,6 +326,10 @@ Opened from **Settings** in the header (it also shows the current language). Sav
 A page for the audience covering the problem, how a card is born, fairness, AI on the floor, inclusion, the theory behind the design, adoption, motivation without surveillance, the technology, AI where words matter, and how it will be tested.
 
 
+### 5.10b The landing page (`/`)
+
+The front door, in `src/pages/Landing.tsx`: it says what TableMate is before anyone opens a screen. A header with Settings and **Try the demo**; a hero with the promise and a phone you can use (tap the top card's button and the next move slides up; left alone it plays by itself, and it stays still when Animations are off); the problem in three plain points; a four-tab tour of the product (**On track**, **Fair**, **Balanced floor**, **Growing**), each with a picture of the real thing; a card for each role (server, kitchen, manager) that opens the real screen; the principles (suggestions never orders, safety is rules, never a ranking, works without the AI); languages and access; and a closing panel with **Open the demo**, **Watch the film** and **Read how it works**. The page copy is English; the app screens it links to are in all six languages. The running chef (`src/components/RunningChef.tsx`) runs along the rule under the hero.
+
 ### 5.11 The introduction film (`/intro`)
 
 A short promo film (about 1 minute 15 seconds), opened from **Watch the intro** on the start page. It is always light and on brand (cream, chocolate and tomato, set in Outfit), with the running chef as the thread: it sprints in at the start, runs along a thin service line at the foot of the middle scenes as the film plays, and runs in again for the close. It shows the real product's screens rather than doodles:

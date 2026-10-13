@@ -8,7 +8,7 @@ import { useEdgeFlash } from './lib/useAlerts.ts'
 import AboutView from './pages/AboutView.tsx'
 import Intro from './pages/Intro.tsx'
 import Home from './pages/Home.tsx'
-import Start from './pages/Start.tsx'
+import Landing from './pages/Landing.tsx'
 import KitchenView from './pages/KitchenView.tsx'
 import ManagerView from './pages/ManagerView.tsx'
 import ServerView from './pages/ServerView.tsx'
@@ -24,7 +24,7 @@ export default function App() {
       <TooltipProvider delayDuration={300}>
         <Router>
           <Routes>
-            <Route path="/" element={<Start />} />
+            <Route path="/" element={<Landing />} />
             <Route path="/servers" element={<Home />} />
             <Route path="/server/:staffId" element={<ServerView />} />
             <Route path="/kitchen" element={<KitchenView />} />
