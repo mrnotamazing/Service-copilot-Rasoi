@@ -684,6 +684,7 @@ export const es: Record<Key, string> = {
   "kitchen.seen": "Visto",
   "kudos.r6": "Comida excelente, rápida y cuidada",
   "chat.byGemini": "IA con Gemini",
+  "chat.byCloud": "IA en la nube (gratis)",
   "t.kitchen_answer": "La cocina respondió:",
   "h.kitchen_answer": "Preguntaste: {q}",
   "action.kitchen_answer": "Entendido",

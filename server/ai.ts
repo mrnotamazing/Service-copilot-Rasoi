@@ -20,7 +20,7 @@ import { parseWhatIf, runWhatIf, whatIfText } from './whatif.ts'
 export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat' | 'complaint' | 'incident'
 
 /** One message in the assistant chat. In practice mode the guest's lines are the assistant's. */
-export type AiProvider = 'claude' | 'gemini' | 'ollama' | 'dify' | 'built-in'
+export type AiProvider = 'claude' | 'gemini' | 'cloud' | 'ollama' | 'dify' | 'built-in'
 
 export interface ChatTurn {
   role: 'user' | 'assistant'
@@ -31,7 +31,7 @@ export interface ChatTurn {
 
 /** A conversational language model (Claude, or a local Ollama model). `stable` is cacheable; `live` changes every message. */
 export interface ChatModel {
-  name: 'claude' | 'gemini' | 'ollama'
+  name: 'claude' | 'gemini' | 'cloud' | 'ollama'
   /** False while the model can't be used (e.g. the demo page hasn't been granted Claude); the next provider answers. */
   available?(): boolean
   /** Small local models can get menu facts wrong: add the menu's own line for any dish the question names. */

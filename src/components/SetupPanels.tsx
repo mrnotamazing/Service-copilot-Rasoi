@@ -87,7 +87,7 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
           <CardDescription>The assistant chat and practice room, suggested lines for guests, section briefings, the private coach and the manager’s shift summary.</CardDescription>
           <CardAction>
             <Badge variant={snap.ai.provider === 'built-in' ? 'secondary' : 'default'} className="gap-1">
-              <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? 'Claude connected' : snap.ai.provider === 'gemini' ? 'Gemini connected' : snap.ai.provider === 'ollama' ? 'Local AI connected' : dify ? 'Dify connected' : 'Built-in trainer'}
+              <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? 'Claude connected' : snap.ai.provider === 'gemini' ? 'Gemini connected' : snap.ai.provider === 'cloud' ? 'Cloud AI connected' : snap.ai.provider === 'ollama' ? 'Local AI connected' : dify ? 'Dify connected' : 'Built-in trainer'}
             </Badge>
           </CardAction>
         </CardHeader>
@@ -97,6 +97,10 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
           ) : snap.ai.provider === 'gemini' ? (
             <p className="text-muted-foreground">
               The assistant runs on Google <span className="text-foreground">{snap.ai.model ?? 'Gemini'}</span>: fast on any computer, in every app language, with your standards, menu and training notes sent with each question. If Gemini can’t be reached or the free limit is used up, the built-in trainer answers and says so.
+            </p>
+          ) : snap.ai.provider === 'cloud' ? (
+            <p className="text-muted-foreground">
+              The assistant runs on <span className="text-foreground">{snap.ai.model}</span>, a free cloud AI: fast, in every app language, with your standards, menu and training notes sent with each question. If the free limit is reached, the next model answers, then the built-in trainer.
             </p>
           ) : snap.ai.provider === 'ollama' ? (
             <p className="text-muted-foreground">

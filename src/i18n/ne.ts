@@ -684,6 +684,7 @@ export const ne: Record<Key, string> = {
   "kitchen.seen": "हेरियो",
   "kudos.r6": "राम्रो खाना, छिटो र ध्यान दिएर",
   "chat.byGemini": "Gemini मार्फत AI",
+  "chat.byCloud": "निःशुल्क क्लाउड AI",
   "t.kitchen_answer": "किचनको जवाफ:",
   "h.kitchen_answer": "तपाईंले सोध्नुभयो: {q}",
   "action.kitchen_answer": "बुझें",

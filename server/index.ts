@@ -29,13 +29,16 @@ const claude = useClaude ? await import('./claude.ts') : null
 const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
 const geminiMod = !useClaude && !localOnly && geminiKey ? await import('./gemini.ts') : null
 const gemini = geminiMod?.createGemini({ key: geminiKey!, model: process.env.GEMINI_MODEL })
-const ollamaMod = !useClaude && !gemini && process.env.OLLAMA !== 'off' ? await import('./ollama.ts') : null
+const cloudCfg = !useClaude && !gemini && !localOnly ? (await import('./openai.ts')).fromEnv(process.env) : null
+const cloudMod = cloudCfg ? await import('./openai.ts') : null
+const cloud = cloudCfg ? cloudMod!.createOpenAi(cloudCfg) : null
+const ollamaMod = !useClaude && !gemini && !cloud && process.env.OLLAMA !== 'off' ? await import('./ollama.ts') : null
 const ollama = ollamaMod?.createOllama({ host: process.env.OLLAMA_HOST, model: process.env.OLLAMA_MODEL })
 const api = createApi(hub, sim, {
   url: process.env.DIFY_API_URL,
   key: process.env.DIFY_API_KEY,
-  chat: claude?.createClaude() ?? gemini?.model ?? ollama?.model,
-  chatErrorReason: claude?.claudeErrorReason ?? geminiMod?.geminiErrorReason ?? ollamaMod?.ollamaErrorReason,
+  chat: claude?.createClaude() ?? gemini?.model ?? cloud?.model ?? ollama?.model,
+  chatErrorReason: claude?.claudeErrorReason ?? geminiMod?.geminiErrorReason ?? cloudMod?.cloudErrorReason ?? ollamaMod?.ollamaErrorReason,
 })
 const snapshot = api.snapshot
 // Natural read-aloud voice (ElevenLabs). Without a key the app uses the device's own voice.
@@ -108,7 +111,7 @@ function ingestAll(events: IncomingEvent[]) {
 
 type Handler = (req: IncomingMessage, body: Record<string, unknown>, url: URL) => unknown
 const routes: Record<string, Handler> = {
-  'GET /api/health': () => ({ ok: true, events: hub.events.length, ai: useClaude ? 'claude' : gemini ? 'gemini' : ollama ? 'ollama' : process.env.DIFY_API_URL && process.env.DIFY_API_KEY ? 'dify' : 'built-in', voice: tts ? 'elevenlabs' : 'device' }),
+  'GET /api/health': () => ({ ok: true, events: hub.events.length, ai: useClaude ? 'claude' : gemini ? 'gemini' : cloud ? 'cloud' : ollama ? 'ollama' : process.env.DIFY_API_URL && process.env.DIFY_API_KEY ? 'dify' : 'built-in', voice: tts ? 'elevenlabs' : 'device' }),
   'GET /api/tts/status': () => ({ enabled: !!tts }),
   'GET /api/snapshot': (_r, _b, url) => snapshot((url.searchParams.get('role') as Role) ?? 'manager', url.searchParams.get('staffId') ?? undefined),
   'GET /api/events/export': () => hub.events,
@@ -213,6 +216,8 @@ server.listen(PORT, async () => {
     ? `Claude (${process.env.ANTHROPIC_MODEL || 'claude-opus-5-5'})`
     : gemini
       ? `Google Gemini (${await gemini.resolveModel()})`
+    : cloud
+      ? `Free cloud AI (${cloud.model.label?.()})`
     : st?.model
       ? `Ollama (${st.model}, free and local)`
       : process.env.DIFY_API_URL && process.env.DIFY_API_KEY

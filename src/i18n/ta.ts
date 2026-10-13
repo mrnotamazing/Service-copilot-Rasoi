@@ -684,6 +684,7 @@ export const ta: Record<Key, string> = {
   "kitchen.seen": "பார்த்தது",
   "kudos.r6": "அருமையான உணவு, வேகமாகவும் கவனமாகவும்",
   "chat.byGemini": "Gemini வழி AI",
+  "chat.byCloud": "இலவச கிளவுட் AI",
   "t.kitchen_answer": "சமையலறை பதில்:",
   "h.kitchen_answer": "நீங்கள் கேட்டது: {q}",
   "action.kitchen_answer": "புரிந்தது",
