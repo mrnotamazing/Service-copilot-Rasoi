@@ -133,7 +133,10 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
   // Who the other side of a role-play is: a guest, or (for some manager situations) a team member.
   const other: Key = SCENARIOS.find((x) => x.id === scenario)?.plays === 'staff' ? 'practice.staff' : 'practice.guest'
 
-  useEffect(() => end.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth', block: 'end' }), [messages, busy, streaming])
+  // A block body on purpose: an effect must return nothing or a clean-up function, and newer browsers return a promise from scrollIntoView.
+  useEffect(() => {
+    end.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth', block: 'end' })
+  }, [messages, busy, streaming])
 
   async function call(history: Message[], finish = false) {
     setBusy(true)
