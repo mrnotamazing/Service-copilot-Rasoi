@@ -1,7 +1,8 @@
 // Builds the film's sound: the narration (ElevenLabs voice), sound effects (ElevenLabs sound
 // generation) and a soft music bed, mixed with ffmpeg and laid over the rendered frames.
 //
-//   ELEVENLABS_API_KEY=... node scripts/film/voiceover.mjs [frames-dir] [out.mp4]
+//   ELEVENLABS_API_KEY=... node scripts/film/voiceover.mjs [frames-dir | existing-video.mp4] [out.mp4]
+// Give it an existing video (e.g. TableMate-promo-HD-v3.mp4) to replace its sound and keep its picture.
 //
 // Every clip the service generates is saved in film-cache/ and reused on later runs, so editing the
 // mix or the picture never pays for the same audio twice. Nothing here is retried automatically:
@@ -82,5 +83,6 @@ const graph = [
   `[mix]loudnorm=I=-16:TP=-1.5:LRA=9,atrim=0:${total},afade=t=out:st=${total - 1.5}:d=1.5[a]`,
 ].filter(Boolean).join(';')
 
-run('ffmpeg', ['-y', '-framerate', String(FPS), '-i', join(framesDir, 'f%05d.jpg'), ...inputs, '-filter_complex', graph, '-map', '0:v', '-map', '[a]', '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', out])
+const picture = framesDir.endsWith('.mp4') ? ['-i', framesDir] : ['-framerate', String(FPS), '-i', join(framesDir, 'f%05d.jpg')]
+run('ffmpeg', ['-y', ...picture, ...inputs, '-filter_complex', graph, '-map', '0:v', '-map', '[a]', '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', out])
 console.log('Film ready:', out)
