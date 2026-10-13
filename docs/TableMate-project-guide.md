@@ -325,6 +325,14 @@ Opened from **Settings** in the header (it also shows the current language). Sav
 
 A page for the audience covering the problem, how a card is born, fairness, AI on the floor, inclusion, the theory behind the design, adoption, motivation without surveillance, the technology, AI where words matter, and how it will be tested.
 
+
+### 5.11 The introduction film (`/intro`)
+
+A short animated film made with Motion (about 1 minute 45 seconds), opened from **Watch the intro** on the start page. It tells the problem first and then the answer, in the same order as the problem statement:
+
+1. TableMate and its tagline; 2. a server, six tables; 3. they know the standards and still slip; 4. the food runs late and the server takes the blame; 5. retraining, and the loop it leaves; 6. the "How might we" question; 7. the next three moves; 8. kitchen, servers and manager in one loop; 9. whose delay was it; 10. sharing the floor; 11. practising privately; 12. six languages and accessibility; 13. *Quick. Correct. Together.*
+
+Every scene is drawn from a clock, so **Pause** freezes it, the progress bar jumps to any scene, and the keys work (space to pause, arrows for scenes, F for full screen). Each scene has a caption. It plays inside the shareable demo too. A recorded **MP4** of it (`TableMate-intro.mp4`) is made by playing `/intro?bare=1` in a 1280×720 browser and recording it with Playwright, then encoding with ffmpeg; run the page in a browser if you want to change a scene and record it again.
 ---
 
 ## 6. Where AI is used, and where it deliberately isn't

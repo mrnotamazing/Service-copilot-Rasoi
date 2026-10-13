@@ -6,6 +6,7 @@ import { STANDALONE } from './lib/live.ts'
 import { usePrefs } from './lib/prefs.ts'
 import { useEdgeFlash } from './lib/useAlerts.ts'
 import AboutView from './pages/AboutView.tsx'
+import Intro from './pages/Intro.tsx'
 import Home from './pages/Home.tsx'
 import Start from './pages/Start.tsx'
 import KitchenView from './pages/KitchenView.tsx'
@@ -31,6 +32,7 @@ export default function App() {
             <Route path="/setup" element={<Navigate to="/demo?tab=setup" replace />} />
             <Route path="/demo" element={<DemoView />} />
             <Route path="/about" element={<AboutView />} />
+            <Route path="/intro" element={<Intro />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

@@ -1,4 +1,4 @@
-import { BookOpen, ChefHat, Clapperboard, HeartHandshake, LayoutDashboard, ShieldCheck, Timer, Users } from 'lucide-react'
+import { BookOpen, ChefHat, Clapperboard, Play, HeartHandshake, LayoutDashboard, ShieldCheck, Timer, Users } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
 import { useRef, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
@@ -32,6 +32,9 @@ export default function Start() {
         <Mascot className="pointer-events-none absolute -bottom-2 right-6 w-40 max-sm:hidden" speed="var(--hero-foreground)" />
         <h1 className="font-display text-3xl md:text-4xl">{t('start.title')}</h1>
         <p className="mt-2 max-w-[48ch] text-sm opacity-80 md:text-base">{t('start.sub')}</p>
+        <Link to="/intro" className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Play className="size-4" aria-hidden /> Watch the intro
+        </Link>
       </section>
       <ul className="rise-stagger mt-5 grid gap-3 sm:grid-cols-2">
         {SCREENS.map(({ to, label, sub, Icon }) => (
