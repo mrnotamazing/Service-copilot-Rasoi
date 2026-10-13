@@ -12,7 +12,7 @@ export interface Preset {
 }
 
 export const PRESETS: Record<string, Preset> = {
-  groq: { id: 'groq', url: 'https://api.groq.com/openai/v1', models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-20b'] },
+  groq: { id: 'groq', url: 'https://api.groq.com/openai/v1', models: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'] },
   cerebras: { id: 'cerebras', url: 'https://api.cerebras.ai/v1', models: ['llama-3.3-70b', 'llama3.1-8b'] },
   openrouter: { id: 'openrouter', url: 'https://openrouter.ai/api/v1', models: ['meta-llama/llama-3.3-70b-instruct:free', 'google/gemma-3-27b-it:free'] },
 }
@@ -26,6 +26,20 @@ export function fromEnv(env: NodeJS.ProcessEnv): { key: string; url: string; mod
     if (key) return { id: p.id, key, url: p.url, models: env.AI_MODEL ? [env.AI_MODEL, ...p.models] : p.models }
   }
   return null
+}
+
+/** Best first: strong, fast chat models. Anything not named here comes after, in the service's own order. */
+const PREFER = [/gpt-oss-120b/, /llama-3\.3-70b/, /qwen.*(32b|27b|235b)/, /gemma.*(27b|12b)/, /llama.*70b/, /gpt-oss-20b/, /llama-3\.1-8b/]
+const NOT_CHAT = /whisper|orpheus|tts|guard|safeguard|embed|moderation|allam|vision-preview|image/i
+
+/** Chat models the service really offers, best first (model lists change; names baked into code go stale). */
+export function rankModels(ids: string[]): string[] {
+  const chat = ids.filter((m) => !NOT_CHAT.test(m))
+  const score = (m: string) => {
+    const i = PREFER.findIndex((r) => r.test(m))
+    return i < 0 ? PREFER.length : i
+  }
+  return [...chat].sort((a, b) => score(a) - score(b))
 }
 
 const RETRY = new Set([408, 425, 429, 500, 502, 503, 504])
@@ -43,6 +57,18 @@ export function createOpenAi(cfg: { key: string; url: string; models: string[]; 
   const doFetch = cfg.fetchImpl ?? fetch
   const rested = new Map<string, number>()
   let lastGood: string | null = null
+  let models = cfg.models
+  // Ask the service which models it has now; keep the built-in list if it can't say.
+  const discovered = (async () => {
+    try {
+      const res = await doFetch(`${cfg.url}/models`, { headers: { authorization: `Bearer ${cfg.key}` }, signal: AbortSignal.timeout(6000) })
+      const data = (await res.json()) as { data?: { id: string }[] }
+      const ranked = rankModels((data.data ?? []).map((m) => m.id))
+      if (ranked.length && cfg.models[0] !== 'default') models = [...new Set([...cfg.models.filter((m) => ranked.includes(m)), ...ranked])]
+    } catch {
+      /* keep the preset list */
+    }
+  })()
 
   async function once(name: string, system: Parameters<ChatModel['reply']>[0], turns: ChatTurn[], onText: Parameters<ChatModel['reply']>[2], o: Parameters<ChatModel['reply']>[3]) {
     const messages = [
@@ -53,7 +79,7 @@ export function createOpenAi(cfg: { key: string; url: string; models: string[]; 
       method: 'POST',
       headers: { authorization: `Bearer ${cfg.key}`, 'content-type': 'application/json' },
       signal: o?.signal ? AbortSignal.any([AbortSignal.timeout(45_000), o.signal]) : AbortSignal.timeout(45_000),
-      body: JSON.stringify({ model: name, stream: true, temperature: 0.6, max_tokens: o?.maxTokens ?? 1024, messages }),
+      body: JSON.stringify({ model: name, stream: true, temperature: 0.6, max_tokens: o?.maxTokens ?? 1024, messages, ...(/gpt-oss/.test(name) ? { reasoning_effort: 'low' } : {}) }),
     })
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } | string }
@@ -91,10 +117,11 @@ export function createOpenAi(cfg: { key: string; url: string; models: string[]; 
 
   const model: ChatModel = {
     name: 'cloud',
-    label: () => `${cfg.id ?? 'cloud'}: ${lastGood ?? cfg.models[0]}`,
+    label: () => `${cfg.id ?? 'cloud'}: ${lastGood ?? models[0]}`,
     async reply(system, turns, onText, o) {
+      await discovered
       const now = Date.now()
-      const order = [...new Set([lastGood, ...cfg.models].filter((m): m is string => !!m))]
+      const order = [...new Set([lastGood, ...models].filter((m): m is string => !!m))]
       const ready = order.filter((m) => (rested.get(m) ?? 0) < now)
       let lastError: unknown
       for (const name of (ready.length ? ready : order).slice(0, 4)) {
