@@ -43,6 +43,15 @@ Vercel: good for the front-end only. Put the front-end on Vercel and the server 
 
 For real vibration on iPhone (including alerts that arrive on their own) and push notifications, wrap the app with Capacitor (Haptics and Push plugins) and publish it through TestFlight or the App Store.
 
+## Kitchen priorities and alerts
+
+Setup → **Kitchen priorities** is filled in when a restaurant is onboarded (like each dish's allergens) and can be changed any time: how much an allergy or diet clash, a dish past or close to its standard time, a VIP, an occasion, a big party and the course matter (0–10 each), when a dish counts as "approaching" (default 80% of its standard time) and how often the pass is reminded while a ticket stays late (default 2 minutes).
+
+- The pass sorts tickets by these, shows the reasons on each card ("3 min over standard · nuts allergy · VIP"), and marks the first one "Do first".
+- It is alerted (chime, screen flash, buzz, as each person chose in Settings) when a dish nears its time, again when it goes late, and again every few minutes while it stays late.
+- **Chef's call** asks the AI for a short read of what to send first, weighing the tickets with the restaurant's own priorities. The order never depends on the AI; if it is busy a plain-words summary is shown.
+- A task a server puts off ("later") comes back with a notice, "Back from later", and a higher priority each time it returns, so it doesn't sink below newer jobs.
+
 ## Sign-in (demo)
 
 `/login`: choose Server (then who), Kitchen or Manager and enter the shared demo password (set in `src/lib/auth.ts`, `DEMO_PASSWORD`). Each person only opens their own screen: servers their own app, the kitchen the pass, the manager the floor and the servers overview. Sessions are per browser tab, so closing the tab signs out, and one laptop can show several roles in several tabs. "Wrap up my shift" ends in "Finish my shift and sign out". This is a presentation gate, not security: before a real roll-out, check passwords on the server with one account per person.

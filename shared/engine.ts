@@ -38,6 +38,8 @@ export interface EngineState {
   instructions: Instruction[]
   questions: DishQuestion[]
   snoozes: Record<string, number> // taskId -> snoozed until
+  /** How many times each task has been put off, so one that keeps coming back climbs the list. */
+  snoozeCount: Record<string, number>
   visits: VisitRecord[]
   eventCount: number
   /** Tonight's real prep minutes per dish and eating minutes per course, for forecasts. */
@@ -48,7 +50,7 @@ export interface EngineState {
 export function initialState(config: RestaurantConfig): EngineState {
   const tables: Record<string, TableState> = {}
   for (const t of config.tables) tables[t.id] = emptyTable(t.id, config)
-  return { tables, unavailable: {}, notes: [], instructions: [], questions: [], snoozes: {}, visits: [], eventCount: 0, prepStats: {}, eatStats: {} }
+  return { tables, unavailable: {}, notes: [], instructions: [], questions: [], snoozes: {}, snoozeCount: {}, visits: [], eventCount: 0, prepStats: {}, eatStats: {} }
 }
 
 function emptyTable(id: string, config: RestaurantConfig, keepServer?: string): TableState {
@@ -323,6 +325,7 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
     }
     case 'task.snoozed': {
       state.snoozes[ev.payload.taskId] = at + ev.payload.minutes * MIN
+      state.snoozeCount[ev.payload.taskId] = (state.snoozeCount[ev.payload.taskId] ?? 0) + 1
       break
     }
     case 'note.sent': {
@@ -828,6 +831,8 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
 
   return tasks
     .filter((k) => !(state.snoozes[k.id] > now))
+    // A task put off earlier is back: it says so, and its priority is lifted so it doesn't sink below newer jobs.
+    .map((k) => (state.snoozes[k.id] && state.snoozeCount[k.id] ? { ...k, resurfaced: { at: state.snoozes[k.id], times: state.snoozeCount[k.id] } } : k))
     .map((k) => ({ ...k, score: scoreTask(k, state.tables[k.tableId], now) }))
     .sort((a, b) => b.score - a.score)
 }
@@ -843,7 +848,9 @@ export function scoreTask(task: Task, table: TableState | undefined, now: number
   const since = table?.lastAttentionAt ?? table?.seatedAt ?? now
   const neglect = Math.min(0.6, ((now - since) / MIN) * 0.04)
   const vip = table?.party?.vip ? 0.5 : 0
-  return Math.round((task.impact * (0.6 + urgency) + neglect + vip) * 100) / 100
+  // Put off before? Each time it comes back it counts for more, up to a limit.
+  const back = task.resurfaced ? Math.min(1.5, 0.6 * task.resurfaced.times) : 0
+  return Math.round((task.impact * (0.6 + urgency) + neglect + vip + back) * 100) / 100
 }
 
 /**

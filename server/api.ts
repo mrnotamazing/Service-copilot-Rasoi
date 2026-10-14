@@ -7,6 +7,7 @@ import { floorInsights, handoverNotes } from '../shared/floorInsights.ts'
 import { crunchAhead, forecast, learningPlan, shiftIntel, whyFirst } from '../shared/intel.ts'
 import { cleanProfile } from '../shared/profile.ts'
 import { crewView } from '../shared/crew.ts'
+import { PRIORITY_FIELDS } from '../shared/priority.ts'
 import { playerView, teamView } from '../shared/game.ts'
 import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
@@ -246,6 +247,15 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         for (const [k, v] of Object.entries(body.sop)) if (k in hub.config.sop && typeof v === 'number' && v >= 0 && v < 240) sop[k] = v
         patch.sop = { ...hub.config.sop, ...sop }
       }
+      if (body.priority && typeof body.priority === 'object') {
+        // The restaurant's kitchen priorities: only known fields, numbers inside each one's range.
+        const next: Record<string, number> = { ...hub.config.priority }
+        for (const f of PRIORITY_FIELDS) {
+          const v = (body.priority as Record<string, unknown>)[f.key]
+          if (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= f.max) next[f.key] = v
+        }
+        patch.priority = next
+      }
       if (typeof body.name === 'string') patch.name = body.name.slice(0, 80)
       if (body.sections && typeof body.sections === 'object') patch.sections = { ...hub.config.sections, ...(body.sections as Record<string, string>) }
       hub.updateConfig(patch)
@@ -253,7 +263,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     },
   }
 
-  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice', 'chat', 'complaint', 'incident']
+  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice', 'chat', 'complaint', 'incident', 'kitchen_triage']
 
   return {
     /** The model asked first, and the whole line-up with how each is doing. */

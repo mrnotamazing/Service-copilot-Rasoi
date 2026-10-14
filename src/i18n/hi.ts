@@ -342,6 +342,8 @@ export const hi: Record<Key, string> = {
   'toast.allergy': "एलर्जी किचन को भेज दी गई",
   'toast.acked': "देखा गया के रूप में चिह्नित",
   'toast.snoozed': "बाद के लिए रखा गया",
+  'task.back': "आपकी सूची में वापस",
+  'task.backChip': "बाद से वापस",
   'toast.error': "सेव नहीं हो सका। कनेक्शन जाँचें और फिर कोशिश करें।",
   'srv.notFound': "यह स्टाफ़ सदस्य नहीं मिला। वापस जाकर नाम चुनें।",
   'srv.phoneOf': "यह सर्विस के दौरान {name} का फ़ोन है।",

@@ -91,6 +91,8 @@ export interface RestaurantConfig {
   tables: TableDef[]
   menu: MenuItem[]
   sop: Sop
+  /** What the kitchen should do first, as the restaurant set it (see priority.ts). Missing values use the defaults. */
+  priority?: Partial<import('./priority.ts').PriorityConfig>
   /** Alerts sent out to a webhook (Zapier, n8n…) for WhatsApp, Slack, email or Sheets. */
   alerts?: { url: string; kinds: AlertKind[] }
 }
@@ -267,6 +269,8 @@ export interface Task {
   dueAt: number
   createdAt: number
   score: number
+  /** Set when the server put this card off and it has come back: when, and how many times it has been put off. */
+  resurfaced?: { at: number; times: number }
   actions: TaskAction[]
   /** Who sent it, for notes from a teammate (manager or kitchen). */
   from?: string

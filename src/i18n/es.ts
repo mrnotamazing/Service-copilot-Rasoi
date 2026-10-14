@@ -342,6 +342,8 @@ export const es: Record<Key, string> = {
   'toast.allergy': "Alergia enviada a cocina",
   'toast.acked': "Marcado como visto",
   'toast.snoozed': "Pasado a más tarde",
+  'task.back': "De vuelta en tu lista",
+  'task.backChip': "Vuelve de «más tarde»",
   'toast.error': "No se pudo guardar. Revisa la conexión e inténtalo de nuevo.",
   'srv.notFound': "No encontramos a esa persona. Vuelve y elige un nombre.",
   'srv.phoneOf': "Este es el teléfono de {name} durante el servicio.",

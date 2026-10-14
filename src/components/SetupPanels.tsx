@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
+import { Slider } from '@/components/ui/slider'
+import { DEFAULT_PRIORITY, PRIORITY_FIELDS, priorityOf, type PriorityConfig } from '../../shared/priority.ts'
 import { STANDALONE, post } from '../lib/live.ts'
 
 // The restaurant's setup, shown on the Demo & setup page: service standards, the AI behind the
@@ -80,6 +82,8 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
           </form>
         </CardContent>
       </Card>
+
+      <KitchenPriorities snap={snap} />
 
       <Card>
         <CardHeader>
@@ -170,5 +174,74 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
         </CardHeader>
       </Card>
     </div>
+  )
+}
+
+/**
+ * What the kitchen should do first. Set once when a restaurant is onboarded (like each dish's allergens) and
+ * changeable any time: the pass sorts its tickets by these, and the AI's "chef's call" explains the order with them.
+ */
+function KitchenPriorities({ snap }: { snap: Snapshot }) {
+  const [p, setP] = useState<PriorityConfig>(() => priorityOf(snap.config))
+  const [dirty, setDirty] = useState(false)
+  return (
+    <Card>
+      <CardHeader>
+        <Heading>Kitchen priorities</Heading>
+        <CardDescription>How much each thing matters when the pass decides what to send next. Tickets are sorted by this, the pass is alerted as dishes near and pass their standard time, and the AI explains its call using these.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          className="space-y-3"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            await post('/api/config', { priority: p })
+            setDirty(false)
+            toast.success('Kitchen priorities saved')
+          }}
+        >
+          {PRIORITY_FIELDS.map((f) => (
+            <div key={f.key} className="grid gap-1">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <label htmlFor={`pri-${f.key}`}>{f.label}</label>
+                <span className="tabular text-xs text-muted-foreground">
+                  {p[f.key]}
+                  {f.unit ?? ' / 10'}
+                </span>
+              </div>
+              <Slider
+                id={`pri-${f.key}`}
+                min={0}
+                max={f.max}
+                step={f.max > 10 ? 5 : 1}
+                value={[p[f.key]]}
+                onValueChange={([v]) => {
+                  setP({ ...p, [f.key]: v })
+                  setDirty(true)
+                }}
+                aria-label={f.label}
+              />
+              <p className="text-xs text-muted-foreground">{f.hint}</p>
+            </div>
+          ))}
+          <Separator className="my-3" />
+          <div className="flex gap-2">
+            <Button type="submit" disabled={!dirty}>
+              Save priorities
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setP(DEFAULT_PRIORITY)
+                setDirty(true)
+              }}
+            >
+              Reset to defaults
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   )
 }

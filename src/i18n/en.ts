@@ -363,6 +363,8 @@ export const en = {
   'toast.allergy': "Allergy sent to the kitchen",
   'toast.acked': "Marked as seen",
   'toast.snoozed': "Moved to later",
+  'task.back': "Back on your list",
+  'task.backChip': "Back from later",
   'toast.error': "Could not save that. Check the connection and try again.",
   'srv.notFound': "We couldn’t find that staff member. Go back and pick a name.",
   'srv.phoneOf': "This is {name}’s phone during service.",

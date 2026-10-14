@@ -14,12 +14,13 @@ import { predictReady } from '../shared/predict.ts'
 import { menuForNeed, safetyIssues } from '../shared/safety.ts'
 import { istClock } from '../shared/time.ts'
 import { type Audience, findLessons, type Lesson, lessonsFor, MANAGER_STARTERS, STARTERS } from '../shared/training.ts'
+import { describeTicket, kitchenTickets, PRIORITY_FIELDS, priorityOf } from '../shared/priority.ts'
 import { createRanker, type Ranker } from './ranker.ts'
 import { profileFor, type Tier } from './tasks.ts'
 import type { Hub } from './hub.ts'
 import { parseWhatIf, runWhatIf, whatIfText } from './whatif.ts'
 
-export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat' | 'complaint' | 'incident'
+export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat' | 'complaint' | 'incident' | 'kitchen_triage'
 
 /** One message in the assistant chat. In practice mode the guest's lines are the assistant's. */
 export type AiProvider = 'claude' | 'gemini' | 'cloud' | 'ollama' | 'dify' | 'built-in'
@@ -187,6 +188,26 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             `(stages, stations, staffing) and one or two concrete actions for next service. Never single out or rank ` +
             `individual staff.\n\nFacts:\n${facts.map((f) => `- ${f}`).join('\n')}`,
           fallback: a.visits || intel.bottleneck ? [intel.why.join(' '), intel.actions.length ? `Next: ${intel.actions.join(' ')}` : ''].filter(Boolean).join('\n\n') : shiftSummaryFallback(a),
+        }
+      }
+      case 'kitchen_triage': {
+        const list = kitchenTickets(hub.state, cfg, now)
+        const p = priorityOf(cfg)
+        const rules = PRIORITY_FIELDS.filter((f) => f.max === 10).map((f) => `${f.label}: ${p[f.key]}/10`)
+        const top = list.slice(0, 6)
+        const facts = [
+          `Tickets on the line: ${list.length}; late: ${list.filter((k) => k.level === 'late' || k.level === 'critical').length}; approaching the standard time: ${list.filter((k) => k.level === 'soon').length}`,
+          ...top.map((k, i) => `${i + 1}. ${describeTicket(k)}; priority score ${k.score}, ${k.level}${k.minsOver ? `, ${k.minsOver} min over` : ''}`),
+        ]
+        const fallback = !list.length
+          ? 'Nothing on the line. Clear the pass and get ahead on prep.'
+          : [`Do first: ${describeTicket(top[0])}.`, top[1] ? `Then: ${describeTicket(top[1])}.` : '', top.some((k) => k.reasons.some((r) => /allerg|diet/.test(r))) ? 'Allergy and diet tickets are always checked with the chef before they leave the pass.' : ''].filter(Boolean).join(' ')
+        return {
+          prompt:
+            `You are the pass's calm second pair of eyes. In 2-4 short sentences tell the kitchen what to send out first and why, then one heads-up if something is about to go late. ` +
+            `Use the restaurant's own priorities below to weigh the tickets; keep the order given unless the facts clearly say otherwise. Allergy and diet tickets are always confirmed by the chef. ` +
+            `Never blame a person or a station. Name tables (like T4), not guests.\n\nThe restaurant's priorities:\n${rules.map((r) => `- ${r}`).join('\n')}\n\nTickets, most urgent first:\n${facts.map((f) => `- ${f}`).join('\n')}`,
+          fallback,
         }
       }
       case 'complaint': {
@@ -647,7 +668,7 @@ export function fromJson(raw: string): string {
 /** No words from the model by then: show the built-in answer instead of keeping someone waiting. */
 const QUICK_FIRST_WORDS_MS = 12_000
 /** Rough answer lengths for the quick buttons (tokens): a line to say is short, a summary longer. */
-const QUICK_TOKENS: Partial<Record<AiKind, number>> = { guest_script: 140, coach: 180, briefing: 240, complaint: 240, ask_sop: 180, incident: 280, shift_summary: 320 }
+const QUICK_TOKENS: Partial<Record<AiKind, number>> = { guest_script: 140, coach: 180, briefing: 240, complaint: 240, ask_sop: 180, incident: 280, shift_summary: 320, kitchen_triage: 200 }
 
 /** The whole system prompt for a quick button: the facts are in the request itself. */
 export function quickSystem(cfg: RestaurantConfig): string {

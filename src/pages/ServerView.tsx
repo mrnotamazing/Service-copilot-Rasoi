@@ -1305,6 +1305,26 @@ function NewTaskAlerts({ top }: { top: Task[] }) {
   }, [lead?.id])
   // Any new card among the top three chimes, flashes and buzzes (not only a new top card).
   useAlertOnNew(top.map((k) => k.id))
+  // A card the person put off is back: say so, once each time it returns (the chime above already rang).
+  const t = useT()
+  const backSeen = useRef<Set<string> | null>(null)
+  const backSig = top.map((k) => (k.resurfaced ? `${k.id}@${k.resurfaced.at}` : '')).join('|')
+  useEffect(() => {
+    const keys = top.filter((k) => k.resurfaced).map((k) => `${k.id}@${k.resurfaced!.at}`)
+    if (!backSeen.current) {
+      backSeen.current = new Set(keys)
+      return
+    }
+    for (const k of top) {
+      if (!k.resurfaced) continue
+      const key = `${k.id}@${k.resurfaced.at}`
+      if (backSeen.current.has(key)) continue
+      backSeen.current.add(key)
+      toast.message(t('task.back'), { description: `${k.tableName !== 'All' ? `${k.tableName}: ` : ''}${k.text ? t.text(k.text.title) : k.title}`, duration: 6000 })
+    }
+    // The set of returned cards is what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backSig])
   return null
 }
 

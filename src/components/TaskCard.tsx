@@ -1,4 +1,4 @@
-import { Megaphone, ArrowRight, BellRing, Check, ChefHat, HeartHandshake, ShieldAlert, CircleDollarSign, Clock, Hand, HandPlatter, HeartPulse, Loader2, MessageCircle, Sparkles, TimerReset, Utensils, UtensilsCrossed, Volume2, Wand2 } from 'lucide-react'
+import { Megaphone, ArrowRight, BellRing, Check, ChefHat, HeartHandshake, ShieldAlert, CircleDollarSign, Clock, Hand, HandPlatter, HeartPulse, Loader2, MessageCircle, Sparkles, TimerReset, Utensils, UtensilsCrossed, Volume2, Wand2, RotateCcw } from 'lucide-react'
 import { motion, useMotionValue, useTransform } from 'motion/react'
 import { forwardRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -144,6 +144,11 @@ export const TaskCard = forwardRef<HTMLDivElement, { task: Task; now: number; le
           <div className="flex items-start gap-2">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
               {task.tableName !== 'All' && <Badge variant="secondary" className="font-semibold">{task.tableName}</Badge>}
+              {task.resurfaced && (
+                <Badge variant="outline" className="gap-1 border-primary/40 text-primary">
+                  <RotateCcw className="size-3" /> {t('task.backChip')}
+                </Badge>
+              )}
               <span className={cn('inline-flex items-center gap-1 text-xs tabular', over ? 'text-warn' : 'text-muted-foreground')}>
                 <Clock className="size-3" />
                 {over ? t('card.past', { t: mmss(left) }) : t('card.within', { t: mmss(left) })}

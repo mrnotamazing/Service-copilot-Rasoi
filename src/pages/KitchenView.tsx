@@ -1,8 +1,11 @@
 import { CrewCard } from '../components/CrewCard.tsx'
-import { MessageCircleQuestion, BellRing, Bot, Check, Flame, HandPlatter, HeartPulse, Send, ShieldAlert, Timer, UtensilsCrossed } from 'lucide-react'
+import { MessageCircleQuestion, BellRing, RefreshCw, Sparkles, Bot, Check, Flame, HandPlatter, HeartPulse, Send, ShieldAlert, Timer, UtensilsCrossed } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useAlertOnNew } from '../lib/useAlerts.ts'
-import { useMemo, useState } from 'react'
+import { useKitchenAlerts } from '../lib/useKitchenAlerts.ts'
+import { priorityOf, ticketPriority, type Level, type TicketPriority } from '../../shared/priority.ts'
+import { useAi } from '../lib/ai.ts'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { safetyIssues } from '../../shared/safety.ts'
 import type { OrderLine, Station, TableState } from '../../shared/types.ts'
@@ -63,13 +66,30 @@ export default function KitchenView() {
     return { line: all.filter((k) => k.lines.some((l) => l.status === 'fired')), pass: all.filter((k) => k.lines.every((l) => l.status === 'ready')) }
   }, [snap])
 
-  if (!snap) return <ShellSkeleton />
+  // Tickets ordered by what the restaurant said matters most (see Setup → Kitchen priorities), most urgent first.
+  const ranked = useMemo(() => {
+    if (!snap) return null
+    return tickets.line
+      .map((k) => ({ k, p: ticketPriority(k.table, k.lines, snap.config, snap.now) }))
+      .sort((a, b) => b.p.score - a.p.score || Math.min(...a.k.lines.map((l) => l.firedAt)) - Math.min(...b.k.lines.map((l) => l.firedAt)))
+  }, [snap, tickets.line])
+  useKitchenAlerts(
+    ranked && snap
+      ? ranked.map(({ k, p }) => ({ id: k.ticketId, table: k.table.name, dishes: k.lines.filter((l) => l.status === 'fired').map((l) => `${l.qty}× ${l.name}`).join(', '), level: p.level, minsOver: p.minsOver, reasons: p.reasons }))
+      : null,
+    snap?.now ?? 0,
+    snap ? priorityOf(snap.config).realertMin : 2,
+  )
+
+  if (!snap || !ranked) return <ShellSkeleton />
   const now = snap.now
   const tol = snap.config.sop.kitchenDelayToleranceMin * MIN
   const isLate = (k: Ticket) => k.lines.some((l) => l.status === 'fired' && now > l.expectedReadyAt + tol)
   const inStation = (k: Ticket) => station === 'all' || k.lines.some((l) => l.station === station)
-  const line = tickets.line.filter(inStation)
-  const late = tickets.line.filter(isLate).length
+  const lineRanked = ranked.filter(({ k }) => inStation(k))
+  const line = lineRanked.map(({ k }) => k)
+  // "Running late" counts every ticket past its standard time (the guest-warning tolerance is separate).
+  const late = ranked.filter(({ p }) => p.level === 'late' || p.level === 'critical').length
   const stationCount = (s: Station) => tickets.line.filter((k) => k.lines.some((l) => l.station === s && l.status === 'fired')).length
 
   return (
@@ -108,8 +128,8 @@ export default function KitchenView() {
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
                 <AnimatePresence mode="popLayout" initial={false}>
-                  {line.map((k) => (
-                    <TicketCard key={k.ticketId} k={k} now={now} late={isLate(k)} station={station} snap={snap} />
+                  {lineRanked.map(({ k, p }, i) => (
+                    <TicketCard key={k.ticketId} k={k} now={now} late={isLate(k)} station={station} snap={snap} pri={p} rank={i} />
                   ))}
                 </AnimatePresence>
               </div>
@@ -131,6 +151,7 @@ export default function KitchenView() {
         </div>
 
         <div className="min-w-0 space-y-4">
+          <ChefsCall ranked={ranked} />
           {snap.crew && <CrewCard crew={snap.crew} muted={snap.sim.autoKitchen} />}
           <Questions snap={snap} />
           <AllDay tickets={tickets.line} station={station} />
@@ -173,7 +194,7 @@ function LaneTitle({ icon, title, n }: { icon: React.ReactNode; title: string; n
   )
 }
 
-function TicketCard({ k, now, late, station, snap }: { k: Ticket; now: number; late: boolean; station: Station | 'all'; snap: Snap }) {
+function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now: number; late: boolean; station: Station | 'all'; snap: Snap; pri: TicketPriority; rank: number }) {
   const fired = Math.min(...k.lines.map((l) => l.firedAt))
   const expected = Math.max(...k.lines.map((l) => l.expectedReadyAt))
   const frac = Math.min(1, (now - fired) / Math.max(1, expected - fired))
@@ -189,7 +210,7 @@ function TicketCard({ k, now, late, station, snap }: { k: Ticket; now: number; l
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      className={cn('flex flex-col overflow-hidden rounded-2xl border bg-card', late && 'border-kitchen ring-1 ring-kitchen/40')}
+      className={cn('flex flex-col overflow-hidden rounded-2xl border bg-card', LEVEL_RING[pri.level], pri.level === 'critical' && 'pulse-soft')}
     >
       <div className="flex items-start justify-between gap-2 p-4 pb-2">
         <div>
@@ -204,7 +225,18 @@ function TicketCard({ k, now, late, station, snap }: { k: Ticket; now: number; l
           <div className="text-[11px] text-muted-foreground tabular">{over > 0 ? `${over} min over` : `of ${mmss(expected - fired)}`}</div>
         </div>
       </div>
-      <div className="mx-4 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+      {(rank === 0 || pri.reasons.length > 0) && (
+        <div className="mx-4 mt-2 flex flex-wrap items-center gap-1.5">
+          {rank === 0 && <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">Do first</span>}
+          {pri.level !== 'normal' && <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', LEVEL_CHIP[pri.level])}>{LEVEL_LABEL[pri.level]}</span>}
+          {pri.reasons.map((r) => (
+            <span key={r} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+              {r}
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="mx-4 mt-2 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
         <div className={cn('h-full rounded-full transition-[width] duration-1000', late ? 'bg-kitchen' : 'bg-primary/70')} style={{ width: `${frac * 100}%` }} />
       </div>
 
@@ -243,6 +275,75 @@ function TicketCard({ k, now, late, station, snap }: { k: Ticket; now: number; l
     </motion.article>
   )
 }
+
+/**
+ * The chef's call: the first few tickets in the order the restaurant's priorities give, and, when something is
+ * nearing or past its time, the AI's short read of what to send first and why. The order never depends on the AI:
+ * if it's busy or offline the same list is shown with a plain-words summary.
+ */
+function ChefsCall({ ranked }: { ranked: { k: Ticket; p: TicketPriority }[] }) {
+  const ai = useAi()
+  const top = ranked.slice(0, 3)
+  const urgent = ranked.some(({ p }) => p.level !== 'normal')
+  const sig = top.map(({ k, p }) => `${k.ticketId}${p.level}`).join(',')
+  const last = useRef(0)
+  useEffect(() => {
+    // Asked when the picture changes and something is nearing or late, at most once every 45 seconds.
+    if (!urgent || Date.now() - last.current < 45_000) return
+    last.current = Date.now()
+    void ai.ask('kitchen_triage')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sig, urgent])
+  if (!top.length) return null
+  const dishes = (k: Ticket) => k.lines.filter((l) => l.status === 'fired').map((l) => `${l.qty}× ${l.name}`).join(', ')
+  return (
+    <section className="rounded-2xl border bg-card p-4" aria-label="Chef’s call">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <Sparkles className="size-4 text-primary" /> Chef’s call
+        </h2>
+        <button
+          type="button"
+          onClick={() => {
+            last.current = Date.now()
+            void ai.ask('kitchen_triage')
+          }}
+          disabled={ai.loading}
+          className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          aria-label="Ask the AI again"
+        >
+          <RefreshCw className={cn('size-3.5', ai.loading && 'animate-spin')} /> Refresh
+        </button>
+      </div>
+      <ol className="mt-2 space-y-2">
+        {top.map(({ k, p }, i) => (
+          <li key={k.ticketId} className="flex items-start gap-2.5 text-sm">
+            <span className={cn('mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold', i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>{i + 1}</span>
+            <span className="min-w-0">
+              <span className="font-medium">{k.table.name}</span> <span className="text-muted-foreground">{dishes(k)}</span>
+              {p.reasons.length > 0 && <span className={cn('block text-xs', p.level === 'late' || p.level === 'critical' ? 'text-kitchen' : 'text-muted-foreground')}>{p.reasons.join(' · ')}</span>}
+            </span>
+          </li>
+        ))}
+      </ol>
+      {(ai.answer || ai.loading) && (
+        <p className="mt-3 border-t pt-3 text-sm text-pretty" aria-live="polite">
+          {ai.answer?.text ?? <span className="text-muted-foreground">Thinking it through…</span>}
+          {ai.answer && <span className="mt-1 block text-[11px] text-muted-foreground">{ai.answer.source === 'built-in' ? 'Summary from your priorities' : `AI assessment, weighed with your kitchen priorities`}</span>}
+        </p>
+      )}
+    </section>
+  )
+}
+
+const LEVEL_RING: Record<Level, string> = {
+  normal: '',
+  soon: 'border-warn/60',
+  late: 'border-kitchen ring-1 ring-kitchen/40',
+  critical: 'border-kitchen ring-2 ring-kitchen/60',
+}
+const LEVEL_CHIP: Record<Level, string> = { normal: '', soon: 'bg-warn/15 text-warn', late: 'bg-kitchen/15 text-kitchen', critical: 'bg-kitchen text-white' }
+const LEVEL_LABEL: Record<Level, string> = { normal: '', soon: 'Nearly due', late: 'Late', critical: 'Critical' }
 
 /** Food at the pass: how long it has waited, and a nudge to the table's server. */
 function PassCard({ k, now, snap }: { k: Ticket; now: number; snap: Snap }) {

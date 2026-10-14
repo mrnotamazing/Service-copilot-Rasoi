@@ -342,6 +342,8 @@ export const ne: Record<Key, string> = {
   'toast.allergy': "एलर्जी किचनमा पठाइयो",
   'toast.acked': "हेरिएको भनी चिन्ह लगाइयो",
   'toast.snoozed': "पछिका लागि सारियो",
+  'task.back': "तपाईंको सूचीमा फर्कियो",
+  'task.backChip': "पछिबाट फर्कियो",
   'toast.error': "सेभ हुन सकेन। कनेक्सन जाँचेर फेरि प्रयास गर्नुहोस्।",
   'srv.notFound': "यो कर्मचारी भेटिएन। फर्केर नाम छान्नुहोस्।",
   'srv.phoneOf': "यो सेवाको बेला {name} को फोन हो।",
