@@ -30,7 +30,7 @@ function useCrewCelebrations(crew: CrewView, muted: boolean) {
     const big = fresh.filter((a) => a.kind !== 'xp')
     if (!big.length) return haptic.done()
     haptic.celebrate()
-    for (const a of big) toast.success(a.kind === 'badge' ? L('Badge earned: {title}', { title: a.title }) : L('New rank: {title}', { title: a.title }), { description: a.detail, duration: 5000 })
+    for (const a of big) toast.success(a.kind === 'badge' ? L('Badge earned: {title}', { title: L(a.title) }) : L('New rank: {title}', { title: L(a.title) }), { description: a.detail, duration: 5000 })
     if (!document.documentElement.dataset.motion?.startsWith('reduce')) void confetti({ particleCount: 70, spread: 65, origin: { y: 0.3 }, colors: ['#d34f2f', '#ec7a3a', '#f4c26b', '#34251d', '#2f8a5f'], disableForReducedMotion: true, zIndex: 60 })
   }, [crew.awards, muted, quietCelebrations])
 }
@@ -50,7 +50,7 @@ export function CrewCard({ crew, muted = false, className }: { crew: CrewView; m
           <Crown className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-display text-lg leading-tight">{level.title}</div>
+          <div className="truncate font-display text-lg leading-tight">{L(level.title)}</div>
           <div className="text-xs text-muted-foreground tabular">
             {crew.xp} {tx('ui.server.xp')}{level.next ? ` · ${level.next - crew.xp} to ${level.nextTitle}` : ' · top rank'}
           </div>
@@ -66,12 +66,12 @@ export function CrewCard({ crew, muted = false, className }: { crew: CrewView; m
 
       <div className="mt-4">
         <div className="flex items-baseline justify-between gap-2 text-sm">
-          <span className={cn(done && 'font-medium text-good')}>{goal.title}</span>
+          <span className={cn(done && 'font-medium text-good')}>{L(goal.title)}</span>
           <span className="tabular text-xs text-muted-foreground">
             {goal.done}/{goal.target}
           </span>
         </div>
-        <Progress value={(goal.done / goal.target) * 100} className="mt-1.5 h-2" aria-label={goal.title} />
+        <Progress value={(goal.done / goal.target) * 100} className="mt-1.5 h-2" aria-label={L(goal.title)} />
         <p className="mt-1.5 text-xs text-muted-foreground">{done ? L('Goal reached. Brilliant teamwork.') : kitchen ? L('Best streak tonight: {n}. A late dish only resets the streak, nothing else.', { n: crew.bestStreak }) : L('Every handover, note and thank-you counts. This is about the team, not a ranking.')}</p>
       </div>
 
@@ -90,8 +90,8 @@ export function CrewCard({ crew, muted = false, className }: { crew: CrewView; m
                     <Icon className="size-4.5" />
                     {!got && <Lock className="absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full bg-background p-0.5" />}
                   </span>
-                  <span className={cn('mt-1.5 text-[11px] font-medium leading-tight', !got && 'text-muted-foreground')}>{b.title}</span>
-                  <span className="text-[10px] leading-tight text-muted-foreground">{got ? b.description : `${b.progress}/${b.target}`}</span>
+                  <span className={cn('mt-1.5 text-[11px] font-medium leading-tight', !got && 'text-muted-foreground')}>{L(b.title)}</span>
+                  <span className="text-[10px] leading-tight text-muted-foreground">{got ? L(b.description) : `${b.progress}/${b.target}`}</span>
                 </li>
               )
             })}

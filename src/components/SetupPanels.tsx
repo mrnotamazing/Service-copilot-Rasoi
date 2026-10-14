@@ -209,7 +209,7 @@ function KitchenPriorities({ snap }: { snap: Snapshot }) {
           {PRIORITY_FIELDS.map((f) => (
             <div key={f.key} className="grid gap-1">
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <label htmlFor={`pri-${f.key}`}>{f.label}</label>
+                <label htmlFor={`pri-${f.key}`}>{L(f.label)}</label>
                 <span className="tabular text-xs text-muted-foreground">
                   {p[f.key]}
                   {f.unit ?? ' / 10'}
@@ -225,9 +225,9 @@ function KitchenPriorities({ snap }: { snap: Snapshot }) {
                   setP({ ...p, [f.key]: v })
                   setDirty(true)
                 }}
-                aria-label={f.label}
+                aria-label={L(f.label)}
               />
-              <p className="text-xs text-muted-foreground">{f.hint}</p>
+              <p className="text-xs text-muted-foreground">{L(f.hint)}</p>
             </div>
           ))}
           <Separator className="my-3" />

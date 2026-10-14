@@ -453,11 +453,11 @@ function Pulse({ snap }: { snap: Snap }) {
   const covers = seated.reduce((n, t) => n + (t.party?.size ?? 0), 0)
   const moods = a.moods.happy + a.moods.ok + a.moods.unhappy
   const items = [
-    { label: L('Seated now'), value: `${seated.length}/${snap.tables.length}`, sub: `${covers} guests` },
+    { label: L('Seated now'), value: `${seated.length}/${snap.tables.length}`, sub: L('{n} guests', { n: covers }) },
     { label: L('Tables served'), value: a.visits, sub: snap.sim.waiting ? L('{n} waiting for a table', { n: snap.sim.waiting }) : L('no one waiting') },
-    { label: L('Served to standard'), value: a.smoothRate == null ? '—' : `${Math.round(a.smoothRate * 100)}%`, sub: 'no floor-controlled lapse' },
-    { label: L('Late steps'), value: `${a.lapsesByOwner.floor} · ${a.lapsesByOwner.kitchen}`, sub: 'floor · kitchen' },
-    { label: L('Happy check-ins'), value: moods ? `${Math.round((a.moods.happy / moods) * 100)}%` : '—', sub: moods ? `${moods} check-ins` : 'none yet' },
+    { label: L('Served to standard'), value: a.smoothRate == null ? '—' : `${Math.round(a.smoothRate * 100)}%`, sub: L('no floor-controlled lapse') },
+    { label: L('Late steps'), value: `${a.lapsesByOwner.floor} · ${a.lapsesByOwner.kitchen}`, sub: L('floor · kitchen') },
+    { label: L('Happy check-ins'), value: moods ? `${Math.round((a.moods.happy / moods) * 100)}%` : '—', sub: moods ? L('{n} check-ins', { n: moods }) : L('none yet') },
   ]
   return (
     <section className="grid grid-cols-2 divide-border overflow-hidden rounded-2xl border bg-card sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">

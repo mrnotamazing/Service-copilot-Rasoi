@@ -54,7 +54,7 @@ function roleLine(s: Staff, snap: Snapshot): string {
   if (s.role === 'manager') return L('Floor manager')
   const section = Object.entries(snap.config.sections).find(([, id]) => id === s.id)?.[0]
   const active = snap.tables.filter((t) => t.serverId === s.id && t.visitId).length
-  return `Section ${section ?? '–'} · ${active} ${active === 1 ? 'table' : 'tables'} · ${snap.openTasks?.[s.id] ?? 0} to do`
+  return L('Section {s} · {n} tables · {m} to do', { s: section ?? '–', n: active, m: snap.openTasks?.[s.id] ?? 0 })
 }
 
 export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string; compact?: boolean }) {
