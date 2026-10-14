@@ -1966,6 +1966,22 @@ export const ta: Record<Key, string> = {
   "ui.lit.open_the_manager_view_26": "மேலாளர் காட்சியைத் திறக்கவும்",
   "ui.lit.a_of_b_min_27": "{b} நிமிடங்களில் {a}",
   "ui.lit.a_of_b_min_station_28": "{b} நிமிடங்களில் {a}, {station}",
+  "ui.lit.what_suits_table_n_dishes_0": "{table}-க்கு ஏற்றவை: {n} உணவுகள்",
+  "ui.lit.tap_a_table_to_see_1": "அந்த விருந்தினர்களுக்கு எது ஏற்றது என்று பார்க்க ஒரு டேபிளைத் தட்டவும்.",
+  "ui.lit.search_dishes_or_ingredients_2": "உணவு அல்லது பொருளைத் தேடுங்கள்",
+  "ui.lit.for_which_table_3": "எந்த டேபிளுக்கு",
+  "ui.lit.everyone_4": "அனைவரும்",
+  "ui.lit.has_an_allergy_or_diet_5": "அலர்ஜி அல்லது உணவுக் கட்டுப்பாடு உள்ளது",
+  "ui.lit.all_6": "அனைத்தும்",
+  "ui.lit.no_dishes_match_7": "எந்த உணவும் பொருந்தவில்லை.",
+  "ui.lit.spice_n_of_3_8": "காரம் {n}/3",
+  "ui.lit.off_tonight_9": "இன்று இல்லை",
+  "ui.lit.say_name_aloud_10": "“{name}” என்று சத்தமாகச் சொல்",
+  "ui.lit.not_for_table_why_11": "{table}-க்கு வேண்டாம்: {why}",
+  "ui.lit.suits_table_12": "{table}-க்கு ஏற்றது",
+  "ui.lit.the_kitchen_can_13": "சமையலறை செய்யக்கூடியது",
+  "ui.lit.nothing_more_noted_yet_ask_14": "இன்னும் வேறு குறிப்பு இல்லை. கிச்சன் டேபில் சமையலறையிடம் கேளுங்கள்.",
+  "ui.lit.menu_for_table_17": "{table}-க்கான மெனு",
   // --- end merged ---
 
 }

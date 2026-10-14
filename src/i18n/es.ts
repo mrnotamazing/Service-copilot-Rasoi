@@ -1966,6 +1966,22 @@ export const es: Record<Key, string> = {
   "ui.lit.open_the_manager_view_26": "Abrir la vista de gerencia",
   "ui.lit.a_of_b_min_27": "{a} de {b} min",
   "ui.lit.a_of_b_min_station_28": "{a} de {b} min, {station}",
+  "ui.lit.what_suits_table_n_dishes_0": "Lo que va bien para {table}: {n} platos",
+  "ui.lit.tap_a_table_to_see_1": "Toca una mesa para ver qué les va bien a esos clientes.",
+  "ui.lit.search_dishes_or_ingredients_2": "Buscar platos o ingredientes",
+  "ui.lit.for_which_table_3": "Para qué mesa",
+  "ui.lit.everyone_4": "Todos",
+  "ui.lit.has_an_allergy_or_diet_5": "Tiene alergia o dieta",
+  "ui.lit.all_6": "Todo",
+  "ui.lit.no_dishes_match_7": "Ningún plato coincide.",
+  "ui.lit.spice_n_of_3_8": "Picante {n} de 3",
+  "ui.lit.off_tonight_9": "Agotado esta noche",
+  "ui.lit.say_name_aloud_10": "Decir “{name}” en voz alta",
+  "ui.lit.not_for_table_why_11": "No para {table}: {why}",
+  "ui.lit.suits_table_12": "Va bien para {table}",
+  "ui.lit.the_kitchen_can_13": "La cocina puede",
+  "ui.lit.nothing_more_noted_yet_ask_14": "Aún no hay más notas. Pregunta a la cocina desde la pestaña Cocina.",
+  "ui.lit.menu_for_table_17": "Menú para {table}",
   // --- end merged ---
 
 }

@@ -1966,6 +1966,22 @@ export const bn: Record<Key, string> = {
   "ui.lit.open_the_manager_view_26": "ম্যানেজারের ভিউ খুলুন",
   "ui.lit.a_of_b_min_27": "{b} মিনিটের মধ্যে {a}",
   "ui.lit.a_of_b_min_station_28": "{b} মিনিটের মধ্যে {a}, {station}",
+  "ui.lit.what_suits_table_n_dishes_0": "{table}-এর জন্য উপযুক্ত: {n}টি পদ",
+  "ui.lit.tap_a_table_to_see_1": "কোনো টেবিলে ট্যাপ করুন, দেখুন ওই অতিথিদের জন্য কী উপযুক্ত।",
+  "ui.lit.search_dishes_or_ingredients_2": "পদ বা উপকরণ খুঁজুন",
+  "ui.lit.for_which_table_3": "কোন টেবিলের জন্য",
+  "ui.lit.everyone_4": "সব অতিথি",
+  "ui.lit.has_an_allergy_or_diet_5": "অ্যালার্জি বা ডায়েট আছে",
+  "ui.lit.all_6": "সব",
+  "ui.lit.no_dishes_match_7": "কোনো পদ মেলেনি।",
+  "ui.lit.spice_n_of_3_8": "ঝাল {n}/3",
+  "ui.lit.off_tonight_9": "আজ শেষ",
+  "ui.lit.say_name_aloud_10": "“{name}” জোরে শুনুন",
+  "ui.lit.not_for_table_why_11": "{table}-এর জন্য নয়: {why}",
+  "ui.lit.suits_table_12": "{table}-এর জন্য উপযুক্ত",
+  "ui.lit.the_kitchen_can_13": "রান্নাঘর করতে পারে",
+  "ui.lit.nothing_more_noted_yet_ask_14": "আর কিছু লেখা নেই। কিচেন ট্যাব থেকে রান্নাঘরকে জিজ্ঞেস করুন।",
+  "ui.lit.menu_for_table_17": "{table}-এর মেনু",
   // --- end merged ---
 
 }

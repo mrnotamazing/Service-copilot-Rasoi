@@ -1988,6 +1988,22 @@ export const en = {
   "ui.lit.open_the_manager_view_26": "Open the manager view",
   "ui.lit.a_of_b_min_27": "{a} of {b} min",
   "ui.lit.a_of_b_min_station_28": "{a} of {b} min, {station}",
+  "ui.lit.what_suits_table_n_dishes_0": "What suits {table}: {n} dishes",
+  "ui.lit.tap_a_table_to_see_1": "Tap a table to see what suits those guests.",
+  "ui.lit.search_dishes_or_ingredients_2": "Search dishes or ingredients",
+  "ui.lit.for_which_table_3": "For which table",
+  "ui.lit.everyone_4": "Everyone",
+  "ui.lit.has_an_allergy_or_diet_5": "Has an allergy or diet",
+  "ui.lit.all_6": "All",
+  "ui.lit.no_dishes_match_7": "No dishes match.",
+  "ui.lit.spice_n_of_3_8": "Spice {n} of 3",
+  "ui.lit.off_tonight_9": "Off tonight",
+  "ui.lit.say_name_aloud_10": "Say “{name}” aloud",
+  "ui.lit.not_for_table_why_11": "Not for {table}: {why}",
+  "ui.lit.suits_table_12": "Suits {table}",
+  "ui.lit.the_kitchen_can_13": "The kitchen can",
+  "ui.lit.nothing_more_noted_yet_ask_14": "Nothing more noted yet. Ask the kitchen from the Kitchen tab.",
+  "ui.lit.menu_for_table_17": "Menu for {table}",
   // --- end merged ---
 } as const
 

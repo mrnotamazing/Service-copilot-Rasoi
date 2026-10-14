@@ -9,6 +9,7 @@ import type { Snapshot } from '../../shared/snapshot.ts'
 import type { TableState } from '../../shared/types.ts'
 import { SPOKEN } from '../../shared/profile.ts'
 import { AccessButton } from '../components/AccessPanel.tsx'
+import { MenuButton, MenuSheet, useMenuSheet } from '../components/MenuSheet.tsx'
 import { Avatar } from '../components/Avatar.tsx'
 import { ProfileCard } from '../components/ProfileEditor.tsx'
 import { ShiftRecap } from '../components/ShiftRecap.tsx'
@@ -95,6 +96,7 @@ export default function ServerView() {
     <>
       {game && <Celebrations awards={game.awards} muted={snap.sim.autopilot.includes(staffId)} />}
       <AssistantDrawer open={assist} onOpenChange={setAssist} staffId={staffId} provider={snap.ai.provider} wide={tablet} />
+      <MenuSheet snap={snap} staffId={staffId} />
       <Onboarding staffId={staffId} name={me.name} />
       <NewTaskAlerts top={snap.me.top} />
     </>
@@ -128,6 +130,7 @@ export default function ServerView() {
             )
           })}
           <div className="mt-auto flex flex-col items-center gap-1">
+            <MenuButton label={false} className="size-11" />
             <Button size="icon" variant="ghost" className="relative size-11 text-primary" aria-label={t('hdr.ask')} onClick={() => setAssist(true)}>
               <Sparkles className="size-5" />
               {liveDot}
@@ -249,6 +252,7 @@ export default function ServerView() {
             </div>
           </div>
           {game && <StreakChip streak={game.player.streak} shields={game.player.shields} />}
+          <MenuButton label={false} />
           <Button size="icon" variant="ghost" className="relative text-primary" aria-label={t('hdr.ask')} onClick={() => setAssist(true)}>
             <Sparkles />
             {liveDot}
@@ -472,6 +476,7 @@ const LINE_TONE: Record<string, string> = {
 /** Everything about one table on one card: who is there, what they need, and where each dish is. */
 function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tables'][number] }) {
   const tr = useT()
+  const menu = useMenuSheet()
   if (!t) return <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">{tr('tables.pick')}</p>
   const seatedMin = t.seatedAt ? Math.max(1, Math.round((snap.now - t.seatedAt) / 60_000)) : null
   const courses = ['drink', 'starter', 'main', 'dessert'] as const
@@ -499,6 +504,11 @@ function TableDetail({ snap, table: t }: { snap: Snapshot; table?: Snapshot['tab
             {tr.any(`status.${t.status}`)} · {t.visitId && seatedMin ? tr('tables.detail', { n: t.party?.size ?? '?', min: seatedMin }) : tr('tile.seats', { n: t.seats })}
           </div>
         </div>
+        {t.visitId && (
+          <Button size="sm" variant="outline" className="shrink-0 rounded-full" onClick={() => menu.show(t.id)}>
+            {L('Menu for {table}', { table: t.name })}
+          </Button>
+        )}
       </div>
 
       {(t.party?.allergies.length || t.party?.needs?.length || guestLang(t)) ? (

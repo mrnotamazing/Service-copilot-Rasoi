@@ -1966,6 +1966,22 @@ export const hi: Record<Key, string> = {
   "ui.lit.open_the_manager_view_26": "मैनेजर का व्यू खोलें",
   "ui.lit.a_of_b_min_27": "{b} में से {a} मिनट",
   "ui.lit.a_of_b_min_station_28": "{b} में से {a} मिनट, {station}",
+  "ui.lit.what_suits_table_n_dishes_0": "{table} के लिए सही: {n} डिश",
+  "ui.lit.tap_a_table_to_see_1": "किसी टेबल पर टैप करें और देखें उन मेहमानों के लिए क्या सही है।",
+  "ui.lit.search_dishes_or_ingredients_2": "डिश या सामग्री खोजें",
+  "ui.lit.for_which_table_3": "किस टेबल के लिए",
+  "ui.lit.everyone_4": "सभी मेहमान",
+  "ui.lit.has_an_allergy_or_diet_5": "एलर्जी या डाइट है",
+  "ui.lit.all_6": "सभी",
+  "ui.lit.no_dishes_match_7": "कोई डिश नहीं मिली।",
+  "ui.lit.spice_n_of_3_8": "तीखापन {n}/3",
+  "ui.lit.off_tonight_9": "आज खत्म",
+  "ui.lit.say_name_aloud_10": "“{name}” बोलकर सुनें",
+  "ui.lit.not_for_table_why_11": "{table} के लिए नहीं: {why}",
+  "ui.lit.suits_table_12": "{table} के लिए सही",
+  "ui.lit.the_kitchen_can_13": "किचन कर सकता है",
+  "ui.lit.nothing_more_noted_yet_ask_14": "अभी और कुछ दर्ज नहीं। किचन टैब से किचन से पूछें।",
+  "ui.lit.menu_for_table_17": "{table} का मेन्यू",
   // --- end merged ---
 
 }
