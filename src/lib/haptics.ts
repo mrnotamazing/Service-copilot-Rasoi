@@ -20,14 +20,47 @@ function vibrate(pattern: number | number[], win = false) {
   // Browsers refuse to buzz before the person has touched the page; skip quietly instead of logging an error.
   if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.hasBeenActive) return
   try {
-    navigator.vibrate?.(pattern)
+    if (typeof navigator.vibrate === 'function') navigator.vibrate(pattern)
+    else if (iPhone()) iosTicks(pattern)
   } catch {
     // not available in this context
   }
 }
 
-/** Phones and browsers that can vibrate from a web page (Android Chrome yes; iPhone Safari no). */
-export const canVibrate = () => typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function'
+// iPhones have no vibration API, but Safari 17.4+ gives a small tap when a switch control is toggled.
+// A hidden switch toggled from a tap handler borrows that tap. It only works while the person's touch
+// is still "live" (a tap on a card, a button), not for something that arrives on its own, and iPads
+// have no haptic motor at all.
+const iPhone = () => typeof navigator !== 'undefined' && /iPhone|iPod/.test(navigator.userAgent)
+let tickLabel: HTMLLabelElement | null = null
+function tick() {
+  if (!tickLabel) {
+    const label = document.createElement('label')
+    label.setAttribute('aria-hidden', 'true')
+    label.style.cssText = 'position:fixed;left:-100px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none'
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.setAttribute('switch', '')
+    input.tabIndex = -1
+    label.append(input)
+    document.body.append(label)
+    tickLabel = label
+  }
+  tickLabel.click()
+}
+/** One tap per buzz in the pattern (the pauses are the gaps between buzzes). */
+function iosTicks(pattern: number | number[]) {
+  const p = Array.isArray(pattern) ? pattern : [pattern]
+  tick()
+  let at = 0
+  for (let i = 0; i < p.length - 1; i++) {
+    at += p[i]
+    if (i % 2 === 1) setTimeout(tick, at)
+  }
+}
+
+/** Phones and browsers that can buzz from a web page: Android Chrome through the vibration API, iPhone Safari 17.4+ with a tap on touch. iPads can't. */
+export const canVibrate = () => typeof navigator !== 'undefined' && (typeof navigator.vibrate === 'function' || iPhone())
 
 let ctx: AudioContext | null = null
 function audio(): AudioContext | null {
