@@ -2,7 +2,8 @@
 // order (adapted by the ranker), so one rate-limited or offline service never leaves staff without
 // an answer: the next one takes over, and the built-in trainer is the last resort that always works.
 //
-//   Default order: Claude, Gemini, free cloud AI (Groq…), Ollama (local).
+//   Default order: Claude, free cloud AI (Groq, OpenRouter…), Gemini, Ollama (local). Each job then
+//   asks them best-first for its kind (see ranker.ts), so this order only breaks ties.
 //   AI_PRIORITY=cloud,gemini,ollama,claude   changes the order
 //   AI_PROVIDER=ollama                        uses only the local model
 
@@ -31,18 +32,18 @@ export async function loadProviders(env: NodeJS.ProcessEnv = process.env): Promi
     const m = await import('./claude.ts')
     all.push({ name: 'claude', model: m.createClaude(), reason: m.claudeErrorReason, describe: () => `Claude (${env.ANTHROPIC_MODEL || 'claude-opus-5-5'})` })
   }
-  const gkey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY
-  if (want('gemini') && gkey) {
-    const m = await import('./gemini.ts')
-    const g = m.createGemini({ key: gkey, model: env.GEMINI_MODEL })
-    all.push({ name: 'gemini', model: g.model, reason: m.geminiErrorReason, describe: async () => `Google Gemini (${await g.resolveModel()})` })
-  }
   if (want('cloud')) {
     const o = await import('./openai.ts')
     for (const cfg of o.allFromEnv(env)) {
       const c = o.createOpenAi(cfg)
       all.push({ name: 'cloud', id: cfg.id, model: c.model, reason: o.cloudErrorReason, describe: () => `${cfg.id[0].toUpperCase()}${cfg.id.slice(1)} (${c.model.label?.()?.split(': ')[1] ?? cfg.models[0]})` })
     }
+  }
+  const gkey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY
+  if (want('gemini') && gkey) {
+    const m = await import('./gemini.ts')
+    const g = m.createGemini({ key: gkey, model: env.GEMINI_MODEL })
+    all.push({ name: 'gemini', model: g.model, reason: m.geminiErrorReason, describe: async () => `Google Gemini (${await g.resolveModel()})` })
   }
   if (want('ollama') && env.OLLAMA !== 'off') {
     const m = await import('./ollama.ts')
