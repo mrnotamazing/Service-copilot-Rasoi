@@ -1,4 +1,5 @@
 import { useT, L } from '../i18n/index.ts'
+import { S } from '../i18n/sentences.ts'
 import { Accessibility, ArrowRight, ChefHat, Clock3, Route, ShieldAlert, Smile, Sprout, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, UserRound, Users, Volume2, Languages, Compass, TrendingUp, History, GraduationCap, FlaskConical } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
@@ -247,10 +248,10 @@ export default function AboutView() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
               [L('Relative advantage'), L('Fewer missed steps, no shouting to the pass, and evidence that protects servers from blame. Visible in the first shift.')],
-              ['Compatibility', L('Sits on top of Petpooja or whichever POS is already there, uses the restaurant’s own SOPs, runs on existing phones.')],
+              [L('Compatibility'), L('Sits on top of Petpooja or whichever POS is already there, uses the restaurant’s own SOPs, runs on existing phones.')],
               [L('Low complexity'), L('One screen, three cards, one tap. No typing, because the POS already has the data.')],
-              ['Trialability', L('Switch on one section or one shift first. The simulator lets staff practise before a real service.')],
-              ['Observability', L('End-of-shift stats for each server and a bottleneck view for the manager make results easy to see.')],
+              [L('Trialability'), L('Switch on one section or one shift first. The simulator lets staff practise before a real service.')],
+              [L('Observability'), L('End-of-shift stats for each server and a bottleneck view for the manager make results easy to see.')],
             ].map(([t, d]) => (
               <div key={t} className="rounded-2xl border bg-card p-5">
                 <h3 className="font-medium">{t}</h3>
@@ -263,11 +264,11 @@ export default function AboutView() {
         <Section title={tx('ui.about.assist_predict_explain_learn')} lead="More than a task list: the same events power a copilot that helps now, warns early, explains what happened and turns it into practice.">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              [<Compass key="a" />, 'Assist', L('The next best action with why it comes first, and help with an upset guest built from what is really happening at that table.')],
-              [<TrendingUp key="b" />, 'Predict', L('Dishes likely to be late, a busy patch about to hit a server, a station about to fall behind, a section about to be swamped.')],
-              [<History key="c" />, 'Explain', L('Any table reconstructed step by step, and why tonight is going the way it is: floor or kitchen, the bottleneck, when it bunched up.')],
-              [<GraduationCap key="d" />, 'Learn', L('A private learning journey: practice scores over time and practice suggested from the server’s own shift.')],
-              [<FlaskConical key="e" />, 'Decide', L('What if 30% more guests come, a server is off sick or a second grill cook joins? Run tonight both ways in a sandbox and compare.')],
+              [<Compass key="a" />, L('Assist'), L('The next best action with why it comes first, and help with an upset guest built from what is really happening at that table.')],
+              [<TrendingUp key="b" />, L('Predict'), L('Dishes likely to be late, a busy patch about to hit a server, a station about to fall behind, a section about to be swamped.')],
+              [<History key="c" />, L('Explain'), L('Any table reconstructed step by step, and why tonight is going the way it is: floor or kitchen, the bottleneck, when it bunched up.')],
+              [<GraduationCap key="d" />, L('Learn'), L('A private learning journey: practice scores over time and practice suggested from the server’s own shift.')],
+              [<FlaskConical key="e" />, L('Decide'), L('What if 30% more guests come, a server is off sick or a second grill cook joins? Run tonight both ways in a sandbox and compare.')],
             ].map(([icon, t, d]) => (
               <div key={t as string} className="rounded-2xl border bg-card p-5">
                 <span className="text-primary [&_svg]:size-5">{icon}</span>
@@ -396,7 +397,7 @@ function Section({ title, lead, children }: { title: string; lead: string; child
     <section className="border-t">
       <div className="mx-auto max-w-6xl px-4 py-14">
         <h2 className="font-display text-3xl leading-tight md:text-4xl">{title}</h2>
-        <p className="mt-3 max-w-[60ch] text-pretty text-lg text-muted-foreground">{lead}</p>
+        <p className="mt-3 max-w-[60ch] text-pretty text-lg text-muted-foreground">{L(lead)}</p>
         <div className="mt-8">{children}</div>
       </div>
     </section>
@@ -459,7 +460,7 @@ function SampleReceipt() {
           <li key={s.label + s.start} className="flex items-center gap-2">
             <span className="h-2 w-4 shrink-0 rounded-sm" style={{ background: s.owner === 'floor' ? 'var(--floor-mark)' : 'var(--kitchen-mark)' }} aria-hidden />
             <span className="min-w-0 flex-1">{s.label}</span>
-            <span className={cn('text-xs tabular', s.lapse ? 'font-medium text-warn' : 'text-muted-foreground')}>{s.note}</span>
+            <span className={cn('text-xs tabular', s.lapse ? 'font-medium text-warn' : 'text-muted-foreground')}>{S(s.note)}</span>
           </li>
         ))}
       </ul>

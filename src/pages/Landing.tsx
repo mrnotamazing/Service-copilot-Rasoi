@@ -553,10 +553,10 @@ function Product() {
 function Screen({ role, to, cta, children, className }: { role: string; to: string; cta: string; children: ReactNode; className?: string }) {
   return (
     <div className={cn('flex min-w-0 flex-col', className)}>
-      <h3 className="font-display text-2xl">{role}</h3>
+      <h3 className="font-display text-2xl">{L(role)}</h3>
       <div className="mt-3 flex-1 rounded-3xl border bg-card p-4 shadow-sm md:p-5">{children}</div>
       <Link to={to} className="group mt-1 inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        {cta} <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+        {L(cta)} <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
       </Link>
     </div>
   )

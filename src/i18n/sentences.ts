@@ -253,6 +253,8 @@ export const SENTENCES: string[] = [
   '{t} is nearly due',
   '{t}: still {text}',
   '{t}: {text}',
+  '{a} of {b} min',
+  '{a} of {b} min, {station}',
 ]
 
 type Compiled = { template: string; re: RegExp; names: string[] }

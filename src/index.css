@@ -244,6 +244,8 @@
 
 /* Brand tagline: the one place letter-spaced capitals are used, as on the brand sheet. */
 .tagline { text-transform: uppercase; letter-spacing: 0.28em; font-size: 0.72rem; font-weight: 500; }
+/* Spaced capitals suit Latin type only: Indic scripts join their letters, so keep them together and a touch larger. */
+:is(:lang(hi), :lang(ne), :lang(bn), :lang(ta)) .tagline { letter-spacing: 0.02em; font-size: 0.85rem; }
 
 /* ---- Comfort & access (set from the settings panel via data attributes on <html>) ---- */
 
