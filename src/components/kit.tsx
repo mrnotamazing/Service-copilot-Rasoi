@@ -1,8 +1,8 @@
-import { Accessibility, BookOpen, CakeSlice, ChefHat, Clapperboard, HeartPulse, LayoutDashboard, Menu, Star, Users } from 'lucide-react'
+import { Accessibility, BookOpen, CakeSlice, ChefHat, Clapperboard, HeartPulse, LayoutDashboard, LogOut, Menu, Star, Users } from 'lucide-react'
 import { Mark, Mascot, Wordmark } from '../brand/marks.tsx'
 import { motion } from 'motion/react'
 import { useState, type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import type { TableState } from '../../shared/types.ts'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { useT, type Key } from '../i18n/index.ts'
 import { AccessButton } from './AccessPanel.tsx'
 import { skipToMain } from '../lib/scroll.ts'
+import { homeOf, signOut, useSession, type Session } from '../lib/auth.ts'
 
 export function Brand() {
   return (
@@ -130,11 +131,44 @@ export const SECTIONS: { to: string; label: Key; Icon: typeof Users; match: (pat
  * The main menu: logo, the four sections, "How it works", then Settings (language, theme, access, animation).
  * On phones the sections fold into a menu button.
  */
+/** The sections this person may open: servers their own screen, the kitchen the pass, managers the floor. Everyone sees the demo. */
+function sectionsFor(s: Session | null): typeof SECTIONS {
+  if (!s) return SECTIONS
+  const demo = SECTIONS.find((x) => x.to === '/demo')!
+  if (s.role.kind === 'server') return [{ ...SECTIONS[0], to: homeOf(s), match: (p) => p.startsWith('/server/') }, demo]
+  if (s.role.kind === 'kitchen') return [SECTIONS.find((x) => x.to === '/kitchen')!, demo]
+  return [SECTIONS[0], SECTIONS.find((x) => x.to === '/manager')!, demo]
+}
+
+/** Who is signed in, and a way to switch to someone else. */
+function SignOut({ session, full }: { session: Session; full?: boolean }) {
+  const t = useT()
+  const navigate = useNavigate()
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        signOut()
+        navigate('/login', { replace: true })
+      }}
+      aria-label={`${t('nav.signOut')}: ${session.name}`}
+      className={cn(!full && 'hidden md:inline-flex', 'inline-flex items-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', full ? 'h-12 w-full px-3 text-base' : 'h-9 px-2.5')}
+    >
+      <LogOut className="size-4" />
+      <span className={cn(!full && 'hidden xl:inline')}>
+        {t('nav.signOut')} <span className="text-foreground/70">· {session.name}</span>
+      </span>
+    </button>
+  )
+}
+
 export function TopNav() {
   const t = useT()
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
-  const current = SECTIONS.find((x) => x.match(pathname))
+  const session = useSession()
+  const sections = sectionsFor(session)
+  const current = sections.find((x) => x.match(pathname))
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <a href="#main" onClick={skipToMain} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
@@ -151,7 +185,7 @@ export function TopNav() {
           </span>
         )}
         <nav aria-label={t('nav.main')} className="hidden items-center gap-1 md:flex">
-          {SECTIONS.map(({ to, label, Icon, match }) => {
+          {sections.map(({ to, label, Icon, match }) => {
             const active = match(pathname)
             return (
               <Link
@@ -179,6 +213,7 @@ export function TopNav() {
           >
             {t('nav.how')}
           </Link>
+          {session && <SignOut session={session} />}
           <AccessButton />
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -191,7 +226,7 @@ export function TopNav() {
                 <SheetTitle>{t('nav.menu')}</SheetTitle>
               </SheetHeader>
               <nav aria-label={t('nav.main')} className="grid gap-1 px-3">
-                {SECTIONS.map(({ to, label, Icon, match }) => {
+                {sections.map(({ to, label, Icon, match }) => {
                   const active = match(pathname)
                   return (
                     <Link
@@ -211,6 +246,7 @@ export function TopNav() {
                   <BookOpen className="size-5" />
                   {t('nav.how')}
                 </Link>
+                {session && <SignOut session={session} full />}
               </nav>
             </SheetContent>
           </Sheet>

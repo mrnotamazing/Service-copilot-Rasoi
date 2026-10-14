@@ -1,5 +1,7 @@
 import { ChefHat, Lightbulb, Loader2, Sparkles, TrendingUp } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Snapshot } from '../../shared/snapshot.ts'
 import { segmentsFor } from '../../shared/engine.ts'
 import type { Segment } from '../../shared/types.ts'
@@ -9,6 +11,8 @@ import { cn } from '@/lib/utils'
 import { useT, type Key } from '../i18n/index.ts'
 import { useAi } from '../lib/ai.ts'
 import { mmss } from '../lib/format.ts'
+import { getSession, goodbye, goodbyeNote, signOut } from '../lib/auth.ts'
+import { haptic } from '../lib/haptics.ts'
 import { useAwardText } from './game.tsx'
 import { MOOD_TONE, Reaction } from './Reaction.tsx'
 
@@ -31,6 +35,7 @@ function stageInsights(all: Segment[]) {
  */
 export function ShiftRecap({ snap, staffId, open, onOpenChange }: { snap: Snapshot; staffId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const t = useT()
+  const navigate = useNavigate()
   const words = useAwardText()
   const coach = useAi()
   const me = snap.me!
@@ -124,8 +129,22 @@ export function ShiftRecap({ snap, staffId, open, onOpenChange }: { snap: Snapsh
           </section>
         </div>
         <DrawerFooter>
-          <Button size="lg" className="h-11" onClick={() => onOpenChange(false)}>
-            {t('common.done')}
+          <Button
+            size="lg"
+            className="h-11"
+            onClick={() => {
+              // The shift is done: a thank-you on the sign-in screen, and the next person can sign in.
+              const s = getSession()
+              if (s) goodbyeNote.set(goodbye(s))
+              haptic.celebrate()
+              signOut()
+              navigate('/login', { replace: true })
+            }}
+          >
+            <LogOut /> {t('recap.finish')}
+          </Button>
+          <Button size="lg" variant="ghost" className="h-11" onClick={() => onOpenChange(false)}>
+            {t('recap.keepGoing')}
           </Button>
         </DrawerFooter>
       </DrawerContent>

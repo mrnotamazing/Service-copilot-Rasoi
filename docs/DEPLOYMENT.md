@@ -25,6 +25,10 @@ Data (events and setup) is kept in `data/`; mount it as a volume so it survives 
 Keys live only on the server. The browser asks `/api/tts` and `/api/ai`; it never sees a key.
 Voice requests are capped at 600 characters, 30 a minute per caller, and repeated text is served from a cache.
 
+## Sign-in (demo)
+
+`/login`: choose Server (then who), Kitchen or Manager and enter the shared demo password (set in `src/lib/auth.ts`, `DEMO_PASSWORD`). Each person only opens their own screen: servers their own app, the kitchen the pass, the manager the floor and the servers overview. Sessions are per browser tab, so closing the tab signs out, and one laptop can show several roles in several tabs. "Wrap up my shift" ends in "Finish my shift and sign out". This is a presentation gate, not security: before a real roll-out, check passwords on the server with one account per person.
+
 ## AI models: always one that answers
 
 The server keeps a line-up of every AI model it has a key for and asks them best first. If one is rate limited, offline or gives an unusable answer (empty, or repeating its instructions), the next answers at once, and the one that failed rests for 30 seconds, then 2 minutes, then 10 while it keeps failing. The built-in trainer is always the last resort.

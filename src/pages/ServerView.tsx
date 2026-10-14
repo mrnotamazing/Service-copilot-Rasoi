@@ -1,4 +1,4 @@
-import { Accessibility, Armchair, Languages, PanelRightClose, PanelRightOpen, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { LogOut, Accessibility, Armchair, Languages, PanelRightClose, PanelRightOpen, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -12,6 +12,7 @@ import { Avatar } from '../components/Avatar.tsx'
 import { ProfileCard } from '../components/ProfileEditor.tsx'
 import { ShiftRecap } from '../components/ShiftRecap.tsx'
 import { useRolePage } from '../lib/role.ts'
+import { signOut } from '../lib/auth.ts'
 import { MOOD_TONE, Reaction } from '../components/Reaction.tsx'
 import { CoachCard } from '../components/Coach.tsx'
 import { AssistantDrawer, PracticeCard } from '../components/Practice.tsx'
@@ -801,6 +802,7 @@ const KUDOS_REASONS: Key[] = ['kudos.r1', 'kudos.r2', 'kudos.r3', 'kudos.r4', 'k
 const REASON_KEY = new Map<string, Key>(KUDOS_REASONS.map((k) => [en[k], k]))
 
 function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string; wide?: boolean }) {
+  const navigate = useNavigate()
   const game = snap.me!.game
   const [kudosTo, setKudosTo] = useState<string | null>(null)
   const [recap, setRecap] = useState(false)
@@ -923,6 +925,16 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
 
       <Button size="lg" variant="secondary" className="h-12 w-full rounded-2xl" onClick={() => setRecap(true)}>
         <Trophy /> {t('profile.wrap')}
+      </Button>
+      <Button
+        variant="ghost"
+        className="h-11 w-full rounded-2xl text-muted-foreground"
+        onClick={() => {
+          signOut()
+          navigate('/login', { replace: true })
+        }}
+      >
+        <LogOut /> {t('nav.signOut')}
       </Button>
       <p className="flex items-center justify-center gap-1 text-center text-xs text-muted-foreground">
         <Lock className="size-3" /> {t('profile.private')}

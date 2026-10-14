@@ -13,6 +13,8 @@ import KitchenView from './pages/KitchenView.tsx'
 import ManagerView from './pages/ManagerView.tsx'
 import ServerView from './pages/ServerView.tsx'
 import DemoView from './pages/DemoView.tsx'
+import Login from './pages/Login.tsx'
+import { RequireAuth } from './components/RequireAuth.tsx'
 
 const Router = STANDALONE ? HashRouter : BrowserRouter
 
@@ -25,10 +27,11 @@ export default function App() {
         <Router>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/servers" element={<Home />} />
-            <Route path="/server/:staffId" element={<ServerView />} />
-            <Route path="/kitchen" element={<KitchenView />} />
-            <Route path="/manager" element={<ManagerView />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/servers" element={<RequireAuth page="servers"><Home /></RequireAuth>} />
+            <Route path="/server/:staffId" element={<RequireAuth page="server"><ServerView /></RequireAuth>} />
+            <Route path="/kitchen" element={<RequireAuth page="kitchen"><KitchenView /></RequireAuth>} />
+            <Route path="/manager" element={<RequireAuth page="manager"><ManagerView /></RequireAuth>} />
             <Route path="/setup" element={<Navigate to="/demo?tab=setup" replace />} />
             <Route path="/demo" element={<DemoView />} />
             <Route path="/about" element={<AboutView />} />
