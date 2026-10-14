@@ -284,6 +284,10 @@ describe('practice judging', () => {
 })
 
 describe('cleanDebrief', () => {
+  it('removes a bold or headed stars line too', async () => {
+    const { cleanDebrief } = await import('./ai.ts')
+    expect(cleanDebrief('## Debrief\n\nWell done.\n\n**STARS: 3**')).toBe('Debrief\n\nWell done.')
+  })
   it('strips the end marker, stars line and markdown', async () => {
     const { cleanDebrief } = await import('./ai.ts')
     const out = cleanDebrief('[END] *** **Debrief:**\n* You listened.\n* Name the allergen.\nSTARS: 2')

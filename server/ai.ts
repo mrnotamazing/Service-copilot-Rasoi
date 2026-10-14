@@ -621,11 +621,13 @@ const PRACTICE_JSON = {
 export function cleanDebrief(raw: string): string {
   return raw
     .replace(/\[END\]/gi, '')
-    .replace(/STARS:\s*[1-3]\s*$/im, '')
     .replace(/^\s*(?:\*{3,}|-{3,}|_{3,})\s*$/gm, '')
     .replace(/\*{3,}/g, '')
     .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/^\s*#+\s*/gm, '')
     .replace(/^\s*\*\s+/gm, '• ')
+    // The stars line is read by the app, not shown (after the markdown is gone, so "**STARS: 3**" is caught too).
+    .replace(/^\s*STARS:\s*[1-3]\s*(?:\/\s*3)?\s*$/gim, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
