@@ -975,7 +975,6 @@ export const en = {
   "ui.demo.service_log": "Service log",
   "ui.demo.open_the_screens": "Open the screens",
   "ui.demo.each_opens_in_a": "Each opens in a new tab. Put a server’s phone next to the kitchen and the manager to show the whole loop.",
-  "ui.demo.s_phone": "’s phone",
   "ui.demo.kitchen_pass": "Kitchen pass",
   "ui.demo.manager_console": "Manager console",
   "ui.demo.how_it_works_for": "How it works (for the audience)",
@@ -1640,6 +1639,7 @@ export const en = {
   "ui.fmt.too_many_tries_wait": "Too many tries. Wait {n} seconds.",
   "ui.fmt.hello": "Hello",
   "ui.fmt.thank_you_name": "Thank you, {name}",
+  "ui.fmt.s_phone": "{name}’s phone",
   // --- end merged ---
 } as const
 
