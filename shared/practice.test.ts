@@ -216,7 +216,7 @@ describe('a too-kind model is held to common sense', () => {
 })
 
 describe('restaurant-defined levels', () => {
-  it('applies a restaurant's own levels and practice minimum', async () => {
+  it('applies the restaurant’s own levels and practice minimum', async () => {
     const hub = new Hub(memoryStore())
     hub.updateConfig({ game: { practiceMinScore: 80, levels: [{ xp: 0, title: 'Trainee' }, { xp: 50, title: 'Host' }] } })
     expect(practiceXp(75, false, undefined, hub.config.game!.practiceMinScore)).toBe(0)
