@@ -3,6 +3,7 @@
 // kitchen's screens, until they tap "Got it"), and thank people with kudos (XP for servers, and a
 // line on the team board). Load is shown so notes go to people with room, never as a ranking.
 
+import { useT, L } from '../i18n/index.ts'
 import { Check, ChefHat, HeartHandshake, Inbox, LayoutDashboard, Megaphone, MessageSquarePlus, Send, Users } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -23,40 +24,41 @@ import { PanelTitle } from './kit.tsx'
 type Mode = 'note' | 'kudos'
 type Source = 'manager' | 'kitchen'
 
-const MANAGER_IDEAS = [
-  'Push the dessert specials tonight',
-  'Please help run food from the pass',
-  'Take your break now; I’ll cover your section',
-  'Regulars arriving soon; give them a warm welcome',
-  'Double-check allergies before firing mains',
-  'Big party at 8:30; please hold the grill for them',
+const MANAGER_IDEAS = () => [
+  L('Push the dessert specials tonight'),
+  L('Please help run food from the pass'),
+  L('Take your break now; I’ll cover your section'),
+  L('Regulars arriving soon; give them a warm welcome'),
+  L('Double-check allergies before firing mains'),
+  L('Big party at 8:30; please hold the grill for them'),
 ]
-const KITCHEN_IDEAS = [
-  'Grill is backed up; mains about 10 minutes behind',
-  'Need a runner at the pass, please',
-  'Running low on sea bass; about 4 portions left',
-  'Ready for mains whenever you are',
-  'Please confirm the allergy before I fire',
-  'Short a cook tonight; ticket times will be longer',
+const KITCHEN_IDEAS = () => [
+  L('Grill is backed up; mains about 10 minutes behind'),
+  L('Need a runner at the pass, please'),
+  L('Running low on sea bass; about 4 portions left'),
+  L('Ready for mains whenever you are'),
+  L('Please confirm the allergy before I fire'),
+  L('Short a cook tonight; ticket times will be longer'),
 ]
 /** The same reasons servers use, so kudos read the same on the team board in every language. */
-const KUDOS_IDEAS = [en['kudos.r1'], en['kudos.r2'], en['kudos.r3'], en['kudos.r4'], en['kudos.r5'], 'Spotted an allergy clash', 'Great teamwork at the pass']
+const KUDOS_IDEAS = () => [en['kudos.r1'], en['kudos.r2'], en['kudos.r3'], en['kudos.r4'], en['kudos.r5'], L('Spotted an allergy clash'), L('Great teamwork at the pass')]
 
-const ago = (at: number, now: number) => (minutesAgo(at, now) < 1 ? 'just now' : `${minutesAgo(at, now)} min ago`)
+const ago = (at: number, now: number) => (minutesAgo(at, now) < 1 ? L('just now') : L('{n} min ago', { n: minutesAgo(at, now) }))
 
 /** Who someone is on the team, in one line: a server's section and load, the kitchen's queue. */
 function roleLine(s: Staff, snap: Snapshot): string {
   if (s.role === 'kitchen') {
     const cooking = snap.tables.reduce((n, t) => n + t.lines.filter((l) => l.status === 'fired').length, 0)
-    return `Kitchen pass · ${cooking} on the line`
+    return L('Kitchen pass · {n} on the line', { n: cooking })
   }
-  if (s.role === 'manager') return 'Floor manager'
+  if (s.role === 'manager') return L('Floor manager')
   const section = Object.entries(snap.config.sections).find(([, id]) => id === s.id)?.[0]
   const active = snap.tables.filter((t) => t.serverId === s.id && t.visitId).length
   return `Section ${section ?? '–'} · ${active} ${active === 1 ? 'table' : 'tables'} · ${snap.openTasks?.[s.id] ?? 0} to do`
 }
 
 export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string; compact?: boolean }) {
+  const tx = useT()
   const [compose, setCompose] = useState<{ mode: Mode; to: string[] } | null>(null)
   const me = snap.config.staff.find((s) => s.id === meId)
   const source: Source = me?.role === 'kitchen' ? 'kitchen' : 'manager'
@@ -84,26 +86,26 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
     <Card>
       <CardHeader>
         <CardTitle>
-          <PanelTitle>Team</PanelTitle>
+          <PanelTitle>{tx('ui.teamcard.team')}</PanelTitle>
         </CardTitle>
-        <CardDescription>{compact ? 'Notes and kudos with the floor and the manager.' : 'Notes and kudos with the floor and the kitchen. A note stays on their screen until they tap “Got it”.'}</CardDescription>
+        <CardDescription>{compact ? L('Notes and kudos with the floor and the manager.') : L('Notes and kudos with the floor and the kitchen. A note stays on their screen until they tap “Got it”.')}</CardDescription>
         <CardAction className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setCompose({ mode: 'kudos', to: [] })} aria-label="Give kudos">
-            <HeartHandshake /> {!compact && <span className="hidden sm:inline">Give kudos</span>}
+          <Button size="sm" variant="outline" onClick={() => setCompose({ mode: 'kudos', to: [] })} aria-label={tx('ui.teamcard.give_kudos')}>
+            <HeartHandshake /> {!compact && <span className="hidden sm:inline">{tx('ui.teamcard.give_kudos')}</span>}
           </Button>
-          <Button size="sm" onClick={() => setCompose({ mode: 'note', to: source === 'kitchen' ? [] : servers.map((s) => s.id) })} aria-label={source === 'kitchen' ? 'Send a note' : 'Message all servers'}>
-            <Megaphone /> {!compact && <span className="hidden sm:inline">{source === 'kitchen' ? 'Send a note' : 'Message all servers'}</span>}
+          <Button size="sm" onClick={() => setCompose({ mode: 'note', to: source === 'kitchen' ? [] : servers.map((s) => s.id) })} aria-label={source === 'kitchen' ? L('Send a note') : L('Message all servers')}>
+            <Megaphone /> {!compact && <span className="hidden sm:inline">{source === 'kitchen' ? L('Send a note') : L('Message all servers')}</span>}
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent className={cn('grid gap-5', !compact && 'lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]')}>
         <div className="space-y-4">
-          <section aria-label="Notes for you">
+          <section aria-label={tx('ui.teamcard.notes_for_you')}>
             <h3 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Inbox className="size-3.5" /> For you {unseen > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground tabular">{unseen}</span>}
+              <Inbox className="size-3.5" /> {tx('ui.teamcard.for_you')} {unseen > 0 && <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground tabular">{unseen}</span>}
             </h3>
             {inbox.length === 0 ? (
-              <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Notes sent to you appear here.</p>
+              <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">{tx('ui.teamcard.notes_sent_to_you')}</p>
             ) : (
               <ul className="space-y-2">
                 {inbox.slice(0, compact ? 4 : 5).map((n) => (
@@ -117,11 +119,11 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
                     </div>
                     {n.seen ? (
                       <span className="inline-flex shrink-0 items-center gap-1 text-xs text-good">
-                        <Check className="size-3.5" /> Seen
+                        <Check className="size-3.5" /> {tx('ui.teamcard.seen')}
                       </span>
                     ) : (
                       <Button size="sm" variant="secondary" className="h-8 shrink-0" onClick={() => void n.ack()}>
-                        Got it
+                        {tx('ui.teamcard.got_it')}
                       </Button>
                     )}
                   </li>
@@ -129,7 +131,7 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
               </ul>
             )}
           </section>
-          <ul className="divide-y rounded-xl border" aria-label="People">
+          <ul className="divide-y rounded-xl border" aria-label={tx('ui.teamcard.people')}>
             {people.map((s) => (
               <li key={s.id} className="flex items-center gap-3 px-3 py-2.5">
                 {s.role === 'server' ? (
@@ -145,19 +147,19 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
                   <div className="truncate text-xs text-muted-foreground tabular">{roleLine(s, snap)}</div>
                 </div>
                 <Button size="sm" variant="ghost" className="h-9 pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setCompose({ mode: 'note', to: [s.id] })} aria-label={`Send ${s.name} a note`}>
-                  <MessageSquarePlus /> {!compact && <span className="hidden md:inline">Note</span>}
+                  <MessageSquarePlus /> {!compact && <span className="hidden md:inline">{tx('ui.teamcard.note')}</span>}
                 </Button>
                 <Button size="sm" variant="ghost" className="h-9 pointer-coarse:h-11 pointer-coarse:min-w-11 text-primary" onClick={() => setCompose({ mode: 'kudos', to: [s.id] })} aria-label={`Give ${s.name} kudos`}>
-                  <HeartHandshake /> {!compact && <span className="hidden md:inline">Kudos</span>}
+                  <HeartHandshake /> {!compact && <span className="hidden md:inline">{tx('ui.teamcard.kudos')}</span>}
                 </Button>
               </li>
             ))}
           </ul>
         </div>
         <div>
-          <h3 className="mb-2 text-xs font-medium text-muted-foreground">Notes you’ve sent</h3>
+          <h3 className="mb-2 text-xs font-medium text-muted-foreground">{tx('ui.teamcard.notes_you_ve_sent')}</h3>
           {sent.length === 0 ? (
-            <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Notes you send, and who has seen them, appear here.</p>
+            <p className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">{tx('ui.teamcard.notes_you_send_and')}</p>
           ) : (
             <ul className="space-y-2">
               {sent.slice(0, compact ? 3 : 5).map((n) => {
@@ -168,11 +170,11 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
                     <p>{n.text}</p>
                     <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                       <span>
-                        To {everyone ? 'all servers' : n.to.map(name).join(', ')}
+                        {tx('ui.teamcard.to')} {everyone ? 'all servers' : n.to.map(name).join(', ')}
                         {n.tableId ? ` · about ${snap.tables.find((t) => t.id === n.tableId)?.name ?? n.tableId}` : ''} · {ago(n.at, snap.now)}
                       </span>
                       <span className={cn('inline-flex items-center gap-1', seen.length === n.to.length && 'text-good')}>
-                        <Check className="size-3.5" /> {n.to.length === 1 ? (seen.length ? 'Seen' : 'Not seen yet') : `Seen by ${seen.length === n.to.length ? 'all' : `${seen.length} of ${n.to.length}`}`}
+                        <Check className="size-3.5" /> {n.to.length === 1 ? (seen.length ? L('Seen') : L('Not seen yet')) : (seen.length === n.to.length ? L('Seen by all') : L('Seen by {a} of {b}', { a: seen.length, b: n.to.length }))}
                       </span>
                     </div>
                   </li>
@@ -182,9 +184,9 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
           )}
           {(kudos.length > 0 || thanked.length > 0) && (
             <>
-              <h3 className="mb-2 mt-4 text-xs font-medium text-muted-foreground">Kudos</h3>
+              <h3 className="mb-2 mt-4 text-xs font-medium text-muted-foreground">{tx('ui.teamcard.kudos')}</h3>
               <ul className="space-y-1.5">
-                {[...thanked.map((k) => ({ ...k, line: `${name(k.from)} thanked you` })), ...kudos.map((k) => ({ ...k, line: `You thanked ${name(k.to)}` }))].map((k) => (
+                {[...thanked.map((k) => ({ ...k, line: L('{name} thanked you', { name: name(k.from) }) })), ...kudos.map((k) => ({ ...k, line: L('You thanked {name}', { name: name(k.to) }) }))].map((k) => (
                   <li key={k.id} className="flex items-start gap-2 text-sm">
                     <HeartHandshake className="mt-0.5 size-4 shrink-0 text-primary" />
                     <span className="min-w-0">
@@ -203,6 +205,7 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
 }
 
 function Composer({ state, onClose, people, snap, meId, source }: { state: { mode: Mode; to: string[] } | null; onClose: () => void; people: Staff[]; snap: Snapshot; meId: string; source: Source }) {
+  const tx = useT()
   const servers = people.filter((s) => s.role === 'server')
   const [mode, setMode] = useState<Mode>(state?.mode ?? 'note')
   const [to, setTo] = useState<string[]>(state?.to ?? [])
@@ -221,29 +224,29 @@ function Composer({ state, onClose, people, snap, meId, source }: { state: { mod
       const body = text.trim().slice(0, 240)
       if (mode === 'note') {
         await act('manager.instruction', { instructionId: noteId(), from: meId, to, text: body, ...(tableId !== 'none' ? { tableId } : {}) }, source)
-        toast.success(`Note sent to ${names(to)}`)
+        toast.success(L('Note sent to {names}', { names: names(to) }))
       } else {
         for (const id of to) await act('kudos.sent', { from: meId, to: id, reason: body }, source)
-        toast.success(`Kudos sent to ${names(to)}`)
+        toast.success(L('Kudos sent to {names}', { names: names(to) }))
       }
       onClose()
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Couldn’t send. Try again.')
+      toast.error(e instanceof Error ? e.message : L('Couldn’t send. Try again.'))
     } finally {
       setSending(false)
     }
   }
 
-  const ideas = mode === 'note' ? (source === 'kitchen' ? KITCHEN_IDEAS : MANAGER_IDEAS) : KUDOS_IDEAS
+  const ideas = mode === 'note' ? (source === 'kitchen' ? KITCHEN_IDEAS() : MANAGER_IDEAS()) : KUDOS_IDEAS()
   return (
     <Sheet open={!!state} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle className="font-display text-2xl">{mode === 'note' ? 'Send a note' : 'Give kudos'}</SheetTitle>
-          <SheetDescription>{mode === 'note' ? 'It stays on their screen until they tap “Got it”, and you’ll see who has seen it.' : 'It shows on the team board; servers also get XP and a celebration on their phone.'}</SheetDescription>
+          <SheetTitle className="font-display text-2xl">{mode === 'note' ? L('Send a note') : L('Give kudos')}</SheetTitle>
+          <SheetDescription>{mode === 'note' ? L('It stays on their screen until they tap “Got it”, and you’ll see who has seen it.') : L('It shows on the team board; servers also get XP and a celebration on their phone.')}</SheetDescription>
         </SheetHeader>
         <div className="space-y-5 px-4 pb-6">
-          <div role="tablist" aria-label="What to send" className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
+          <div role="tablist" aria-label={tx('ui.teamcard.what_to_send')} className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
             {(['note', 'kudos'] as Mode[]).map((m) => (
               <button
                 key={m}
@@ -264,7 +267,7 @@ function Composer({ state, onClose, people, snap, meId, source }: { state: { mod
 
           <fieldset>
             <legend className="mb-2 flex w-full items-center justify-between text-sm font-medium">
-              To
+              {tx('ui.teamcard.to')}
               <button type="button" className="inline-flex items-center gap-1 text-xs font-normal text-primary underline-offset-4 hover:underline" onClick={() => setTo(everyone ? [] : people.map((s) => s.id))}>
                 <Users className="size-3.5" /> {everyone ? 'Clear' : 'Everyone'}
               </button>
@@ -290,7 +293,7 @@ function Composer({ state, onClose, people, snap, meId, source }: { state: { mod
 
           <div>
             <label htmlFor="compose-text" className="mb-2 block text-sm font-medium">
-              {mode === 'note' ? 'Note' : 'What did they do?'}
+              {mode === 'note' ? 'Note' : L('What did they do?')}
             </label>
             <div className="mb-2 flex flex-wrap gap-1.5">
               {ideas.map((i) => (
@@ -299,26 +302,26 @@ function Composer({ state, onClose, people, snap, meId, source }: { state: { mod
                 </button>
               ))}
             </div>
-            <Textarea id="compose-text" value={text} onChange={(e) => setText(e.target.value)} maxLength={240} rows={3} placeholder={mode === 'note' ? 'Write a short note…' : 'Say what they did well…'} />
+            <Textarea id="compose-text" value={text} onChange={(e) => setText(e.target.value)} maxLength={240} rows={3} placeholder={mode === 'note' ? L('Write a short note…') : L('Say what they did well…')} />
           </div>
 
           {mode === 'note' && (
             <div>
               <label className="mb-2 block text-sm font-medium" id="compose-table">
-                About a table <span className="font-normal text-muted-foreground">(optional)</span>
+                {tx('ui.teamcard.about_a_table')} <span className="font-normal text-muted-foreground">{tx('ui.teamcard.optional')}</span>
               </label>
               <Select value={tableId} onValueChange={setTableId}>
                 <SelectTrigger className="w-full" aria-labelledby="compose-table">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No particular table</SelectItem>
+                  <SelectItem value="none">{tx('ui.teamcard.no_particular_table')}</SelectItem>
                   {snap.tables
                     .filter((t) => !to.some((id) => servers.some((s) => s.id === id)) || to.includes(t.serverId))
                     .map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
-                        {t.party?.guestName ? ` · ${t.party.guestName}` : t.visitId ? ` · party of ${t.party?.size ?? '?'}` : ' · free'}
+                        {t.party?.guestName ? ` · ${t.party.guestName}` : t.visitId ? ` · ${L('party of {n}', { n: t.party?.size ?? '?' })}` : ` · ${L('free')}`}
                       </SelectItem>
                     ))}
                 </SelectContent>
@@ -327,8 +330,8 @@ function Composer({ state, onClose, people, snap, meId, source }: { state: { mod
           )}
 
           <Button className="h-11 w-full" disabled={!ready || sending} onClick={() => void send()}>
-            <Send /> {mode === 'note' ? 'Send note' : 'Send kudos'}
-            {to.length > 0 && <span className="font-normal opacity-80"> to {names(to)}</span>}
+            <Send /> {mode === 'note' ? L('Send note') : L('Send kudos')}
+            {to.length > 0 && <span className="font-normal opacity-80"> {tx('ui.setup.to')} {names(to)}</span>}
           </Button>
         </div>
       </SheetContent>

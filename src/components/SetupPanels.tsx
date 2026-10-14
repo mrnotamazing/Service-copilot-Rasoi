@@ -1,3 +1,4 @@
+import { useT, L } from '../i18n/index.ts'
 import { Plug, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { MenuEditor } from './MenuEditor.tsx'
@@ -17,17 +18,17 @@ import { STANDALONE, post } from '../lib/live.ts'
 // The restaurant's setup, shown on the Demo & setup page: service standards, the AI behind the
 // assistant, and a pointer to the Integrations tab. (Running the simulated service lives on the same page.)
 
-const SOP_FIELDS: { key: keyof Sop; label: string; unit: string }[] = [
-  { key: 'greetWithinMin', label: 'Greet a seated table within', unit: 'min' },
-  { key: 'orderNudgeAfterMin', label: 'Nudge to take order after greeting', unit: 'min' },
-  { key: 'kitchenDelayToleranceMin', label: 'Warn guests when kitchen is late by', unit: 'min' },
-  { key: 'pickupWithinMin', label: 'Pick up food from the pass within', unit: 'min' },
-  { key: 'checkbackAfterMin', label: 'Check back after serving', unit: 'min' },
-  { key: 'courseCheckAfterMin', label: 'Check if a course is finished after', unit: 'min' },
-  { key: 'billPresentWithinMin', label: 'Present the bill within', unit: 'min' },
-  { key: 'farewellWithinMin', label: 'Say goodbye within', unit: 'min' },
-  { key: 'resetWithinMin', label: 'Reset a table within', unit: 'min' },
-  { key: 'maxActiveTablesPerServer', label: 'Max active tables per server', unit: 'tables' },
+const SOP_FIELDS = (): { key: keyof Sop; label: string; unit: string }[] => [
+  { key: 'greetWithinMin', label: L('Greet a seated table within'), unit: 'min' },
+  { key: 'orderNudgeAfterMin', label: L('Nudge to take order after greeting'), unit: 'min' },
+  { key: 'kitchenDelayToleranceMin', label: L('Warn guests when kitchen is late by'), unit: 'min' },
+  { key: 'pickupWithinMin', label: L('Pick up food from the pass within'), unit: 'min' },
+  { key: 'checkbackAfterMin', label: L('Check back after serving'), unit: 'min' },
+  { key: 'courseCheckAfterMin', label: L('Check if a course is finished after'), unit: 'min' },
+  { key: 'billPresentWithinMin', label: L('Present the bill within'), unit: 'min' },
+  { key: 'farewellWithinMin', label: L('Say goodbye within'), unit: 'min' },
+  { key: 'resetWithinMin', label: L('Reset a table within'), unit: 'min' },
+  { key: 'maxActiveTablesPerServer', label: L('Max active tables per server'), unit: 'tables' },
 ]
 
 function Heading({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ function Heading({ children }: { children: React.ReactNode }) {
 
 /** Service standards and AI assistance (integrations have their own tab). */
 export function SetupPanels({ snap }: { snap: Snapshot }) {
+  const tx = useT()
   const [sop, setSop] = useState<Sop | null>(null)
   useEffect(() => {
     if (!sop) setSop(snap.config.sop)
@@ -46,8 +48,8 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
     <div className="grid gap-5 lg:grid-cols-2">
       <Card>
         <CardHeader>
-          <Heading>Service standards (SOPs)</Heading>
-          <CardDescription>Every card the copilot raises comes from one of these. Saving re-scores the whole service.</CardDescription>
+          <Heading>{tx('ui.setup.service_standards_sops')}</Heading>
+          <CardDescription>{tx('ui.setup.every_card_the_copilot')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -55,10 +57,10 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
             onSubmit={async (e) => {
               e.preventDefault()
               await post('/api/config', { sop })
-              toast.success('Standards saved')
+              toast.success(L('Standards saved'))
             }}
           >
-            {SOP_FIELDS.map((f) => (
+            {SOP_FIELDS().map((f) => (
               <div key={f.key} className="flex items-center justify-between gap-3 text-sm">
                 <label htmlFor={`sop-${f.key}`}>{f.label}</label>
                 <span className="inline-flex items-center gap-1.5">
@@ -78,7 +80,7 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
               </div>
             ))}
             <Separator className="my-3" />
-            <Button type="submit">Save standards</Button>
+            <Button type="submit">{tx('ui.setup.save_standards')}</Button>
           </form>
         </CardContent>
       </Card>
@@ -87,70 +89,70 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
 
       <Card>
         <CardHeader>
-          <Heading>AI assistance</Heading>
-          <CardDescription>The assistant chat and practice room, suggested lines for guests, section briefings, the private coach and the manager’s shift summary.</CardDescription>
+          <Heading>{tx('ui.setup.ai_assistance')}</Heading>
+          <CardDescription>{tx('ui.setup.the_assistant_chat_and')}</CardDescription>
           <CardAction>
             <Badge variant={snap.ai.provider === 'built-in' ? 'secondary' : 'default'} className="gap-1">
-              <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? 'Claude connected' : snap.ai.provider === 'gemini' ? 'Gemini connected' : snap.ai.provider === 'cloud' ? 'Cloud AI connected' : snap.ai.provider === 'ollama' ? 'Local AI connected' : dify ? 'Dify connected' : 'Built-in trainer'}
+              <Sparkles className="size-3" /> {snap.ai.provider === 'claude' ? L('Claude connected') : snap.ai.provider === 'gemini' ? L('Gemini connected') : snap.ai.provider === 'cloud' ? L('Cloud AI connected') : snap.ai.provider === 'ollama' ? L('Local AI connected') : dify ? L('Dify connected') : L('Built-in trainer')}
             </Badge>
           </CardAction>
         </CardHeader>
         <CardContent className="text-sm">
           {snap.ai.provider === 'claude' ? (
-            <p className="text-muted-foreground">The assistant runs on Claude: it answers in each server’s language, knows your standards and menu, and plays guests in practice. If Claude can’t be reached, the built-in trainer answers and says so.</p>
+            <p className="text-muted-foreground">{tx('ui.setup.the_assistant_runs_on')}</p>
           ) : snap.ai.provider === 'gemini' ? (
             <p className="text-muted-foreground">
-              The assistant runs on Google <span className="text-foreground">{snap.ai.model ?? 'Gemini'}</span>: fast on any computer, in every app language, with your standards, menu and training notes sent with each question. If Gemini can’t be reached or the free limit is used up, the built-in trainer answers and says so.
+              {tx('ui.setup.the_assistant_runs_on_2')} <span className="text-foreground">{snap.ai.model ?? 'Gemini'}</span>{tx('ui.setup.fast_on_any_computer')}
             </p>
           ) : snap.ai.provider === 'cloud' ? (
             <p className="text-muted-foreground">
-              The assistant runs on <span className="text-foreground">{snap.ai.model}</span>, a free cloud AI: fast, in every app language, with your standards, menu and training notes sent with each question. If the free limit is reached, the next model answers, then the built-in trainer.
+              {tx('ui.setup.the_assistant_runs_on_3')} <span className="text-foreground">{snap.ai.model}</span>{tx('ui.setup.a_free_cloud_ai')}
             </p>
           ) : snap.ai.provider === 'ollama' ? (
             <p className="text-muted-foreground">
-              The assistant runs on <span className="text-foreground">{snap.ai.model}</span> through Ollama, free and on this computer: nothing is sent anywhere. Answers are slower than a cloud AI and weaker in some languages. If Ollama is closed, the built-in trainer answers and says so.
+              {tx('ui.setup.the_assistant_runs_on_3')} <span className="text-foreground">{snap.ai.model}</span> {tx('ui.setup.through_ollama_free_and')}
             </p>
           ) : dify ? (
-            <p className="text-muted-foreground">Requests go to your Dify app. If Dify is unreachable, the copilot falls back to the built-in trainer and says so on the answer.</p>
+            <p className="text-muted-foreground">{tx('ui.setup.requests_go_to_your')}</p>
           ) : STANDALONE ? (
-            <p className="text-muted-foreground">This demo runs in the browser. Opened on claude.ai, it asks Claude on your own account (you’ll be asked to allow it the first time). Opened anywhere else, or if you decline, it uses the built-in trainer (English, set questions only). On your own computer, add an Anthropic API key for full answers.</p>
+            <p className="text-muted-foreground">{tx('ui.setup.this_demo_runs_in')}</p>
           ) : (
             <div className="space-y-3 text-muted-foreground">
               <div>
-                <div className="font-medium text-foreground">Recommended: free and fast (Google Gemini)</div>
+                <div className="font-medium text-foreground">{tx('ui.setup.recommended_free_and_fast')}</div>
                 <ol className="mt-1 list-decimal space-y-1 pl-5">
                   <li>
-                    Go to <span className="text-foreground">aistudio.google.com</span>, sign in with a Google account and click <span className="text-foreground">Get API key → Create API key</span>.
+                    {tx('ui.setup.go_to')} <span className="text-foreground">{tx('ui.setup.aistudio_google_com')}</span>{tx('ui.setup.sign_in_with_a')} <span className="text-foreground">{tx('ui.setup.get_api_key_create')}</span>.
                   </li>
                   <li>
-                    In the project folder, copy <code className="rounded bg-muted px-1">.env.example</code> to <code className="rounded bg-muted px-1">.env</code> and set <code className="rounded bg-muted px-1">GEMINI_API_KEY</code> to the key.
+                    {tx('ui.setup.in_the_project_folder')} <code className="rounded bg-muted px-1">.env.example</code> {tx('ui.setup.to')} <code className="rounded bg-muted px-1">.env</code> {tx('ui.setup.and_set')} <code className="rounded bg-muted px-1">GEMINI_API_KEY</code> {tx('ui.setup.to_the_key')}
                   </li>
-                  <li>Restart <code className="rounded bg-muted px-1">npm run dev</code>. This badge turns to “Gemini connected”. (See <code className="rounded bg-muted px-1">docs/gemini-setup.md</code>.)</li>
+                  <li>{tx('ui.setup.restart')} <code className="rounded bg-muted px-1">npm run dev</code>{tx('ui.setup.this_badge_turns_to')} <code className="rounded bg-muted px-1">docs/gemini-setup.md</code>.)</li>
                 </ol>
               </div>
               <div>
-                <div className="font-medium text-foreground">Offline, on this computer (Ollama)</div>
+                <div className="font-medium text-foreground">{tx('ui.setup.offline_on_this_computer')}</div>
                 <ol className="mt-1 list-decimal space-y-1 pl-5">
                   <li>
-                    Install Ollama from <span className="text-foreground">ollama.com</span> and open it.
+                    {tx('ui.setup.install_ollama_from')} <span className="text-foreground">{tx('ui.setup.ollama_com')}</span> {tx('ui.setup.and_open_it')}
                   </li>
                   <li>
-                    In a terminal, run <code className="rounded bg-muted px-1">ollama pull gemma3:4b</code> (a 3 GB download, once).
+                    {tx('ui.setup.in_a_terminal_run')} <code className="rounded bg-muted px-1">ollama pull gemma3:4b</code> {tx('ui.setup.a_3_gb_download')}
                   </li>
-                  <li>Within a few seconds this badge turns to “Local AI connected”. No restart needed.</li>
+                  <li>{tx('ui.setup.within_a_few_seconds')}</li>
                 </ol>
               </div>
               <div>
-                <div className="font-medium text-foreground">Best quality (Claude, paid)</div>
+                <div className="font-medium text-foreground">{tx('ui.setup.best_quality_claude_paid')}</div>
                 <ol className="mt-1 list-decimal space-y-1 pl-5">
                   <li>
-                    Get an API key from <span className="text-foreground">console.anthropic.com</span>.
+                    {tx('ui.setup.get_an_api_key')} <span className="text-foreground">{tx('ui.setup.console_anthropic_com')}</span>.
                   </li>
                   <li>
-                    In the project folder, copy <code className="rounded bg-muted px-1">.env.example</code> to <code className="rounded bg-muted px-1">.env</code> and set <code className="rounded bg-muted px-1">ANTHROPIC_API_KEY</code>.
+                    {tx('ui.setup.in_the_project_folder')} <code className="rounded bg-muted px-1">.env.example</code> {tx('ui.setup.to')} <code className="rounded bg-muted px-1">.env</code> {tx('ui.setup.and_set')} <code className="rounded bg-muted px-1">ANTHROPIC_API_KEY</code>.
                   </li>
-                  <li>Restart <code className="rounded bg-muted px-1">npm run dev</code>. This badge turns to “Claude connected”.</li>
-                  <li>Prefer Dify? Set <code className="rounded bg-muted px-1">DIFY_API_URL</code> and <code className="rounded bg-muted px-1">DIFY_API_KEY</code> instead (see <code className="rounded bg-muted px-1">docs/dify-setup.md</code>).</li>
+                  <li>{tx('ui.setup.restart')} <code className="rounded bg-muted px-1">npm run dev</code>{tx('ui.setup.this_badge_turns_to_2')}</li>
+                  <li>{tx('ui.setup.prefer_dify_set')} <code className="rounded bg-muted px-1">DIFY_API_URL</code> {tx('ui.setup.and')} <code className="rounded bg-muted px-1">DIFY_API_KEY</code> {tx('ui.setup.instead_see')} <code className="rounded bg-muted px-1">docs/dify-setup.md</code>).</li>
                 </ol>
               </div>
             </div>
@@ -162,12 +164,12 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
 
       <Card className="lg:col-span-2">
         <CardHeader>
-          <Heading>POS and other systems</Heading>
-          <CardDescription>Petpooja and other POS, booking apps, online orders, rosters, alerts to WhatsApp or Slack, and data exports are on the Integrations tab.</CardDescription>
+          <Heading>{tx('ui.setup.pos_and_other_systems')}</Heading>
+          <CardDescription>{tx('ui.setup.petpooja_and_other_pos')}</CardDescription>
           <CardAction>
             <Button asChild variant="outline" size="sm">
               <Link to="/demo?tab=integrations">
-                <Plug /> Open Integrations
+                <Plug /> {tx('ui.setup.open_integrations')}
               </Link>
             </Button>
           </CardAction>
@@ -182,13 +184,14 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
  * changeable any time: the pass sorts its tickets by these, and the AI's "chef's call" explains the order with them.
  */
 function KitchenPriorities({ snap }: { snap: Snapshot }) {
+  const tx = useT()
   const [p, setP] = useState<PriorityConfig>(() => priorityOf(snap.config))
   const [dirty, setDirty] = useState(false)
   return (
     <Card>
       <CardHeader>
-        <Heading>Kitchen priorities</Heading>
-        <CardDescription>How much each thing matters when the pass decides what to send next. Tickets are sorted by this, the pass is alerted as dishes near and pass their standard time, and the AI explains its call using these.</CardDescription>
+        <Heading>{tx('ui.setup.kitchen_priorities')}</Heading>
+        <CardDescription>{tx('ui.setup.how_much_each_thing')}</CardDescription>
       </CardHeader>
       <CardContent>
         <form
@@ -197,7 +200,7 @@ function KitchenPriorities({ snap }: { snap: Snapshot }) {
             e.preventDefault()
             await post('/api/config', { priority: p })
             setDirty(false)
-            toast.success('Kitchen priorities saved')
+            toast.success(L('Kitchen priorities saved'))
           }}
         >
           {PRIORITY_FIELDS.map((f) => (
@@ -227,7 +230,7 @@ function KitchenPriorities({ snap }: { snap: Snapshot }) {
           <Separator className="my-3" />
           <div className="flex gap-2">
             <Button type="submit" disabled={!dirty}>
-              Save priorities
+              {tx('ui.setup.save_priorities')}
             </Button>
             <Button
               type="button"
@@ -237,7 +240,7 @@ function KitchenPriorities({ snap }: { snap: Snapshot }) {
                 setDirty(true)
               }}
             >
-              Reset to defaults
+              {tx('ui.setup.reset_to_defaults')}
             </Button>
           </div>
         </form>

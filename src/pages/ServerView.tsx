@@ -50,6 +50,7 @@ const TABS: { id: Tab; label: Key; Icon: (p: { className?: string }) => ReactNod
 ]
 
 export default function ServerView() {
+  const tx = useT()
   const { staffId = '' } = useParams()
   const { snap, connected } = useSnapshot('server', staffId)
   const [params, setParams] = useSearchParams()
@@ -135,14 +136,14 @@ export default function ServerView() {
 
         <div className="flex min-h-0 min-w-0 flex-col">
           {/* Top bar: me, my rank and progress, my streak, the team goal */}
-          <section aria-label="Your progress" className="flex items-center gap-4 border-b bg-background/90 px-6 py-3 backdrop-blur">
+          <section aria-label={tx('ui.server.your_progress')} className="flex items-center gap-4 border-b bg-background/90 px-6 py-3 backdrop-blur">
             {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} size={48} />}
             <div className="min-w-0">
               <div className="flex items-center gap-1 text-lg font-semibold leading-tight">
                 <ServerSwitch snap={snap} staffId={staffId} /> <Pronouns value={me.pronouns} />
               </div>
               <div className="truncate text-xs text-muted-foreground">
-                {rank}, <span className="tabular">{game?.player.xp} XP</span>
+                {rank}, <span className="tabular">{game?.player.xp} {tx('ui.server.xp')}</span>
                 {game?.level.next ? <span className="tabular">, {t('hdr.xpTo', { xp: game.level.next - game.player.xp, rank: nextRank ?? '' })}</span> : null}
               </div>
             </div>
@@ -159,7 +160,7 @@ export default function ServerView() {
                 <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-1 h-1.5" aria-label={t('hdr.teamGoal')} />
               </div>
             </div>
-            <span className="ml-auto rounded-full border px-2.5 py-1 text-xs text-muted-foreground tabular lg:ml-0">{clock(wallNow)} IST</span>
+            <span className="ml-auto rounded-full border px-2.5 py-1 text-xs text-muted-foreground tabular lg:ml-0">{clock(wallNow)} {tx('ui.demo.ist')}</span>
             <Link to="?device=phone" className="hidden text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline xl:inline">
               {t('hdr.phoneView')}
             </Link>
@@ -236,14 +237,14 @@ export default function ServerView() {
       <div className="h-full md:h-auto" style={zoom ? { zoom } : undefined}>
       <div className="relative mx-auto flex h-full w-full flex-col overflow-hidden bg-background md:h-[864px] md:w-[410px] md:rounded-[3rem] md:border-[10px] md:border-foreground/85 md:shadow-2xl">
         {/* Top bar: who I am, my rank, my streak */}
-        <section aria-label="Your progress" className="z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-2.5 backdrop-blur">
+        <section aria-label={tx('ui.server.your_progress')} className="z-10 flex items-center gap-3 border-b bg-background/90 px-4 py-2.5 backdrop-blur">
           {game && <LevelRing name={me.name} color={me.color} avatar={me.avatar} progress={game.level.progress} level={game.level.level} />}
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1 font-semibold leading-tight">
               <ServerSwitch snap={snap} staffId={staffId} /> <Pronouns value={me.pronouns} />
             </div>
             <div className="truncate text-xs text-muted-foreground">
-              {rank} <span className="tabular">{game?.player.xp} XP</span>
+              {rank} <span className="tabular">{game?.player.xp} {tx('ui.server.xp')}</span>
             </div>
           </div>
           {game && <StreakChip streak={game.player.streak} shields={game.player.shields} />}
@@ -700,6 +701,7 @@ function KitchenPanel({ snap, staffId, myTables, className, onMinimise }: { snap
 }
 
 function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot; staffId: string; myTables: Snapshot['tables']; className?: string }) {
+  const tx = useT()
   const [table, setTable] = useState('')
   const [text, setText] = useState('')
   const tr = useT()
@@ -723,7 +725,7 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
 
   return (
     <div className={cn('flex flex-col', className)}>
-      <ul tabIndex={0} aria-label="Kitchen messages" className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <ul tabIndex={0} aria-label={tx('ui.server.kitchen_messages')} className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         {thread.length === 0 && (
           <li className="flex h-full flex-col items-center justify-center gap-2 px-6 py-8 text-center text-sm text-muted-foreground">
             <MessageSquareText className="size-8 text-primary/40" />
@@ -802,6 +804,7 @@ const KUDOS_REASONS: Key[] = ['kudos.r1', 'kudos.r2', 'kudos.r3', 'kudos.r4', 'k
 const REASON_KEY = new Map<string, Key>(KUDOS_REASONS.map((k) => [en[k], k]))
 
 function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string; wide?: boolean }) {
+  const tx = useT()
   const navigate = useNavigate()
   const game = snap.me!.game
   const [kudosTo, setKudosTo] = useState<string | null>(null)
@@ -824,7 +827,7 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
         <div className="text-sm opacity-75">{t('profile.level', { n: level.level })}</div>
         <div className="font-display text-3xl">{words.rank(level.index)}</div>
         <div className="mt-4 flex items-baseline justify-between text-sm">
-          <span className="font-semibold tabular">{player.xp} XP</span>
+          <span className="font-semibold tabular">{player.xp} {tx('ui.server.xp')}</span>
           <span className="opacity-75">{level.next ? t('hdr.xpTo', { xp: level.next - player.xp, rank: words.rank(level.index + 1) }) : t('profile.topRank')}</span>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15">
@@ -851,7 +854,7 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
             <li key={q.id} className={cn('rounded-2xl border p-3', q.done && 'border-good/40 bg-good/8')}>
               <div className="flex items-center justify-between gap-2 text-sm">
                 <span className={cn('font-medium', q.done && 'text-good')}>{words.quest(q)}</span>
-                <span className="shrink-0 text-xs font-semibold text-primary tabular">+{q.xp} XP</span>
+                <span className="shrink-0 text-xs font-semibold text-primary tabular">+{q.xp} {tx('ui.server.xp')}</span>
               </div>
               <div className="mt-2 flex items-center gap-2">
                 <Progress value={(q.progress / q.target) * 100} className="h-1.5" aria-label={words.quest(q)} />

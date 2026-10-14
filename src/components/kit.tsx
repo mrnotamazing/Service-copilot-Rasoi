@@ -14,8 +14,9 @@ import { skipToMain } from '../lib/scroll.ts'
 import { homeOf, signOut, useSession, type Session } from '../lib/auth.ts'
 
 export function Brand() {
+  const tx = useT()
   return (
-    <Link to="/" className="inline-flex min-h-11 items-center gap-2" aria-label="TableMate home">
+    <Link to="/" className="inline-flex min-h-11 items-center gap-2" aria-label={tx('ui.landing.tablemate_home')}>
       <Mark className="h-6 w-auto text-tomato" />
       <Wordmark className="text-xl leading-none" />
     </Link>
@@ -24,11 +25,12 @@ export function Brand() {
 
 /** The real time in IST (the restaurant's time zone) and whether the live connection is up. */
 export function LiveClock({ ok }: { now?: number; ok: boolean }) {
+  const tx = useT()
   const now = useWallClock()
   return (
     <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs tabular text-muted-foreground">
       <span className={cn('size-1.5 rounded-full', ok ? 'live-ring bg-good' : 'bg-warn pulse-soft')} role="img" aria-label={ok ? 'Live' : 'Reconnecting'} />
-      {clock(now)} IST
+      {clock(now)} {tx('ui.demo.ist')}
     </span>
   )
 }
@@ -52,6 +54,7 @@ export function tableProgress(t: TableState): number {
 }
 
 export function TableTile({ t, now, color, onClick, active }: { t: TableState; now: number; color?: string; onClick?: () => void; active?: boolean }) {
+  const tx = useT()
   const tr = useT()
   const p = tableProgress(t)
   const r = 22
@@ -98,7 +101,7 @@ export function TableTile({ t, now, color, onClick, active }: { t: TableState; n
         {t.party?.needs?.length ? <Accessibility className="size-3.5 text-primary" aria-label={t.party.needs.map((n) => tr.any(`need.${n}`)).join('; ')} /> : null}
         {t.party?.vip ? <Star className="size-3.5 text-primary" aria-label={tr('tables.regular')} /> : null}
       </div>
-      {late && <span className="absolute left-1.5 top-1.5 size-2 rounded-full bg-kitchen pulse-soft" title="Kitchen running late" />}
+      {late && <span className="absolute left-1.5 top-1.5 size-2 rounded-full bg-kitchen pulse-soft" title={tx('ui.kit.kitchen_running_late')} />}
     </Comp>
   )
 }
@@ -163,6 +166,7 @@ function SignOut({ session, full }: { session: Session; full?: boolean }) {
 }
 
 export function TopNav() {
+  const tx = useT()
   const t = useT()
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
@@ -172,7 +176,7 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <a href="#main" onClick={skipToMain} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
-        Skip to main content
+        {tx('ui.landing.skip_to_main_content')}
       </a>
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-4 md:gap-6 md:px-6">
         <Brand />
@@ -280,8 +284,9 @@ export function AppShell({ title, sub, right, children, wide = true, bare = fals
 
 /** Shown while the first snapshot arrives, in the shape of the page. */
 export function ShellSkeleton() {
+  const tx = useT()
   return (
-    <div className="grid min-h-dvh place-items-center bg-background" aria-busy="true" role="status" aria-label="Loading">
+    <div className="grid min-h-dvh place-items-center bg-background" aria-busy="true" role="status" aria-label={tx('ui.kit.loading')}>
       <div className="flex flex-col items-center gap-3">
         <Mascot running className="w-36" speed="var(--muted-foreground)" />
         <Wordmark className="text-xl" />

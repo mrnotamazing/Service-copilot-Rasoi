@@ -1,3 +1,4 @@
+import { useT, L } from '../i18n/index.ts'
 import { Accessibility, ArrowRight, ChefHat, Clock3, Route, ShieldAlert, Smile, Sprout, Flame, Hand, HeartPulse, Receipt, ShieldCheck, Smartphone, Sparkles, Trophy, UserRound, Users, Volume2, Languages, Compass, TrendingUp, History, GraduationCap, FlaskConical } from 'lucide-react'
 import { AnimatePresence } from 'motion/react'
 import type { ReactNode } from 'react'
@@ -24,12 +25,12 @@ function exampleTasks(now: number): Task[] {
       kind: 'kitchen_delay',
       tableId: 'T4',
       tableName: 'T4',
-      title: 'T4 mains running 6 min late',
-      hint: 'Kitchen is behind on the lamb shank. A heads-up now beats an apology later.',
+      title: L('T4 mains running 6 min late'),
+      hint: L('Kitchen is behind on the lamb shank. A heads-up now beats an apology later.'),
       impact: 4,
       createdAt: now - 70_000,
       dueAt: now + 50_000,
-      actions: [{ label: 'Told them', event: 'noop', payload: {}, primary: true }],
+      actions: [{ label: L('Told them'), event: 'noop', payload: {}, primary: true }],
     },
     {
       ...base,
@@ -37,17 +38,18 @@ function exampleTasks(now: number): Task[] {
       kind: 'greet',
       tableId: 'T2',
       tableName: 'T2',
-      title: 'Welcome T2',
-      hint: 'Party of 4, Ms. Iyer, anniversary, allergy: nuts. Water, menus, today’s specials.',
+      title: L('Welcome T2'),
+      hint: L('Party of 4, Ms. Iyer, anniversary, allergy: nuts. Water, menus, today’s specials.'),
       impact: 3,
       createdAt: now - 30_000,
       dueAt: now + 90_000,
-      actions: [{ label: 'Greeted', event: 'noop', payload: {}, primary: true }],
+      actions: [{ label: L('Greeted'), event: 'noop', payload: {}, primary: true }],
     },
   ]
 }
 
 export default function AboutView() {
+  const tx = useT()
   useRolePage(null)
   const { snap } = useSnapshot('server', DEMO_STAFF)
   const now = snap?.now ?? Date.now()
@@ -60,31 +62,30 @@ export default function AboutView() {
         {/* Hero: the thesis, with the product itself as the image. */}
         <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-12 lg:grid-cols-[1.1fr_1fr] lg:pt-20">
           <div className="min-w-0">
-            <Mascot className="-ml-2 w-[min(320px,70vw)]" speed="var(--foreground)" title="TableMate's running chef" />
+            <Mascot className="-ml-2 w-[min(320px,70vw)]" speed="var(--foreground)" title={tx('ui.about.tablemate_s_running_chef')} />
             <p className="tagline mt-4 text-muted-foreground">{TAGLINE}</p>
-            <h1 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.25rem)] leading-[1.02] tracking-[-0.035em]">Six tables. Twelve standards. One pair of hands.</h1>
+            <h1 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.25rem)] leading-[1.02] tracking-[-0.035em]">{tx('ui.about.six_tables_twelve_standards')}</h1>
             <p className="mt-6 max-w-[38rem] text-pretty text-lg leading-relaxed text-muted-foreground">
-              TableMate is a service copilot for fine-dining servers. It reads what the restaurant’s POS already knows and puts the next three things that matter on the server’s phone, in
-              the order the guest would want them done. When something runs late, it records whose step it was, so nobody is blamed for a slow grill.
+              {tx('ui.about.tablemate_is_a_service')}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg" className="h-11 px-5">
                 <Link to={`/server/${DEMO_STAFF}`}>
-                  <Smartphone /> Try a server’s screen
+                  <Smartphone /> {tx('ui.about.try_a_server_s')}
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="h-11 px-5">
-                <Link to="/manager">See the manager view</Link>
+                <Link to="/manager">{tx('ui.about.see_the_manager_view')}</Link>
               </Button>
             </div>
           </div>
 
           <div className="relative min-w-0">
-            <h2 className="sr-only">What a server sees</h2>
+            <h2 className="sr-only">{tx('ui.about.what_a_server_sees')}</h2>
             <div className="mx-auto max-w-[400px] rounded-[2rem] border bg-secondary/50 p-3 shadow-sm">
               <div className="flex items-center justify-between px-3 pb-3 pt-1 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">Aisha, section A</span>
-                <span>{live.length ? 'Live from the simulated service' : 'Example'}</span>
+                <span className="font-medium text-foreground">{tx('ui.about.aisha_section_a')}</span>
+                <span>{live.length ? L('Live from the simulated service') : 'Example'}</span>
               </div>
               {/* Example cards are a picture of the product, so they are not interactive. */}
               <div className="grid gap-3" inert={!live.length}>
@@ -98,27 +99,27 @@ export default function AboutView() {
           </div>
         </section>
 
-        <Section title="The problem" lead="Restaurants digitised the order. They didn’t digitise the server’s job.">
+        <Section title={tx('ui.about.the_problem')} lead="Restaurants digitised the order. They didn’t digitise the server’s job.">
           <div className="grid gap-8 md:grid-cols-3">
-            <Point icon={<Hand />} title="Everything lives in one head">
-              A server on six tables tracks greetings, courses, check-backs, bills and resets at once. Each standard is simple; together they overload working memory during a rush.
+            <Point icon={<Hand />} title={tx('ui.about.everything_lives_in_one')}>
+              {tx('ui.about.a_server_on_six')}
             </Point>
-            <Point icon={<ChefHat />} title="Information stops at the pass">
-              The POS knows a dish is late or off the menu. The server finds out when the guest asks. Two-way news between kitchen and floor still travels by shouting.
+            <Point icon={<ChefHat />} title={tx('ui.about.information_stops_at_the')}>
+              {tx('ui.about.the_pos_knows_a')}
             </Point>
-            <Point icon={<Receipt />} title="Blame lands on the floor">
-              Guests and managers see the server, so a slow kitchen reads as slow service. Service failures cost return visits (Chung &amp; Hoffman, 1998), and the wrong person carries them.
+            <Point icon={<Receipt />} title={tx('ui.about.blame_lands_on_the')}>
+              {tx('ui.about.guests_and_managers_see')}
             </Point>
           </div>
         </Section>
 
-        <Section title="How a card is born" lead="No new hardware and no data entry. The copilot listens to events the POS already produces.">
+        <Section title={tx('ui.about.how_a_card_is')} lead="No new hardware and no data entry. The copilot listens to events the POS already produces.">
           <ol className="grid gap-4 md:grid-cols-4">
             {[
-              ['Something happens', 'The POS reports it: a table is seated, a KOT is fired, food is ready, a bill is printed, a dish is marked unavailable.'],
-              ['A standard applies', 'The restaurant’s own SOPs turn the event into a task with a time limit, such as “greet within 2 minutes”.'],
-              ['It’s ranked', 'Priority is guest impact × urgency against the standard, plus a nudge for tables left alone longest. Only the top three are shown.'],
-              ['It closes itself', 'When the POS shows the step happened, the card disappears. The server rarely taps “done”, and “Later” is always available.'],
+              [L('Something happens'), L('The POS reports it: a table is seated, a KOT is fired, food is ready, a bill is printed, a dish is marked unavailable.')],
+              [L('A standard applies'), L('The restaurant’s own SOPs turn the event into a task with a time limit, such as “greet within 2 minutes”.')],
+              [L('It’s ranked'), L('Priority is guest impact × urgency against the standard, plus a nudge for tables left alone longest. Only the top three are shown.')],
+              [L('It closes itself'), L('When the POS shows the step happened, the card disappears. The server rarely taps “done”, and “Later” is always available.')],
             ].map(([t, d], i) => (
               <li key={t} className="rounded-2xl border bg-card p-5">
                 <span className="font-display text-3xl text-primary tabular">{i + 1}</span>
@@ -127,24 +128,24 @@ export default function AboutView() {
               </li>
             ))}
           </ol>
-          <div tabIndex={0} role="region" aria-label="How POS events become cards" className="mt-8 overflow-x-auto rounded-2xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <div tabIndex={0} role="region" aria-label={tx('ui.about.how_pos_events_become')} className="mt-8 overflow-x-auto rounded-2xl border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="bg-secondary/60 text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">When the POS shows…</th>
-                  <th className="px-4 py-2.5 font-medium">The server sees</th>
-                  <th className="px-4 py-2.5 font-medium">It clears when</th>
+                  <th className="px-4 py-2.5 font-medium">{tx('ui.about.when_the_pos_shows')}</th>
+                  <th className="px-4 py-2.5 font-medium">{tx('ui.about.the_server_sees')}</th>
+                  <th className="px-4 py-2.5 font-medium">{tx('ui.about.it_clears_when')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {[
-                  ['A table is seated', 'Welcome T4, with party size, guest name, occasion and allergies', 'The server taps Greeted, or an order arrives'],
-                  ['An order with an allergy', 'Flag T3’s nut allergy to the kitchen (one tap sends it)', 'Confirmed at the pass'],
-                  ['A dish is marked unavailable', 'Risotto is off: tell T6, with two alternatives to suggest', 'The guest has been told'],
-                  ['A ticket runs past its usual time', 'T4 mains running 6 min late: give them a heads-up', 'Told, or the food is ready'],
-                  ['Food is ready at the pass', 'Pick up T4’s mains', 'Served'],
-                  ['A course has been served', 'Check in on T4, then clear and fire the next course', 'Checked in / cleared'],
-                  ['The bill is printed, then paid', 'Present the bill, say goodbye, reset the table with a checklist', 'Each step is done'],
+                  [L('A table is seated'), L('Welcome T4, with party size, guest name, occasion and allergies'), L('The server taps Greeted, or an order arrives')],
+                  [L('An order with an allergy'), L('Flag T3’s nut allergy to the kitchen (one tap sends it)'), L('Confirmed at the pass')],
+                  [L('A dish is marked unavailable'), L('Risotto is off: tell T6, with two alternatives to suggest'), L('The guest has been told')],
+                  [L('A ticket runs past its usual time'), L('T4 mains running 6 min late: give them a heads-up'), L('Told, or the food is ready')],
+                  [L('Food is ready at the pass'), L('Pick up T4’s mains'), 'Served'],
+                  [L('A course has been served'), L('Check in on T4, then clear and fire the next course'), L('Checked in / cleared')],
+                  [L('The bill is printed, then paid'), L('Present the bill, say goodbye, reset the table with a checklist'), L('Each step is done')],
                 ].map(([a, b, c]) => (
                   <tr key={a}>
                     <td className="px-4 py-3 align-top">{a}</td>
@@ -157,81 +158,79 @@ export default function AboutView() {
           </div>
         </Section>
 
-        <Section title="Fair by design" lead="Every late table gets a receipt that shows which step ran long and who controlled it.">
+        <Section title={tx('ui.about.fair_by_design')} lead="Every late table gets a receipt that shows which step ran long and who controlled it.">
           <div className="grid items-start gap-8 lg:grid-cols-[1fr_1.2fr]">
             <div className="space-y-4 text-pretty leading-relaxed text-muted-foreground">
               <p>
-                A visit is split into measured steps: seated to greeted, kitchen prep, pass to table, bill, reset. Each step has an owner and a standard. A grill that runs nine minutes
-                over is a kitchen delay; the server’s phone says so, and it is never counted against them.
+                {tx('ui.about.a_visit_is_split')}
               </p>
               <p>
-                Managers see the same receipts as patterns: which stage and which station run late, and when. Suggestions are about the process, like a food runner at peak, not about
-                people. Personal scores stay on each server’s own phone; the manager’s screen never receives them.
+                {tx('ui.about.managers_see_the_same')}
               </p>
             </div>
             <SampleReceipt />
           </div>
         </Section>
 
-        <Section title="AI that works the floor with you" lead="Every feature takes something off the server’s mind. Safety stays rule-based; AI is used where judgement and wording help.">
+        <Section title={tx('ui.about.ai_that_works_the')} lead="Every feature takes something off the server’s mind. Safety stays rule-based; AI is used where judgement and wording help.">
           <div className="grid gap-8 md:grid-cols-3">
-            <Point icon={<ShieldAlert />} title="Allergy and diet safety check">
-              Each dish carries its ingredients. The moment an order is fired, anything that clashes with a guest’s allergy or diet (vegan, Jain, halal) becomes the top card, and the pass sees the flag on the ticket. Rules, not guesses.
+            <Point icon={<ShieldAlert />} title={tx('ui.about.allergy_and_diet_safety')}>
+              {tx('ui.about.each_dish_carries_its')}
             </Point>
-            <Point icon={<Clock3 />} title="Honest kitchen times">
-              Ready times come from tonight’s real prep times and how busy each station is. A dish that will run late raises a heads-up before it is late, with “ready in about 6 minutes” the guest can trust.
+            <Point icon={<Clock3 />} title={tx('ui.about.honest_kitchen_times')}>
+              {tx('ui.about.ready_times_come_from')}
             </Point>
-            <Point icon={<Route />} title="One trip, several jobs">
-              Food for two tables at the pass, a check-in at the same table, the table next door: they ride on one card, so the server walks once.
+            <Point icon={<Route />} title={tx('ui.about.one_trip_several_jobs')}>
+              {tx('ui.about.food_for_two_tables')}
             </Point>
-            <Point icon={<Sparkles />} title="Coming up">
-              From how long tables take to eat each course tonight, TableMate shows what will need the server next: food about to be ready, a course about to finish, a bill about to be asked for.
+            <Point icon={<Sparkles />} title={tx('ui.about.coming_up')}>
+              {tx('ui.about.from_how_long_tables')}
             </Point>
-            <Point icon={<Smile />} title="Guest mood, then recovery">
-              A check-in is one tap: happy, okay or not happy. Not happy opens a recovery card with what to say, or calls the manager, who sees the request and tonight’s mood by table, never by person.
+            <Point icon={<Smile />} title={tx('ui.about.guest_mood_then_recovery')}>
+              {tx('ui.about.a_check_in_is')}
             </Point>
-            <Point icon={<Sprout />} title="Private coach and practice">
-              A short tip from the server’s own shift, seen only by them. And a practice room where TableMate plays a cold-food complaint or a rude guest, and coaches each reply.
+            <Point icon={<Sprout />} title={tx('ui.about.private_coach_and_practice')}>
+              {tx('ui.about.a_short_tip_from')}
             </Point>
           </div>
           <p className="mt-6 max-w-[65ch] leading-relaxed text-muted-foreground">
-            Read-aloud now says dishes properly (“puh-neer tick-ah”, or पनीर टिक्का on a Hindi voice), reads “T3” as “Table 3”, and picks the most natural voice on the device.
+            {tx('ui.about.read_aloud_now_says')}
           </p>
         </Section>
 
-        <Section title="Inclusive by design" lead="Kitchens and floors are multilingual, and not everyone reads, hears or moves the same way. Every server sets TableMate up for themselves.">
+        <Section title={tx('ui.about.inclusive_by_design')} lead="Kitchens and floors are multilingual, and not everyone reads, hears or moves the same way. Every server sets TableMate up for themselves.">
           <div className="grid gap-8 md:grid-cols-3">
-            <Point icon={<Languages />} title="Their language">
-              English, हिन्दी, नेपाली, বাংলা, தமிழ் and Español, picked by each person on their own phone. Task cards, badges and the guide all switch; with Dify connected, the AI answers in that language too.
+            <Point icon={<Languages />} title={tx('ui.about.their_language')}>
+              {tx('ui.about.english_and_espa_ol')}
             </Point>
-            <Point icon={<Volume2 />} title="Read aloud">
-              New tasks can be spoken in the chosen language with the device’s own voice, at an adjustable speed. Every card also has a speaker button.
+            <Point icon={<Volume2 />} title={tx('ui.about.read_aloud')}>
+              {tx('ui.about.new_tasks_can_be')}
             </Point>
-            <Point icon={<Accessibility />} title="Comfort & access">
-              Larger text, an easy-to-read font for low vision, high contrast, a flashing screen edge for Deaf and hard-of-hearing staff, a chime, one-card focus, reduced motion, quiet celebrations and a left-handed layout.
+            <Point icon={<Accessibility />} title={tx('ui.about.comfort_access')}>
+              {tx('ui.about.larger_text_an_easy')}
             </Point>
-            <Point icon={<UserRound />} title="Respectful wording">
-              The assistant uses gender-neutral language: no “sir/madam”, guests addressed by name or “you”, they/them when unknown. Staff can add their own pronouns, shown next to their name.
+            <Point icon={<UserRound />} title={tx('ui.about.respectful_wording')}>
+              {tx('ui.about.the_assistant_uses_gender')}
             </Point>
-            <Point icon={<HeartPulse />} title="Guests’ needs, ready in advance">
-              Access, sensory, dietary and faith needs from the booking (wheelchair, hearing, vision, high chair, quiet table, assistance animal, Jain, halal, vegan, no beef, no pork, fasting) appear on the greeting card and in the briefing as what to do, so guests never have to ask twice.
+            <Point icon={<HeartPulse />} title={tx('ui.about.guests_needs_ready_in')}>
+              {tx('ui.about.access_sensory_dietary_and')}
             </Point>
-            <Point icon={<ShieldCheck />} title="Nothing extra is collected">
-              Comfort settings stay on the device. Pronouns are optional and chosen by the person. Speech is made on the phone, so no audio leaves it.
+            <Point icon={<ShieldCheck />} title={tx('ui.about.nothing_extra_is_collected')}>
+              {tx('ui.about.comfort_settings_stay_on')}
             </Point>
           </div>
         </Section>
 
-        <Section title="Why it’s built this way" lead="Each design choice answers a specific idea from organisational behaviour.">
+        <Section title={tx('ui.about.why_it_s_built')} lead="Each design choice answers a specific idea from organisational behaviour.">
           <dl className="divide-y rounded-2xl border">
             {[
-              ['Cognitive Load Theory', 'Sweller, 1988', 'The app holds the state of every table and shows at most three cards, so working memory goes to the guest.'],
-              ['Self-Determination Theory', 'Deci & Ryan, 1985', 'Autonomy: every card can wait (“Later”) and nothing is forced. Competence: streaks and personal bests against yourself. Relatedness: team metrics and two-way kitchen notes.'],
-              ['Attribution Theory', 'Kelley, 1967', 'Timestamps separate what the server controlled from what the process controlled before anyone is held responsible.'],
-              ['Equity and justice', 'Adams, 1963; Colquitt, 2001', 'Delay receipts make outcomes fair; consistent rules and visible evidence make the process fair.'],
-              ['Feedback Intervention Theory', 'Kluger & DeNisi, 1996', 'Feedback is about the task (“T4 is waiting on the bill”), never the person (“you’re slow”).'],
-              ['Inclusion and universal design', 'Shore et al., 2011; CAST UDL', 'People feel included when they belong and can stay themselves. Options for language, reading, hearing and pace are built in for everyone, not added as special cases.'],
-              ['Electronic monitoring research', 'Ravid et al., 2020', 'Monitoring raises stress unless its purpose is developmental and transparent, so there are no leaderboards and no manager view of individuals.'],
+              [L('Cognitive Load Theory'), L('Sweller, 1988'), L('The app holds the state of every table and shows at most three cards, so working memory goes to the guest.')],
+              [L('Self-Determination Theory'), L('Deci & Ryan, 1985'), L('Autonomy: every card can wait (“Later”) and nothing is forced. Competence: streaks and personal bests against yourself. Relatedness: team metrics and two-way kitchen notes.')],
+              [L('Attribution Theory'), L('Kelley, 1967'), L('Timestamps separate what the server controlled from what the process controlled before anyone is held responsible.')],
+              [L('Equity and justice'), L('Adams, 1963; Colquitt, 2001'), L('Delay receipts make outcomes fair; consistent rules and visible evidence make the process fair.')],
+              [L('Feedback Intervention Theory'), L('Kluger & DeNisi, 1996'), L('Feedback is about the task (“T4 is waiting on the bill”), never the person (“you’re slow”).')],
+              [L('Inclusion and universal design'), L('Shore et al., 2011; CAST UDL'), L('People feel included when they belong and can stay themselves. Options for language, reading, hearing and pace are built in for everyone, not added as special cases.')],
+              [L('Electronic monitoring research'), L('Ravid et al., 2020'), L('Monitoring raises stress unless its purpose is developmental and transparent, so there are no leaderboards and no manager view of individuals.')],
             ].map(([t, cite, d]) => (
               <div key={t} className="grid gap-1 p-5 md:grid-cols-[16rem_1fr] md:gap-6">
                 <dt>
@@ -244,14 +243,14 @@ export default function AboutView() {
           </dl>
         </Section>
 
-        <Section title="Will restaurants adopt it?" lead="Rogers’ diffusion of innovations names five things that decide it. Here is how the copilot meets each.">
+        <Section title={tx('ui.about.will_restaurants_adopt_it')} lead="Rogers’ diffusion of innovations names five things that decide it. Here is how the copilot meets each.">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              ['Relative advantage', 'Fewer missed steps, no shouting to the pass, and evidence that protects servers from blame. Visible in the first shift.'],
-              ['Compatibility', 'Sits on top of Petpooja or whichever POS is already there, uses the restaurant’s own SOPs, runs on existing phones.'],
-              ['Low complexity', 'One screen, three cards, one tap. No typing, because the POS already has the data.'],
-              ['Trialability', 'Switch on one section or one shift first. The simulator lets staff practise before a real service.'],
-              ['Observability', 'End-of-shift stats for each server and a bottleneck view for the manager make results easy to see.'],
+              [L('Relative advantage'), L('Fewer missed steps, no shouting to the pass, and evidence that protects servers from blame. Visible in the first shift.')],
+              ['Compatibility', L('Sits on top of Petpooja or whichever POS is already there, uses the restaurant’s own SOPs, runs on existing phones.')],
+              [L('Low complexity'), L('One screen, three cards, one tap. No typing, because the POS already has the data.')],
+              ['Trialability', L('Switch on one section or one shift first. The simulator lets staff practise before a real service.')],
+              ['Observability', L('End-of-shift stats for each server and a bottleneck view for the manager make results easy to see.')],
             ].map(([t, d]) => (
               <div key={t} className="rounded-2xl border bg-card p-5">
                 <h3 className="font-medium">{t}</h3>
@@ -261,14 +260,14 @@ export default function AboutView() {
           </div>
         </Section>
 
-        <Section title="Assist, predict, explain, learn" lead="More than a task list: the same events power a copilot that helps now, warns early, explains what happened and turns it into practice.">
+        <Section title={tx('ui.about.assist_predict_explain_learn')} lead="More than a task list: the same events power a copilot that helps now, warns early, explains what happened and turns it into practice.">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              [<Compass key="a" />, 'Assist', 'The next best action with why it comes first, and help with an upset guest built from what is really happening at that table.'],
-              [<TrendingUp key="b" />, 'Predict', 'Dishes likely to be late, a busy patch about to hit a server, a station about to fall behind, a section about to be swamped.'],
-              [<History key="c" />, 'Explain', 'Any table reconstructed step by step, and why tonight is going the way it is: floor or kitchen, the bottleneck, when it bunched up.'],
-              [<GraduationCap key="d" />, 'Learn', 'A private learning journey: practice scores over time and practice suggested from the server’s own shift.'],
-              [<FlaskConical key="e" />, 'Decide', 'What if 30% more guests come, a server is off sick or a second grill cook joins? Run tonight both ways in a sandbox and compare.'],
+              [<Compass key="a" />, 'Assist', L('The next best action with why it comes first, and help with an upset guest built from what is really happening at that table.')],
+              [<TrendingUp key="b" />, 'Predict', L('Dishes likely to be late, a busy patch about to hit a server, a station about to fall behind, a section about to be swamped.')],
+              [<History key="c" />, 'Explain', L('Any table reconstructed step by step, and why tonight is going the way it is: floor or kitchen, the bottleneck, when it bunched up.')],
+              [<GraduationCap key="d" />, 'Learn', L('A private learning journey: practice scores over time and practice suggested from the server’s own shift.')],
+              [<FlaskConical key="e" />, 'Decide', L('What if 30% more guests come, a server is off sick or a second grill cook joins? Run tonight both ways in a sandbox and compare.')],
             ].map(([icon, t, d]) => (
               <div key={t as string} className="rounded-2xl border bg-card p-5">
                 <span className="text-primary [&_svg]:size-5">{icon}</span>
@@ -278,19 +277,19 @@ export default function AboutView() {
             ))}
           </div>
           <p className="mt-6 max-w-[70ch] text-sm leading-relaxed text-muted-foreground">
-            Rules decide anything safety-critical and every attribution, so each warning and explanation can be checked. Language models only phrase the facts. Forecasts and explanations are about stages, stations and section load, never about ranking people.
+            {tx('ui.about.rules_decide_anything_safety')}
           </p>
         </Section>
 
-        <Section title="Motivation without surveillance" lead="Service is a game servers already play: timing, reading the room, rescuing a table. The copilot keeps score for them, not on them.">
+        <Section title={tx('ui.about.motivation_without_surveillance')} lead="Service is a game servers already play: timing, reading the room, rescuing a table. The copilot keeps score for them, not on them.">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
-              [<Sparkles key="a" />, 'XP for every good move', 'A swift welcome, a heads-up before the guest asks, food hot from the pass. Late steps still earn a little: the game never takes points away.'],
-              [<Flame key="b" />, 'Streaks with shields', 'Tables served fully to standard build a streak. Every third earns a shield that absorbs one slip, so one bad moment doesn’t wipe the evening.'],
-              [<Trophy key="c" />, 'Ranks, badges and quests', 'Commis to Maître d’. Badges like Allergy guardian and Heads-up hero, some reachable in the first shift, and three small quests each night.'],
-              [<Users key="d" />, 'A team goal, not a leaderboard', 'The floor works toward one shared target. Staff thank each other with kudos, which earn XP for both and show on the team board.'],
-              [<Smartphone key="e" />, 'Feels like a real app', 'Swipe a card right when it’s done, left for later. A buzz on a win, a quick celebration for a badge, a shift recap at close. Works on phones and on the iPads servers take orders on, and installs to the home screen.'],
-              [<ShieldCheck key="f" />, 'Private by default', 'XP, streaks and badges live on the server’s own phone. Managers only see the team goal and kudos, never individual scores.'],
+              [<Sparkles key="a" />, L('XP for every good move'), L('A swift welcome, a heads-up before the guest asks, food hot from the pass. Late steps still earn a little: the game never takes points away.')],
+              [<Flame key="b" />, L('Streaks with shields'), L('Tables served fully to standard build a streak. Every third earns a shield that absorbs one slip, so one bad moment doesn’t wipe the evening.')],
+              [<Trophy key="c" />, L('Ranks, badges and quests'), L('Commis to Maître d’. Badges like Allergy guardian and Heads-up hero, some reachable in the first shift, and three small quests each night.')],
+              [<Users key="d" />, L('A team goal, not a leaderboard'), L('The floor works toward one shared target. Staff thank each other with kudos, which earn XP for both and show on the team board.')],
+              [<Smartphone key="e" />, L('Feels like a real app'), L('Swipe a card right when it’s done, left for later. A buzz on a win, a quick celebration for a badge, a shift recap at close. Works on phones and on the iPads servers take orders on, and installs to the home screen.')],
+              [<ShieldCheck key="f" />, L('Private by default'), L('XP, streaks and badges live on the server’s own phone. Managers only see the team goal and kudos, never individual scores.')],
             ].map(([icon, t, d]) => (
               <div key={t as string} className="rounded-2xl border bg-card p-5">
                 <span className="text-primary [&_svg]:size-5">{icon}</span>
@@ -300,34 +299,32 @@ export default function AboutView() {
             ))}
           </div>
           <p className="mt-6 max-w-[70ch] text-sm leading-relaxed text-muted-foreground">
-            Why this shape: points and levels on their own neither help nor harm intrinsic motivation (Mekler et al., 2017), while competitive leaderboards and badges lowered motivation and
-            performance in a semester-long study (Hanus &amp; Fox, 2015). Streak freezes make streaks last several times longer, and achievements that can be earned early keep new users
-            engaged (Duolingo; Trophy, 2026). So the design keeps the feedback, removes the comparison, and makes the social layer cooperative.
+            {tx('ui.about.why_this_shape_points')}
           </p>
         </Section>
 
-        <Section title="Under the hood" lead="One event format in the middle, so any POS can plug in and every screen stays in sync.">
+        <Section title={tx('ui.about.under_the_hood')} lead="One event format in the middle, so any POS can plug in and every screen stays in sync.">
           <Architecture />
           <div className="mt-8 grid gap-3 md:grid-cols-3">
-            <Status tone="good" title="Working now">
-              Rules engine and priority scoring, server, kitchen and manager screens, delay receipts, the dinner-rush simulator, any POS sending events to the open endpoint.
+            <Status tone="good" title={tx('ui.about.working_now')}>
+              {tx('ui.about.rules_engine_and_priority')}
             </Status>
-            <Status tone="warn" title="Needs Petpooja partner access">
-              Item stock and food-ready callbacks follow Petpooja’s public API. Table, KOT and bill events for dine-in are partner-only; the endpoint is built and waiting for their format.
+            <Status tone="warn" title={tx('ui.about.needs_petpooja_partner_access')}>
+              {tx('ui.about.item_stock_and_food')}
             </Status>
-            <Status tone="muted" title="Next">
-              Restroworks, Toast and Square adapters; staff logins; learning each server’s preferred order from their “Later” taps; watch vibrations for the top card.
+            <Status tone="muted" title={tx('ui.about.next')}>
+              {tx('ui.about.restroworks_toast_and_square')}
             </Status>
           </div>
         </Section>
 
-        <Section title="AI where words matter" lead="The copilot works out what needs doing. A language model (Claude, or Dify) helps with how to say it, and trains staff in their own language.">
+        <Section title={tx('ui.about.ai_where_words_matter')} lead="The copilot works out what needs doing. A language model (Claude, or Dify) helps with how to say it, and trains staff in their own language.">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[
-              [<Sparkles key="a" />, 'What do I say?', 'A gracious line for a delay, a dish that has run out, a greeting or a goodbye.'],
-              [<Smartphone key="b" />, 'Brief me', 'Your section at a glance: allergies, regulars, occasions and anything the kitchen is behind on.'],
-              [<HeartPulse key="c" />, 'Ask and practise', 'A trainer for servers and a coach for managers: it knows the standards, the menu and tonight’s floor, teaches inclusive service, and plays a tough guest or team member so people can rehearse.'],
-              [<ShieldCheck key="d" />, 'Shift summary', 'Tonight’s bottlenecks in plain English for the manager, never ranking individuals.'],
+              [<Sparkles key="a" />, L('What do I say?'), L('A gracious line for a delay, a dish that has run out, a greeting or a goodbye.')],
+              [<Smartphone key="b" />, L('Brief me'), L('Your section at a glance: allergies, regulars, occasions and anything the kitchen is behind on.')],
+              [<HeartPulse key="c" />, L('Ask and practise'), L('A trainer for servers and a coach for managers: it knows the standards, the menu and tonight’s floor, teaches inclusive service, and plays a tough guest or team member so people can rehearse.')],
+              [<ShieldCheck key="d" />, L('Shift summary'), L('Tonight’s bottlenecks in plain English for the manager, never ranking individuals.')],
             ].map(([icon, t, d]) => (
               <div key={t as string} className="rounded-2xl border bg-card p-5">
                 <span className="text-primary [&_svg]:size-5">{icon}</span>
@@ -336,26 +333,25 @@ export default function AboutView() {
               </div>
             ))}
           </div>
-          <p className="mt-4 max-w-[65ch] text-sm text-muted-foreground">The copilot gathers the facts and sends them to Claude (or Dify). If neither is connected or answers, a built-in writer and trainer respond instead, so the buttons always work.</p>
+          <p className="mt-4 max-w-[65ch] text-sm text-muted-foreground">{tx('ui.about.the_copilot_gathers_the')}</p>
         </Section>
 
-        <Section title="How we’ll test it" lead="The prototype tests one claim: an autonomy-supportive design reduces perceived surveillance while improving service consistency.">
+        <Section title={tx('ui.about.how_we_ll_test')} lead="The prototype tests one claim: an autonomy-supportive design reduces perceived surveillance while improving service consistency.">
           <div className="grid gap-4 md:grid-cols-3">
             {[
-              ['No app', 'Servers work a simulated six-table rush the usual way.'],
-              ['Monitoring-style app', 'Same tasks, but with rankings and everything visible to the manager.'],
-              ['TableMate', 'Top-three cards, self-closing tasks, private stats, delay receipts.'],
+              [L('No app'), L('Servers work a simulated six-table rush the usual way.')],
+              [L('Monitoring-style app'), L('Same tasks, but with rankings and everything visible to the manager.')],
+              ['TableMate', L('Top-three cards, self-closing tasks, private stats, delay receipts.')],
             ].map(([t, d], i) => (
               <div key={t} className={cn('rounded-2xl border p-5', i === 2 ? 'border-primary/50 bg-accent/40' : 'bg-card')}>
-                <div className="text-sm text-muted-foreground">Condition {i + 1}</div>
+                <div className="text-sm text-muted-foreground">{tx('ui.about.condition')} {i + 1}</div>
                 <h3 className="mt-1 font-medium">{t}</h3>
                 <p className="mt-1 text-sm text-muted-foreground">{d}</p>
               </div>
             ))}
           </div>
           <p className="mt-6 max-w-[65ch] leading-relaxed text-muted-foreground">
-            Measures: workload (NASA-TLX), perceived electronic monitoring, need satisfaction at work (BPNS-W), justice perceptions (Colquitt) and missed service steps, exported from the
-            event log. The second condition is what shows that the design, not just having an app, makes the difference.
+            {tx('ui.about.measures_workload_nasa_tlx')}
           </p>
         </Section>
 
@@ -364,28 +360,28 @@ export default function AboutView() {
             <div>
               <Wordmark className="text-3xl" />
               <p className="tagline mt-2 text-muted-foreground">{TAGLINE}</p>
-              <h2 className="mt-6 font-display text-xl">An OB project by Working Group B3</h2>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Drishti Gulati, Div Mehta, Sehaj Mittal, Vidush Srivastava, Shobith Das, Arnavi Khandelwal and Jonnah Harshith.</p>
+              <h2 className="mt-6 font-display text-xl">{tx('ui.about.an_ob_project_by')}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{tx('ui.about.drishti_gulati_div_mehta')}</p>
               <Button asChild className="mt-5">
                 <Link to="/">
-                  Open the app <ArrowRight />
+                  {tx('ui.about.open_the_app')} <ArrowRight />
                 </Link>
               </Button>
             </div>
             <div>
-              <h2 className="font-display text-2xl">References</h2>
+              <h2 className="font-display text-2xl">{tx('ui.about.references')}</h2>
               <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-muted-foreground">
-                <li>Adams, J. S. (1963). Towards an understanding of inequity. <i>Journal of Abnormal and Social Psychology</i>, 67(5), 422–436.</li>
-                <li>Chung, B., &amp; Hoffman, K. D. (1998). Critical incidents: Service failures that matter most. <i>Cornell HRA Quarterly</i>, 39(3), 66–71.</li>
-                <li>Colquitt, J. A. (2001). On the dimensionality of organizational justice. <i>Journal of Applied Psychology</i>, 86(3), 386–400.</li>
-                <li>Deci, E. L., &amp; Ryan, R. M. (1985). <i>Intrinsic motivation and self-determination in human behavior</i>. Plenum.</li>
-                <li>Hanus, M. D., &amp; Fox, J. (2015). Assessing the effects of gamification in the classroom. <i>Computers &amp; Education</i>, 80, 152–161.</li>
-                <li>Kelley, H. H. (1967). Attribution theory in social psychology. <i>Nebraska Symposium on Motivation</i>, 15, 192–238.</li>
-                <li>Kluger, A. N., &amp; DeNisi, A. (1996). The effects of feedback interventions on performance. <i>Psychological Bulletin</i>, 119(2), 254–284.</li>
-                <li>Mekler, E. D., Brühlmann, F., Tuch, A. N., &amp; Opwis, K. (2017). Towards understanding the effects of individual gamification elements on intrinsic motivation and performance. <i>Computers in Human Behavior</i>, 71, 525–534.</li>
-                <li>Ravid, D. M., et al. (2020). EPM 2020: A review and meta-analysis of electronic performance monitoring. <i>Personnel Psychology</i>, 73(1), 1–56.</li>
-                <li>Rogers, E. M. (2003). <i>Diffusion of innovations</i> (5th ed.). Free Press.</li>
-                <li>Sweller, J. (1988). Cognitive load during problem solving. <i>Cognitive Science</i>, 12(2), 257–285.</li>
+                <li>{tx('ui.about.adams_j_s_1963')} <i>{tx('ui.about.journal_of_abnormal_and')}</i>, 67(5), 422–436.</li>
+                <li>{tx('ui.about.chung_b_hoffman_k')} <i>{tx('ui.about.cornell_hra_quarterly')}</i>, 39(3), 66–71.</li>
+                <li>{tx('ui.about.colquitt_j_a_2001')} <i>{tx('ui.about.journal_of_applied_psychology')}</i>, 86(3), 386–400.</li>
+                <li>{tx('ui.about.deci_e_l_ryan')} <i>{tx('ui.about.intrinsic_motivation_and_self')}</i>{tx('ui.about.plenum')}</li>
+                <li>{tx('ui.about.hanus_m_d_fox')} <i>{tx('ui.about.computers_education')}</i>, 80, 152–161.</li>
+                <li>{tx('ui.about.kelley_h_h_1967')} <i>{tx('ui.about.nebraska_symposium_on_motivation')}</i>, 15, 192–238.</li>
+                <li>{tx('ui.about.kluger_a_n_denisi')} <i>{tx('ui.about.psychological_bulletin')}</i>, 119(2), 254–284.</li>
+                <li>{tx('ui.about.mekler_e_d_br')} <i>{tx('ui.about.computers_in_human_behavior')}</i>, 71, 525–534.</li>
+                <li>{tx('ui.about.ravid_d_m_et')} <i>{tx('ui.about.personnel_psychology')}</i>, 73(1), 1–56.</li>
+                <li>{tx('ui.about.rogers_e_m_2003')} <i>{tx('ui.about.diffusion_of_innovations')}</i> {tx('ui.about.5th_ed_free_press')}</li>
+                <li>{tx('ui.about.sweller_j_1988_cognitive')} <i>{tx('ui.about.cognitive_science')}</i>, 12(2), 257–285.</li>
               </ul>
             </div>
           </div>
@@ -431,24 +427,25 @@ function Status({ tone, title, children }: { tone: 'good' | 'warn' | 'muted'; ti
 
 /** A worked example of a delay receipt: one table's evening, step by step. */
 function SampleReceipt() {
+  const tx = useT()
   const steps: { label: string; start: number; end: number; owner: 'floor' | 'kitchen'; lapse?: boolean; note: string }[] = [
-    { label: 'Seated → greeted', start: 0, end: 1.5, owner: 'floor', note: '1.5 of 2 min' },
-    { label: 'Starters in kitchen', start: 6, end: 15, owner: 'kitchen', note: '9 of 13 min' },
-    { label: 'Pass → table', start: 15, end: 16, owner: 'floor', note: '1 of 1.5 min' },
-    { label: 'Mains in kitchen', start: 30, end: 52, owner: 'kitchen', lapse: true, note: '22 of 18 min, grill' },
-    { label: 'Pass → table', start: 52, end: 53, owner: 'floor', note: '1 of 1.5 min' },
-    { label: 'Bill asked → presented', start: 88, end: 90, owner: 'floor', note: '2 of 3 min' },
+    { label: L('Seated → greeted'), start: 0, end: 1.5, owner: 'floor', note: '1.5 of 2 min' },
+    { label: L('Starters in kitchen'), start: 6, end: 15, owner: 'kitchen', note: '9 of 13 min' },
+    { label: L('Pass → table'), start: 15, end: 16, owner: 'floor', note: '1 of 1.5 min' },
+    { label: L('Mains in kitchen'), start: 30, end: 52, owner: 'kitchen', lapse: true, note: '22 of 18 min, grill' },
+    { label: L('Pass → table'), start: 52, end: 53, owner: 'floor', note: '1 of 1.5 min' },
+    { label: L('Bill asked → presented'), start: 88, end: 90, owner: 'floor', note: '2 of 3 min' },
   ]
   const span = 95
   return (
     <figure className="rounded-2xl border bg-card p-5">
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
         <span>
-          <span className="font-medium">T4</span> <span className="text-muted-foreground">5 guests, 7:40 to 9:15 pm</span>
+          <span className="font-medium">T4</span> <span className="text-muted-foreground">{tx('ui.about.5_guests_7_40')}</span>
         </span>
-        <span className="text-xs text-muted-foreground">Example</span>
+        <span className="text-xs text-muted-foreground">{tx('ui.about.example')}</span>
       </figcaption>
-      <div className="relative mt-4 h-5 rounded bg-muted" role="img" aria-label="Timeline of T4's visit: every floor step within standard; mains ran 4 minutes over in the kitchen.">
+      <div className="relative mt-4 h-5 rounded bg-muted" role="img" aria-label={tx('ui.about.timeline_of_t4_s')}>
         {steps.map((s) => (
           <div
             key={s.label + s.start}
@@ -467,7 +464,7 @@ function SampleReceipt() {
         ))}
       </ul>
       <p className="mt-4 rounded-lg bg-secondary/60 p-3 text-sm">
-        Verdict: every floor step to standard. The 4-minute overrun was the grill’s. The server keeps their streak, and the manager sees a grill pattern, not a slow server.
+        {tx('ui.about.verdict_every_floor_step')}
       </p>
     </figure>
   )
@@ -475,37 +472,38 @@ function SampleReceipt() {
 
 /** Data flow from POS to screens, drawn with layout rather than a picture so it reads at any width. */
 function Architecture() {
+  const tx = useT()
   const box = 'rounded-xl border bg-card px-4 py-3 text-sm'
   return (
     <div className="grid items-stretch gap-3 lg:grid-cols-[1fr_auto_1.1fr_auto_1fr]">
       <div className="grid gap-2">
-        <div className="text-sm text-muted-foreground">Sources</div>
-        <div className={box}>Petpooja POS</div>
-        <div className={box}>Other POS or middleware</div>
-        <div className={box}>Service simulator</div>
+        <div className="text-sm text-muted-foreground">{tx('ui.about.sources')}</div>
+        <div className={box}>{tx('ui.about.petpooja_pos')}</div>
+        <div className={box}>{tx('ui.about.other_pos_or_middleware')}</div>
+        <div className={box}>{tx('ui.about.service_simulator')}</div>
       </div>
       <Arrow />
       <div className="grid content-start gap-2">
-        <div className="text-sm text-muted-foreground">Copilot server</div>
+        <div className="text-sm text-muted-foreground">{tx('ui.about.copilot_server')}</div>
         <div className={cn(box, 'border-primary/50 bg-accent/40')}>
-          <div className="font-medium">One event format</div>
-          <div className="text-muted-foreground">table seated, order fired, food ready, dish off, bill printed, paid</div>
+          <div className="font-medium">{tx('ui.about.one_event_format')}</div>
+          <div className="text-muted-foreground">{tx('ui.about.table_seated_order_fired')}</div>
         </div>
         <div className={cn(box, 'border-primary/50 bg-accent/40')}>
-          <div className="font-medium">Rules engine</div>
-          <div className="text-muted-foreground">SOP standards → ranked cards; visits → delay receipts</div>
+          <div className="font-medium">{tx('ui.about.rules_engine')}</div>
+          <div className="text-muted-foreground">{tx('ui.about.sop_standards_ranked_cards')}</div>
         </div>
         <div className={box}>
-          <div className="font-medium">Dify (optional)</div>
-          <div className="text-muted-foreground">phrases briefings, guest lines, summaries</div>
+          <div className="font-medium">{tx('ui.about.dify_optional')}</div>
+          <div className="text-muted-foreground">{tx('ui.about.phrases_briefings_guest_lines')}</div>
         </div>
       </div>
       <Arrow />
       <div className="grid gap-2">
-        <div className="text-sm text-muted-foreground">Screens, updated live</div>
-        <div className={box}>Server phones: top three cards, private stats</div>
-        <div className={box}>Kitchen pass: tickets, availability, notes</div>
-        <div className={box}>Manager: bottlenecks and receipts, no rankings</div>
+        <div className="text-sm text-muted-foreground">{tx('ui.about.screens_updated_live')}</div>
+        <div className={box}>{tx('ui.about.server_phones_top_three')}</div>
+        <div className={box}>{tx('ui.about.kitchen_pass_tickets_availability')}</div>
+        <div className={box}>{tx('ui.about.manager_bottlenecks_and_receipts')}</div>
       </div>
     </div>
   )

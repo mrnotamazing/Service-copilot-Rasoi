@@ -1,3 +1,4 @@
+import { L } from '../i18n/index.ts'
 import { useEffect, type ReactNode } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -16,7 +17,7 @@ export function RequireAuth({ page, children }: { page: Page; children: ReactNod
   const wrongPerson = !!session && !ok
 
   useEffect(() => {
-    if (wrongPerson) toast.message('That screen belongs to someone else', { description: 'Sign out to switch to a different person.' })
+    if (wrongPerson) toast.message(L('That screen belongs to someone else'), { description: L('Sign out to switch to a different person.') })
   }, [wrongPerson])
 
   if (ok) return <>{children}</>

@@ -1,6 +1,7 @@
 // Who's signing in? A server, the kitchen pass or the manager, each with the same demo password
 // for now. A person only ever sees their own screen, and signing in greets them.
 
+import { useT, L } from '../i18n/index.ts'
 import { ArrowRight, ChefHat, Eye, EyeOff, LayoutDashboard, Lock, UserRound } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
@@ -16,13 +17,14 @@ import { useSnapshot } from '../lib/live.ts'
 import type { Role } from '../lib/role.ts'
 
 type Kind = Role['kind']
-const KINDS: { kind: Kind; label: string; Icon: typeof ChefHat; hint: string }[] = [
-  { kind: 'server', label: 'Server', Icon: UserRound, hint: 'Your tables and next three moves' },
-  { kind: 'kitchen', label: 'Kitchen', Icon: ChefHat, hint: 'The pass and the tickets' },
-  { kind: 'manager', label: 'Manager', Icon: LayoutDashboard, hint: 'The whole floor, without rankings' },
+const KINDS = (): { kind: Kind; label: string; Icon: typeof ChefHat; hint: string }[] => [
+  { kind: 'server', label: L('Server'), Icon: UserRound, hint: L('Your tables and next three moves') },
+  { kind: 'kitchen', label: L('Kitchen'), Icon: ChefHat, hint: L('The pass and the tickets') },
+  { kind: 'manager', label: L('Manager'), Icon: LayoutDashboard, hint: L('The whole floor, without rankings') },
 ]
 
 export default function Login() {
+  const tx = useT()
   const session = useSession()
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -48,7 +50,7 @@ export default function Login() {
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (!person) return setError('Choose who is signing in first.')
+    if (!person) return setError(L('Choose who is signing in first.'))
     const role: Role = kind === 'server' ? { kind: 'server', staffId: person.id } : { kind }
     const name = person.name
     const err = signIn(role, name, password)
@@ -73,7 +75,7 @@ export default function Login() {
           <Mascot running className="w-52" speed="var(--muted-foreground)" />
           <Wordmark className="mt-4 text-4xl" />
           <p className="mt-2 max-w-sm text-lg text-muted-foreground text-pretty">{TAGLINE}</p>
-          <p className="mt-8 max-w-sm text-sm text-muted-foreground text-pretty">Each person signs in to their own screen. Servers see their tables, the kitchen sees the pass, and managers see the floor, never a ranking of people.</p>
+          <p className="mt-8 max-w-sm text-sm text-muted-foreground text-pretty">{tx('ui.login.each_person_signs_in')}</p>
         </div>
 
         <form onSubmit={submit} className="rounded-3xl border bg-card p-6 shadow-sm md:p-7" aria-labelledby="signin-title">
@@ -88,12 +90,12 @@ export default function Login() {
             </div>
           )}
           <h1 id="signin-title" className="font-display text-2xl">
-            Sign in
+            {tx('ui.login.sign_in')}
           </h1>
-          <p className="text-sm text-muted-foreground">Pick who you are, then enter the password.</p>
+          <p className="text-sm text-muted-foreground">{tx('ui.login.pick_who_you_are')}</p>
 
-          <div role="radiogroup" aria-label="I am the" className="mt-4 grid grid-cols-3 gap-2">
-            {KINDS.map(({ kind: k, label, Icon }) => (
+          <div role="radiogroup" aria-label={tx('ui.login.i_am_the')} className="mt-4 grid grid-cols-3 gap-2">
+            {KINDS().map(({ kind: k, label, Icon }) => (
               <button
                 key={k}
                 type="button"
@@ -110,11 +112,11 @@ export default function Login() {
               </button>
             ))}
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">{KINDS.find((x) => x.kind === kind)!.hint}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{KINDS().find((x) => x.kind === kind)!.hint}</p>
 
           {kind === 'server' ? (
             <fieldset className="mt-4">
-              <legend className="mb-2 text-sm font-medium">Who are you?</legend>
+              <legend className="mb-2 text-sm font-medium">{tx('ui.login.who_are_you')}</legend>
               <div className="grid grid-cols-3 gap-2">
                 {servers.map((s) => (
                   <button
@@ -143,12 +145,12 @@ export default function Login() {
           )}
 
           <label htmlFor="pw" className="mt-4 block text-sm font-medium">
-            Password
+            {tx('ui.login.password')}
           </label>
           <div className="relative mt-1.5">
             <Lock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
             <Input id="pw" type={show ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => (setPassword(e.target.value), setError(null))} className="h-11 pl-9 pr-11" aria-invalid={!!error} aria-describedby={error ? 'pw-err' : undefined} />
-            <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={show ? 'Hide password' : 'Show password'}>
+            <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-1 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={show ? L('Hide password') : L('Show password')}>
               {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
             </button>
           </div>
@@ -159,9 +161,9 @@ export default function Login() {
           )}
 
           <Button type="submit" size="lg" className="mt-5 h-12 w-full rounded-2xl" disabled={!person || !password}>
-            Sign in <ArrowRight />
+            {tx('ui.login.sign_in')} <ArrowRight />
           </Button>
-          <p className="mt-4 text-center text-xs text-muted-foreground text-pretty">Demo sign-in: everyone uses the same password for now.</p>
+          <p className="mt-4 text-center text-xs text-muted-foreground text-pretty">{tx('ui.login.demo_sign_in_everyone')}</p>
         </form>
       </div>
     </div>

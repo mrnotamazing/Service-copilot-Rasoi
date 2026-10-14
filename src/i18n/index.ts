@@ -1,5 +1,5 @@
 import type { TaskText } from '../../shared/types.ts'
-import { usePrefs, type Lang } from '../lib/prefs.ts'
+import { getPrefs, usePrefs, type Lang } from '../lib/prefs.ts'
 import { bn } from './bn.ts'
 import { en, type Key } from './en.ts'
 import { es } from './es.ts'
@@ -48,4 +48,21 @@ export function useT() {
   const { lang } = usePrefs()
   const t = (key: Key, params?: Params) => translate(lang, key, params)
   return Object.assign(t, { lang, text: (x: TaskText) => renderText(lang, x), any: (key: string, params?: Params) => translate(lang, key, params) })
+}
+
+// ---------------------------------------------------------------------------
+// English literals that live in data (lists, messages): look them up by their English text.
+
+let reverse: Map<string, string> | null = null
+/**
+ * Text written in English in the code (a list of steps, an error message), shown in the current language.
+ * It is looked up by its English wording in the dictionaries; anything not found stays as written.
+ * Call it where the text is used (at render time), not once at load, so it follows the language.
+ */
+export function L(english: string, params?: Params): string {
+  const { lang } = getPrefs()
+  reverse ??= new Map(Object.entries(en as Record<string, string>).map(([k, v]) => [v, k]))
+  const key = lang === 'en' ? undefined : reverse.get(english)
+  const text = key ? translate(lang, key) : english
+  return params ? text.replace(/\{(\w+)\}/g, (_, n: string) => (params[n] === undefined ? `{${n}}` : String(params[n]))) : text
 }

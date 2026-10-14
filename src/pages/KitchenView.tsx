@@ -1,3 +1,4 @@
+import { useT, L } from '../i18n/index.ts'
 import { CrewCard } from '../components/CrewCard.tsx'
 import { MessageCircleQuestion, BellRing, RefreshCw, Sparkles, Bot, Check, Flame, HandPlatter, HeartPulse, Send, ShieldAlert, Timer, UtensilsCrossed } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -38,6 +39,7 @@ interface Ticket {
  * clashes sit at the top of every ticket they affect.
  */
 export default function KitchenView() {
+  const tx = useT()
   useRolePage({ kind: 'kitchen' })
   const { snap, connected } = useSnapshot('kitchen')
   const [station, setStation] = useState<Station | 'all'>('all')
@@ -93,16 +95,16 @@ export default function KitchenView() {
   const stationCount = (s: Station) => tickets.line.filter((k) => k.lines.some((l) => l.station === s && l.status === 'fired')).length
 
   return (
-    <AppShell title="Kitchen pass" sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />}>
+    <AppShell title={tx('ui.demo.kitchen_pass')} sub={snap.config.name} right={<LiveClock now={snap.now} ok={connected} />}>
       {/* Service at a glance, and the station filter */}
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border bg-card px-4 py-3">
-        <Count icon={<Flame className="size-4 text-primary" />} n={tickets.line.length} label="on the line" />
-        <Count icon={<Timer className={cn('size-4', late ? 'text-kitchen' : 'text-muted-foreground')} />} n={late} label="running late" tone={late ? 'text-kitchen' : undefined} />
-        <Count icon={<HandPlatter className="size-4 text-good" />} n={tickets.pass.length} label="waiting at the pass" />
+        <Count icon={<Flame className="size-4 text-primary" />} n={tickets.line.length} label={tx('ui.kitchen.on_the_line')} />
+        <Count icon={<Timer className={cn('size-4', late ? 'text-kitchen' : 'text-muted-foreground')} />} n={late} label={tx('ui.kitchen.running_late')} tone={late ? 'text-kitchen' : undefined} />
+        <Count icon={<HandPlatter className="size-4 text-good" />} n={tickets.pass.length} label={tx('ui.kitchen.waiting_at_the_pass')} />
         {(snap.questions ?? []).some((q) => !q.answer) && (
-          <Count icon={<MessageCircleQuestion className="size-4 text-primary" />} n={(snap.questions ?? []).filter((q) => !q.answer).length} label="guest questions" tone="text-primary" />
+          <Count icon={<MessageCircleQuestion className="size-4 text-primary" />} n={(snap.questions ?? []).filter((q) => !q.answer).length} label={tx('ui.kitchen.guest_questions')} tone="text-primary" />
         )}
-        <div className="ml-auto flex flex-wrap gap-1.5" role="radiogroup" aria-label="Station">
+        <div className="ml-auto flex flex-wrap gap-1.5" role="radiogroup" aria-label={tx('ui.manager.station')}>
           {(['all', ...STATIONS] as const).map((s) => (
             <button
               key={s}
@@ -112,7 +114,7 @@ export default function KitchenView() {
               onClick={() => setStation(s)}
               className={cn('min-h-9 pointer-coarse:min-h-11 rounded-full border px-3 text-sm capitalize transition-colors', station === s ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground')}
             >
-              {s === 'all' ? 'All stations' : s}
+              {s === 'all' ? L('All stations') : s}
               {s !== 'all' && stationCount(s) > 0 && <span className="ml-1 tabular">{stationCount(s)}</span>}
             </button>
           ))}
@@ -122,9 +124,9 @@ export default function KitchenView() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
           <section>
-            <LaneTitle icon={<Flame className="size-4" />} title="On the line" n={line.length} />
+            <LaneTitle icon={<Flame className="size-4" />} title={tx('ui.kitchen.on_the_line_2')} n={line.length} />
             {line.length === 0 ? (
-              <BrandEmpty title={`Nothing cooking${station !== 'all' ? ` on ${station}` : ''}`}>New tickets land here the second they’re fired, with the clock already running.</BrandEmpty>
+              <BrandEmpty title={station !== 'all' ? L('Nothing cooking on {station}', { station }) : L('Nothing cooking')}>{tx('ui.kitchen.new_tickets_land_here')}</BrandEmpty>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
                 <AnimatePresence mode="popLayout" initial={false}>
@@ -137,9 +139,9 @@ export default function KitchenView() {
           </section>
 
           <section>
-            <LaneTitle icon={<HandPlatter className="size-4" />} title="At the pass" n={tickets.pass.length} />
+            <LaneTitle icon={<HandPlatter className="size-4" />} title={tx('ui.kitchen.at_the_pass')} n={tickets.pass.length} />
             {tickets.pass.length === 0 ? (
-              <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">The pass is clear.</p>
+              <p className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">{tx('ui.kitchen.the_pass_is_clear')}</p>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
                 {tickets.pass.map((k) => (
@@ -161,7 +163,7 @@ export default function KitchenView() {
           {snap.sim.startedAt !== null && (
             <label htmlFor="auto-kitchen" className="flex items-center justify-between gap-3 rounded-xl border border-dashed bg-muted/40 px-4 py-3 text-sm">
               <span className="inline-flex items-center gap-2">
-                <Bot className="size-4 text-muted-foreground" /> Demo: kitchen cooks automatically
+                <Bot className="size-4 text-muted-foreground" /> {tx('ui.kitchen.demo_kitchen_cooks_automatically')}
               </span>
               <Switch id="auto-kitchen" checked={snap.sim.autoKitchen} onCheckedChange={(v) => void post('/api/sim/settings', { autoKitchen: v })} />
             </label>
@@ -195,6 +197,7 @@ function LaneTitle({ icon, title, n }: { icon: React.ReactNode; title: string; n
 }
 
 function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now: number; late: boolean; station: Station | 'all'; snap: Snap; pri: TicketPriority; rank: number }) {
+  const tx = useT()
   const fired = Math.min(...k.lines.map((l) => l.firedAt))
   const expected = Math.max(...k.lines.map((l) => l.expectedReadyAt))
   const frac = Math.min(1, (now - fired) / Math.max(1, expected - fired))
@@ -222,13 +225,13 @@ function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now
         </div>
         <div className="text-right">
           <div className={cn('font-display text-xl tabular', late ? 'text-kitchen' : 'text-foreground')}>{mmss(now - fired)}</div>
-          <div className="text-[11px] text-muted-foreground tabular">{over > 0 ? `${over} min over` : `of ${mmss(expected - fired)}`}</div>
+          <div className="text-[11px] text-muted-foreground tabular">{over > 0 ? L('{n} min over', { n: over }) : L('of {t}', { t: mmss(expected - fired) })}</div>
         </div>
       </div>
       {(rank === 0 || pri.reasons.length > 0) && (
         <div className="mx-4 mt-2 flex flex-wrap items-center gap-1.5">
-          {rank === 0 && <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">Do first</span>}
-          {pri.level !== 'normal' && <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', LEVEL_CHIP[pri.level])}>{LEVEL_LABEL[pri.level]}</span>}
+          {rank === 0 && <span className="inline-flex items-center rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground">{tx('ui.kitchen.do_first')}</span>}
+          {pri.level !== 'normal' && <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', LEVEL_CHIP[pri.level])}>{LEVEL_LABEL()[pri.level]}</span>}
           {pri.reasons.map((r) => (
             <span key={r} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
               {r}
@@ -244,7 +247,7 @@ function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now
         <div className="mx-4 mt-3 space-y-1 rounded-lg bg-warn/12 p-2 text-xs font-medium text-warn">
           {allergies.length > 0 && (
             <div className="flex items-center gap-1.5">
-              <HeartPulse className="size-3.5 shrink-0" /> Allergy: {allergies.join(', ')}
+              <HeartPulse className="size-3.5 shrink-0" /> {tx('ui.kitchen.allergy')} {allergies.join(', ')}
             </div>
           )}
           {clashes.map((c, i) => (
@@ -269,7 +272,7 @@ function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now
       </ul>
       <div className="p-3 pt-0">
         <Button className="h-11 w-full text-base" onClick={() => void act('item.ready', { ticketId: k.ticketId }, 'kitchen')}>
-          <Check /> Ready
+          <Check /> {tx('ui.kitchen.ready')}
         </Button>
       </div>
     </motion.article>
@@ -282,6 +285,7 @@ function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now
  * if it's busy or offline the same list is shown with a plain-words summary.
  */
 function ChefsCall({ ranked }: { ranked: { k: Ticket; p: TicketPriority }[] }) {
+  const tx = useT()
   const ai = useAi()
   const top = ranked.slice(0, 3)
   const urgent = ranked.some(({ p }) => p.level !== 'normal')
@@ -297,10 +301,10 @@ function ChefsCall({ ranked }: { ranked: { k: Ticket; p: TicketPriority }[] }) {
   if (!top.length) return null
   const dishes = (k: Ticket) => k.lines.filter((l) => l.status === 'fired').map((l) => `${l.qty}× ${l.name}`).join(', ')
   return (
-    <section className="rounded-2xl border bg-card p-4" aria-label="Chef’s call">
+    <section className="rounded-2xl border bg-card p-4" aria-label={tx('ui.kitchen.chef_s_call')}>
       <div className="flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Sparkles className="size-4 text-primary" /> Chef’s call
+          <Sparkles className="size-4 text-primary" /> {tx('ui.kitchen.chef_s_call')}
         </h2>
         <button
           type="button"
@@ -310,9 +314,9 @@ function ChefsCall({ ranked }: { ranked: { k: Ticket; p: TicketPriority }[] }) {
           }}
           disabled={ai.loading}
           className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-          aria-label="Ask the AI again"
+          aria-label={tx('ui.kitchen.ask_the_ai_again')}
         >
-          <RefreshCw className={cn('size-3.5', ai.loading && 'animate-spin')} /> Refresh
+          <RefreshCw className={cn('size-3.5', ai.loading && 'animate-spin')} /> {tx('ui.kitchen.refresh')}
         </button>
       </div>
       <ol className="mt-2 space-y-2">
@@ -328,8 +332,8 @@ function ChefsCall({ ranked }: { ranked: { k: Ticket; p: TicketPriority }[] }) {
       </ol>
       {(ai.answer || ai.loading) && (
         <p className="mt-3 border-t pt-3 text-sm text-pretty" aria-live="polite">
-          {ai.answer?.text ?? <span className="text-muted-foreground">Thinking it through…</span>}
-          {ai.answer && <span className="mt-1 block text-[11px] text-muted-foreground">{ai.answer.source === 'built-in' ? 'Summary from your priorities' : `AI assessment, weighed with your kitchen priorities`}</span>}
+          {ai.answer?.text ?? <span className="text-muted-foreground">{tx('ui.kitchen.thinking_it_through')}</span>}
+          {ai.answer && <span className="mt-1 block text-[11px] text-muted-foreground">{ai.answer.source === 'built-in' ? L('Summary from your priorities') : L(`AI assessment, weighed with your kitchen priorities`)}</span>}
         </p>
       )}
     </section>
@@ -343,10 +347,11 @@ const LEVEL_RING: Record<Level, string> = {
   critical: 'border-kitchen ring-2 ring-kitchen/60',
 }
 const LEVEL_CHIP: Record<Level, string> = { normal: '', soon: 'bg-warn/15 text-warn', late: 'bg-kitchen/15 text-kitchen', critical: 'bg-kitchen text-white' }
-const LEVEL_LABEL: Record<Level, string> = { normal: '', soon: 'Nearly due', late: 'Late', critical: 'Critical' }
+const LEVEL_LABEL = (): Record<Level, string> => ({ normal: '', soon: L('Nearly due'), late: L('Late'), critical: L('Critical') })
 
 /** Food at the pass: how long it has waited, and a nudge to the table's server. */
 function PassCard({ k, now, snap }: { k: Ticket; now: number; snap: Snap }) {
+  const tx = useT()
   const readyAt = Math.min(...k.lines.map((l) => l.readyAt ?? now))
   const waited = now - readyAt
   const slow = waited > snap.config.sop.pickupWithinMin * MIN
@@ -367,11 +372,11 @@ function PassCard({ k, now, snap }: { k: Ticket; now: number; snap: Snap }) {
           variant="outline"
           className="h-8 rounded-full"
           onClick={async () => {
-            await act('note.sent', { noteId: noteId(), direction: 'to_floor', tableId: k.table.id, text: `${k.table.name} ${k.lines[0].course}s are waiting at the pass`, from: 'k_pass' }, 'kitchen')
+            await act('note.sent', { noteId: noteId(), direction: 'to_floor', tableId: k.table.id, text: L('{table}: {course} waiting at the pass', { table: k.table.name, course: tx.any(`course.${k.lines[0].course}`) }), from: 'k_pass' }, 'kitchen')
             toast.success(`Nudged ${server?.name ?? 'the server'}`)
           }}
         >
-          <BellRing /> Nudge
+          <BellRing /> {tx('ui.kitchen.nudge')}
         </Button>
       </div>
     </div>
@@ -380,6 +385,7 @@ function PassCard({ k, now, snap }: { k: Ticket; now: number; snap: Snap }) {
 
 /** "All day": how many of each dish are cooking right now. */
 function AllDay({ tickets, station }: { tickets: Ticket[]; station: Station | 'all' }) {
+  const tx = useT()
   const counts = new Map<string, { n: number; station: Station }>()
   for (const k of tickets)
     for (const l of k.lines) {
@@ -392,10 +398,10 @@ function AllDay({ tickets, station }: { tickets: Ticket[]; station: Station | 'a
   return (
     <section className="rounded-2xl border bg-card p-4">
       <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <UtensilsCrossed className="size-4 text-primary" /> All day
+        <UtensilsCrossed className="size-4 text-primary" /> {tx('ui.kitchen.all_day')}
       </h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nothing cooking right now.</p>
+        <p className="text-sm text-muted-foreground">{tx('ui.kitchen.nothing_cooking_right_now')}</p>
       ) : (
         <ul className="space-y-1.5">
           {rows.map(([name, c]) => (
@@ -412,20 +418,21 @@ function AllDay({ tickets, station }: { tickets: Ticket[]; station: Station | 'a
 }
 
 function TellFloor({ snap }: { snap: Snap }) {
+  const tx = useT()
   const [text, setText] = useState('')
   const [table, setTable] = useState(FLOOR)
   async function send(body = text) {
     if (!body.trim()) return
     const tableId = table === FLOOR ? undefined : table
     await act('note.sent', { noteId: noteId(), direction: 'to_floor', tableId, text: body.trim(), from: 'k_pass' }, 'kitchen')
-    toast.success(tableId ? `Sent to ${tableId}'s server` : 'Sent to the whole floor')
+    toast.success(tableId ? L('Sent to {table}’s server', { table: tableId }) : L('Sent to the whole floor'))
     setText('')
   }
   return (
     <section className="rounded-2xl border bg-card p-4">
-      <h2 className="mb-2 text-sm font-semibold">Quick update to the floor</h2>
+      <h2 className="mb-2 text-sm font-semibold">{tx('ui.kitchen.quick_update_to_the')}</h2>
       <div className="mb-2 flex flex-wrap gap-1.5">
-        {['Mains in 5 min', 'Grill is backed up', 'Ready to fire', 'Running low on bread'].map((q) => (
+        {[L('Mains in 5 min'), L('Grill is backed up'), L('Ready to fire'), L('Running low on bread')].map((q) => (
           <button key={q} type="button" onClick={() => void send(q)} className="rounded-full border bg-background px-2.5 py-1 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3.5 text-muted-foreground hover:text-foreground">
             {q}
           </button>
@@ -439,11 +446,11 @@ function TellFloor({ snap }: { snap: Snap }) {
         }}
       >
         <Select value={table} onValueChange={setTable}>
-          <SelectTrigger id="note-table" className="w-full" aria-label="Who to tell">
+          <SelectTrigger id="note-table" className="w-full" aria-label={tx('ui.kitchen.who_to_tell')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={FLOOR}>Whole floor</SelectItem>
+            <SelectItem value={FLOOR}>{tx('ui.kitchen.whole_floor')}</SelectItem>
             {snap.tables
               .filter((t) => t.visitId)
               .map((t) => (
@@ -454,8 +461,8 @@ function TellFloor({ snap }: { snap: Snap }) {
           </SelectContent>
         </Select>
         <div className="flex gap-2">
-          <Input id="floor-note" name="floor-note" aria-label="Note to the floor" autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder="e.g. mains 5 min, grill backed up…" />
-          <Button type="submit" size="icon" aria-label="Send to floor" disabled={!text.trim()}>
+          <Input id="floor-note" name="floor-note" aria-label={tx('ui.kitchen.note_to_the_floor')} autoComplete="off" value={text} onChange={(e) => setText(e.target.value)} placeholder={tx('ui.kitchen.e_g_mains_5')} />
+          <Button type="submit" size="icon" aria-label={tx('ui.kitchen.send_to_floor')} disabled={!text.trim()}>
             <Send />
           </Button>
         </div>
@@ -466,10 +473,11 @@ function TellFloor({ snap }: { snap: Snap }) {
 
 /** The 86 board: switch a dish off and every affected table gets a "tell the guest" card. */
 function EightySix({ snap }: { snap: Snap }) {
+  const tx = useT()
   return (
     <section className="rounded-2xl border bg-card p-4">
-      <h2 className="mb-1 text-sm font-semibold">Availability (86 board)</h2>
-      <p className="mb-2 text-xs text-muted-foreground">Switch a dish off and servers with it on an order are told straight away.</p>
+      <h2 className="mb-1 text-sm font-semibold">{tx('ui.kitchen.availability_86_board')}</h2>
+      <p className="mb-2 text-xs text-muted-foreground">{tx('ui.kitchen.switch_a_dish_off')}</p>
       <ul className="divide-y">
         {snap.config.menu.map((m) => {
           const off = snap.unavailable.includes(m.id)
@@ -487,22 +495,23 @@ function EightySix({ snap }: { snap: Snap }) {
   )
 }
 
-const QUICK_ANSWERS = ['Yes', 'No', 'Not spicy', 'Mild', 'Medium spicy', 'Hot', 'Can be made mild', 'Chef will come to the table']
+const QUICK_ANSWERS = () => ['Yes', 'No', L('Not spicy'), 'Mild', L('Medium spicy'), 'Hot', L('Can be made mild'), L('Chef will come to the table')]
 
 /**
  * Guests' questions the menu notes couldn't answer, sent by servers. Answer in a tap or a line;
  * the answer goes back to the server as a card and, if kept, joins the dish's notes for next time.
  */
 function Questions({ snap }: { snap: Snap }) {
+  const tx = useT()
   const all = snap.questions ?? []
   const open = all.filter((q) => !q.answer)
   const recent = all.filter((q) => q.answer).slice(0, 3)
   if (!all.length) return null
   const name = (id: string) => snap.config.staff.find((s) => s.id === id)?.name ?? id
   return (
-    <section className={cn('rounded-2xl border bg-card p-4', open.length && 'border-primary/50 ring-2 ring-primary/15')} aria-label="Guest questions">
+    <section className={cn('rounded-2xl border bg-card p-4', open.length && 'border-primary/50 ring-2 ring-primary/15')} aria-label={tx('ui.kitchen.guest_questions_2')}>
       <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
-        <MessageCircleQuestion className="size-4 text-primary" /> Guest questions
+        <MessageCircleQuestion className="size-4 text-primary" /> {tx('ui.kitchen.guest_questions_2')}
         {open.length > 0 && <span className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground tabular">{open.length}</span>}
       </h2>
       <ul className="space-y-3">
@@ -512,7 +521,7 @@ function Questions({ snap }: { snap: Snap }) {
         {recent.map((q) => (
           <li key={q.id} className="rounded-lg bg-muted/60 p-2.5 text-sm">
             <div className="text-[11px] text-muted-foreground">
-              {name(q.from)} asked{q.tableId ? ` for ${q.tableId}` : ''}
+              {name(q.from)} {tx('ui.kitchen.asked')}{q.tableId ? ` for ${q.tableId}` : ''}
             </div>
             <div>{q.text}</div>
             <div className="mt-1 font-medium">→ {q.answer}</div>
@@ -524,6 +533,7 @@ function Questions({ snap }: { snap: Snap }) {
 }
 
 function QuestionRow({ q, snap, who }: { q: NonNullable<Snap['questions']>[number]; snap: Snap; who: string }) {
+  const tx = useT()
   const [answer, setAnswer] = useState('')
   const [save, setSave] = useState(!!q.menuItemId)
   const [busy, setBusy] = useState(false)
@@ -533,7 +543,7 @@ function QuestionRow({ q, snap, who }: { q: NonNullable<Snap['questions']>[numbe
     setBusy(true)
     try {
       await post('/api/kitchen/answer', { questionId: q.id, answer: text.trim(), save })
-      toast.success(save && dish ? `Answered ${who}, and saved to ${dish.name}` : `Answered ${who}`)
+      toast.success(save && dish ? L('Answered {who}, and saved to {dish}', { who, dish: dish.name }) : L('Answered {who}', { who }))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e))
     } finally {
@@ -545,11 +555,11 @@ function QuestionRow({ q, snap, who }: { q: NonNullable<Snap['questions']>[numbe
       <div className="text-[11px] text-muted-foreground">
         {who}
         {q.tableId ? `, ${q.tableId}` : ''}
-        {dish ? ` · ${dish.name}` : ''} · {minutesAgo(q.at, snap.now) < 1 ? 'just now' : `${minutesAgo(q.at, snap.now)} min ago`}
+        {dish ? ` · ${dish.name}` : ''} · {minutesAgo(q.at, snap.now) < 1 ? L('just now') : L('{n} min ago', { n: minutesAgo(q.at, snap.now) })}
       </div>
       <p className="mt-0.5 font-medium">{q.text}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {QUICK_ANSWERS.map((a) => (
+        {QUICK_ANSWERS().map((a) => (
           <button key={a} type="button" disabled={busy} onClick={() => void send(a)} className="rounded-full border bg-background px-2.5 py-1 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3.5 text-muted-foreground hover:bg-secondary hover:text-foreground">
             {a}
           </button>
@@ -562,14 +572,14 @@ function QuestionRow({ q, snap, who }: { q: NonNullable<Snap['questions']>[numbe
           void send()
         }}
       >
-        <Input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Or type an answer…" aria-label={`Answer ${who}`} autoComplete="off" />
-        <Button type="submit" size="icon" aria-label="Send answer" disabled={!answer.trim() || busy}>
+        <Input value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder={tx('ui.kitchen.or_type_an_answer')} aria-label={`Answer ${who}`} autoComplete="off" />
+        <Button type="submit" size="icon" aria-label={tx('ui.kitchen.send_answer')} disabled={!answer.trim() || busy}>
           <Send />
         </Button>
       </form>
       {dish && (
         <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-          <Checkbox checked={save} onCheckedChange={(v) => setSave(!!v)} /> Save to {dish.name}’s notes so it’s answered at once next time
+          <Checkbox checked={save} onCheckedChange={(v) => setSave(!!v)} /> {tx('ui.kitchen.save_to')} {dish.name}{tx('ui.kitchen.s_notes_so_it')}
         </label>
       )}
     </li>

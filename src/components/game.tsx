@@ -92,6 +92,7 @@ export function BadgeTile({ b }: { b: PlayerView['badges'][number] }) {
  * and nothing is celebrated while the demo autopilot is playing.
  */
 export function Celebrations({ awards, muted = false }: { awards: Award[]; muted?: boolean }) {
+  const tx = useT()
   const seen = useRef<Set<string> | null>(null)
   const [pills, setPills] = useState<Award[]>([])
   const [big, setBig] = useState<Award[]>([])
@@ -143,7 +144,7 @@ export function Celebrations({ awards, muted = false }: { awards: Award[]; muted
               className="flex items-center gap-2 rounded-full border bg-popover/95 px-3 py-1.5 text-sm shadow-lg backdrop-blur"
             >
               {a.kind === 'shield' ? <Shield className="size-4 text-good" /> : a.kind === 'kudos' ? <HeartHandshake className="size-4 text-primary" /> : <Sparkles className="size-4 text-primary" />}
-              {a.xp > 0 && <span className="font-semibold text-primary tabular">+{a.xp} XP</span>}
+              {a.xp > 0 && <span className="font-semibold text-primary tabular">+{a.xp} {tx('ui.server.xp')}</span>}
               <span className="text-muted-foreground">{words.title(a)}</span>
             </motion.div>
           ))}

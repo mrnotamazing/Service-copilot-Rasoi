@@ -1,3 +1,4 @@
+import { useT, L } from '../i18n/index.ts'
 import { CrewCard } from '../components/CrewCard.tsx'
 import { Plug, ChefHat, History, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
@@ -43,6 +44,7 @@ function Heading({ children }: { children: React.ReactNode }) {
 }
 
 export default function ManagerView() {
+  const tx = useT()
   useRolePage({ kind: 'manager' })
   const { snap, connected } = useSnapshot('manager')
   const summary = useAi()
@@ -66,12 +68,12 @@ export default function ManagerView() {
 
   return (
     <AppShell
-      title="Service overview"
+      title={tx('ui.manager.service_overview')}
       sub={snap.config.name}
       right={
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" className="h-9 rounded-full" onClick={() => setAssist(true)} aria-label="Ask TableMate">
-            <Sparkles /> <span className="hidden sm:inline">Ask TableMate</span>
+          <Button variant="secondary" size="sm" className="h-9 rounded-full" onClick={() => setAssist(true)} aria-label={tx('ui.manager.ask_tablemate')}>
+            <Sparkles /> <span className="hidden sm:inline">{tx('ui.manager.ask_tablemate')}</span>
           </Button>
           {/* The phone shows the time already; keep the header on one line. */}
           <span className="hidden sm:contents">
@@ -106,7 +108,7 @@ export default function ManagerView() {
         <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
           <Card>
             <CardHeader>
-              <Heading>Where time goes: average vs standard</Heading>
+              <Heading>{tx('ui.manager.where_time_goes_average')}</Heading>
             </CardHeader>
             <CardContent className="space-y-4">
               {a.stages.map((s) => (
@@ -126,7 +128,7 @@ export default function ManagerView() {
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
-                    {s.label}: {s.count} steps, avg {s.avgMin} min vs standard {s.avgTargetMin} min
+                    {s.label}: {s.count} {tx('ui.manager.steps_avg')} {s.avgMin} {tx('ui.manager.min_vs_standard')} {s.avgTargetMin} {tx('ui.manager.min')}
                   </TooltipContent>
                 </Tooltip>
               ))}
@@ -136,23 +138,23 @@ export default function ManagerView() {
           <div className="space-y-5">
             <Card>
               <CardHeader>
-                <Heading>Kitchen stations</Heading>
+                <Heading>{tx('ui.manager.kitchen_stations')}</Heading>
                 <CardAction>
                   <ChefHat className="size-4 text-muted-foreground" />
                 </CardAction>
               </CardHeader>
               <CardContent>
                 {a.stations.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Station figures appear once tickets are completed.</p>
+                  <p className="text-sm text-muted-foreground">{tx('ui.manager.station_figures_appear_once')}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm tabular">
                       <thead className="text-left text-xs text-muted-foreground">
                         <tr>
-                          <th className="pb-2 font-medium">Station</th>
-                          <th className="pb-2 text-right font-medium">Tickets</th>
-                          <th className="pb-2 text-right font-medium">Past standard</th>
-                          <th className="pb-2 text-right font-medium">Avg over</th>
+                          <th className="pb-2 font-medium">{tx('ui.manager.station')}</th>
+                          <th className="pb-2 text-right font-medium">{tx('ui.manager.tickets')}</th>
+                          <th className="pb-2 text-right font-medium">{tx('ui.manager.past_standard')}</th>
+                          <th className="pb-2 text-right font-medium">{tx('ui.manager.avg_over')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -161,7 +163,7 @@ export default function ManagerView() {
                             <td className="py-2 capitalize">{s.station}</td>
                             <td className="py-2 text-right">{s.tickets}</td>
                             <td className={cn('py-2 text-right', s.lapses > 0 && 'font-medium text-kitchen')}>{s.lapses}</td>
-                            <td className="py-2 text-right text-muted-foreground">{s.avgOverMin} min</td>
+                            <td className="py-2 text-right text-muted-foreground">{s.avgOverMin} {tx('ui.manager.min')}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -173,7 +175,7 @@ export default function ManagerView() {
               {a.suggestions.length > 0 && (
               <Card>
                 <CardHeader>
-                  <Heading>Suggestions</Heading>
+                  <Heading>{tx('ui.manager.suggestions')}</Heading>
                   <CardAction>
                     <Lightbulb className="size-4 text-primary" />
                   </CardAction>
@@ -194,8 +196,8 @@ export default function ManagerView() {
           <GuestMood moods={a.moods} safety={a.safetyCatches} />
           <Card>
             <CardHeader>
-              <Heading>Team goal and recognition</Heading>
-              <CardDescription>Shared by the whole floor. Individual XP and badges stay on each server’s phone.</CardDescription>
+              <Heading>{tx('ui.manager.team_goal_and_recognition')}</Heading>
+              <CardDescription>{tx('ui.manager.shared_by_the_whole')}</CardDescription>
               <CardAction>
                 <Users className="size-4 text-muted-foreground" />
               </CardAction>
@@ -203,21 +205,21 @@ export default function ManagerView() {
             <CardContent className="grid gap-5 md:grid-cols-[1fr_1.4fr]">
               <div>
                 <div className="flex items-baseline justify-between text-sm">
-                  <span>Tables served fully to standard</span>
+                  <span>{tx('ui.manager.tables_served_fully_to')}</span>
                   <span className="font-display text-2xl tabular">
                     {Math.min(snap.team.smooth, snap.team.goal)}
                     <span className="text-base text-muted-foreground">/{snap.team.goal}</span>
                   </span>
                 </div>
-                <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-2 h-2" aria-label="Team goal progress" />
+                <Progress value={Math.min(100, (snap.team.smooth / snap.team.goal) * 100)} className="mt-2 h-2" aria-label={tx('ui.manager.team_goal_progress')} />
               </div>
               <ul className="space-y-1.5">
-                {snap.team.kudos.length === 0 && <li className="text-sm text-muted-foreground">Kudos staff send each other appear here.</li>}
+                {snap.team.kudos.length === 0 && <li className="text-sm text-muted-foreground">{tx('ui.manager.kudos_staff_send_each')}</li>}
                 {snap.team.kudos.slice(0, 4).map((k) => (
                   <li key={k.id} className="flex items-center gap-2 text-sm">
                     <HeartHandshake className="size-4 shrink-0 text-primary" />
                     <span className="min-w-0 truncate">
-                      <b className="font-medium">{name(k.from)}</b> thanked <b className="font-medium">{name(k.to)}</b>: {k.reason}
+                      <b className="font-medium">{name(k.from)}</b> {tx('ui.manager.thanked')} <b className="font-medium">{name(k.to)}</b>: {k.reason}
                     </span>
                   </li>
                 ))}
@@ -229,8 +231,8 @@ export default function ManagerView() {
         <WhatIfCard servers={snap.config.staff.filter((s) => s.role === 'server')} />
         <Card>
           <CardHeader>
-            <Heading>Shift summary</Heading>
-            <CardDescription>A plain-English read of tonight’s bottlenecks, written by AI from the numbers on this page.</CardDescription>
+            <Heading>{tx('ui.manager.shift_summary')}</Heading>
+            <CardDescription>{tx('ui.manager.a_plain_english_read')}</CardDescription>
             <CardAction>
               <Button variant="secondary" disabled={summary.loading} onClick={() => summary.ask('shift_summary')}>
                 {summary.loading ? <Loader2 className="animate-spin" /> : <Sparkles />} {summary.answer ? 'Refresh' : 'Summarise'}
@@ -245,17 +247,17 @@ export default function ManagerView() {
         </Card>
         <Card>
           <CardHeader>
-            <Heading>Delay receipts: recent tables</Heading>
-            <CardDescription>Each bar is one step of the visit, coloured by who controlled it. Open one to see what happened, step by step.</CardDescription>
+            <Heading>{tx('ui.manager.delay_receipts_recent_tables')}</Heading>
+            <CardDescription>{tx('ui.manager.each_bar_is_one')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {a.recentVisits.length === 0 ? <p className="text-sm text-muted-foreground">Receipts appear as tables finish.</p> : a.recentVisits.map((v) => <Receipt key={v.visitId} v={v} server={name(v.serverId)} onOpen={() => setIncident(reconstructVisit(v, snap.config))} />)}
+            {a.recentVisits.length === 0 ? <p className="text-sm text-muted-foreground">{tx('ui.manager.receipts_appear_as_tables')}</p> : a.recentVisits.map((v) => <Receipt key={v.visitId} v={v} server={name(v.serverId)} onOpen={() => setIncident(reconstructVisit(v, snap.config))} />)}
             <Legend />
           </CardContent>
         </Card>
 
         <p className="flex items-center justify-center gap-1.5 pb-2 text-center text-xs text-muted-foreground">
-          <ShieldCheck className="size-3.5 text-good" /> Process view only: stages, stations and load. Personal scores stay on each server’s phone, and every delay is attributed to whoever controlled that step.
+          <ShieldCheck className="size-3.5 text-good" /> {tx('ui.manager.process_view_only_stages')}
         </p>
       </div>
       <IncidentSheet r={incident} onClose={() => setIncident(null)} server={incident ? name(incident.serverId) : ''} />
@@ -264,19 +266,20 @@ export default function ManagerView() {
 }
 
 function Legend() {
+  const tx = useT()
   return (
     <div className="flex flex-wrap gap-4 pt-1 text-xs text-muted-foreground">
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-4 rounded-sm" style={{ background: OWNER_COLOR.floor }} /> Floor-controlled
+        <span className="h-2 w-4 rounded-sm" style={{ background: OWNER_COLOR.floor }} /> {tx('ui.manager.floor_controlled')}
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-4 rounded-sm" style={{ background: OWNER_COLOR.kitchen }} /> Kitchen
+        <span className="h-2 w-4 rounded-sm" style={{ background: OWNER_COLOR.kitchen }} /> {tx('ui.manager.kitchen')}
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-3 w-0.5 rounded bg-foreground" /> Standard
+        <span className="h-3 w-0.5 rounded bg-foreground" /> {tx('ui.manager.standard')}
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-4 rounded-sm border-2 border-warn" /> Past standard
+        <span className="h-2 w-4 rounded-sm border-2 border-warn" /> {tx('ui.manager.past_standard')}
       </span>
     </div>
   )
@@ -284,6 +287,7 @@ function Legend() {
 
 /** One table's visit: each measured step as a bar on the visit's timeline. */
 function Receipt({ v, server, onOpen }: { v: VisitRecord; server: string; onOpen: () => void }) {
+  const tx = useT()
   const span = Math.max(1, v.endedAt - v.seatedAt)
   const pos = (t: number) => ((t - v.seatedAt) / span) * 100
   const lapses = v.segments.filter((s) => s.lapse)
@@ -291,7 +295,7 @@ function Receipt({ v, server, onOpen }: { v: VisitRecord; server: string; onOpen
     <button type="button" onClick={onOpen} className="block w-full rounded-xl border bg-background/50 p-3 text-left transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
       <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
         <span>
-          <span className="font-semibold">{v.tableName}</span> <span className="text-muted-foreground">{v.partySize} guests, served by {server}</span>
+          <span className="font-semibold">{v.tableName}</span> <span className="text-muted-foreground">{v.partySize} {tx('ui.manager.guests_served_by')} {server}</span>
         </span>
         <span className="text-xs tabular text-muted-foreground">
           {clock(v.seatedAt)}–{clock(v.endedAt)}
@@ -309,7 +313,7 @@ function Receipt({ v, server, onOpen }: { v: VisitRecord; server: string; onOpen
       </div>
       <p className="mt-1.5 text-xs text-muted-foreground">
         {lapses.length === 0
-          ? 'Every step to standard.'
+          ? L('Every step to standard.')
           : lapses.map((s) => `${s.label} +${((s.end - s.start) / 60_000 - s.targetMin).toFixed(1)} min (${s.owner}${s.station ? `, ${s.station}` : ''})`).join(' · ')}
       </p>
     </button>
@@ -318,17 +322,18 @@ function Receipt({ v, server, onOpen }: { v: VisitRecord; server: string; onOpen
 
 /** How guests felt at check-ins tonight, by table. Never broken down by server. */
 function GuestMood({ moods, safety }: { moods: { happy: number; ok: number; unhappy: number; recovered: number }; safety: number }) {
+  const tx = useT()
   const total = moods.happy + moods.ok + moods.unhappy
   const rows = [
-    { label: 'Happy', n: moods.happy, color: 'var(--good)' },
-    { label: 'Okay', n: moods.ok, color: 'var(--muted-foreground)' },
-    { label: 'Not happy', n: moods.unhappy, color: 'var(--warn)' },
+    { label: L('Happy'), n: moods.happy, color: 'var(--good)' },
+    { label: L('Okay'), n: moods.ok, color: 'var(--muted-foreground)' },
+    { label: L('Not happy'), n: moods.unhappy, color: 'var(--warn)' },
   ]
   return (
     <Card>
       <CardHeader>
-        <Heading>Guest mood and safety tonight</Heading>
-        <CardDescription>From servers’ one-tap check-ins, counted per table. Unhappy tables get a recovery card straight away.</CardDescription>
+        <Heading>{tx('ui.manager.guest_mood_and_safety')}</Heading>
+        <CardDescription>{tx('ui.manager.from_servers_one_tap')}</CardDescription>
         <CardAction>
           <Smile className="size-4 text-muted-foreground" />
         </CardAction>
@@ -336,7 +341,7 @@ function GuestMood({ moods, safety }: { moods: { happy: number; ok: number; unha
       <CardContent className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
         <div>
           {total === 0 ? (
-            <p className="text-sm text-muted-foreground">No check-ins yet.</p>
+            <p className="text-sm text-muted-foreground">{tx('ui.manager.no_check_ins_yet')}</p>
           ) : (
             <>
               <div className="flex h-3 overflow-hidden rounded-full bg-muted" role="img" aria-label={rows.map((r) => `${r.label} ${r.n}`).join(', ')}>
@@ -356,13 +361,13 @@ function GuestMood({ moods, safety }: { moods: { happy: number; ok: number; unha
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-muted p-3">
             <div className="text-2xl font-semibold tabular">{moods.unhappy ? `${moods.recovered}/${moods.unhappy}` : '—'}</div>
-            <div className="text-xs text-muted-foreground">unhappy tables won back</div>
+            <div className="text-xs text-muted-foreground">{tx('ui.manager.unhappy_tables_won_back')}</div>
           </div>
           <div className="rounded-xl bg-muted p-3">
             <div className="flex items-center gap-1.5 text-2xl font-semibold tabular">
               <ShieldAlert className="size-5 text-warn" /> {safety}
             </div>
-            <div className="text-xs text-muted-foreground">allergy or diet clashes caught</div>
+            <div className="text-xs text-muted-foreground">{tx('ui.manager.allergy_or_diet_clashes')}</div>
           </div>
         </div>
       </CardContent>
@@ -379,6 +384,7 @@ const ago = (at: number, now: number) => (minutesAgo(at, now) < 1 ? 'just now' :
  * kitchen is behind on, bills waiting, unhappy tables and unresolved allergy or diet clashes.
  */
 function NeedsYou({ snap }: { snap: Snap }) {
+  const tx = useT()
   const now = snap.now
   const sop = snap.config.sop
   const a = snap.analytics!
@@ -390,11 +396,11 @@ function NeedsYou({ snap }: { snap: Snap }) {
       key: `visit-${r.tableId}`,
       icon: <HandHelping className="size-4 text-primary" />,
       title: `Visit ${r.tableName}`,
-      detail: `${server(t?.serverId ?? '')?.name ?? 'A server'} asked you to see the guests`,
+      detail: L('{name} asked you to see the guests', { name: server(t?.serverId ?? '')?.name ?? L('A server') }),
       at: r.at,
       action: (
         <Button size="sm" className="h-8 rounded-full" onClick={() => void act('manager.visited', { tableId: r.tableId }, 'manager')}>
-          Visited
+          {tx('ui.manager.visited')}
         </Button>
       ),
     })
@@ -403,22 +409,22 @@ function NeedsYou({ snap }: { snap: Snap }) {
     if (!t.visitId) continue
     const clash = t.lines.filter((l) => !l.safetyResolvedAt && l.status !== 'served' && l.status !== 'unavailable' && safetyIssues(snap.config.menu.find((m) => m.id === l.menuItemId), t.party).length)
     if (clash.length)
-      items.push({ key: `safety-${t.id}`, icon: <ShieldAlert className="size-4 text-warn" />, title: `${t.name}: allergy or diet clash`, detail: clash.map((l) => l.name).join(', '), at: Math.min(...clash.map((l) => l.firedAt)) })
+      items.push({ key: `safety-${t.id}`, icon: <ShieldAlert className="size-4 text-warn" />, title: L('{table}: allergy or diet clash', { table: t.name }), detail: clash.map((l) => l.name).join(', '), at: Math.min(...clash.map((l) => l.firedAt)) })
     const late = t.lines.filter((l) => l.status === 'fired' && now > l.expectedReadyAt + sop.kitchenDelayToleranceMin * MIN)
     if (late.length)
-      items.push({ key: `late-${t.id}`, icon: <ChefHat className="size-4 text-kitchen" />, title: `${t.name}: kitchen running late`, detail: late.map((l) => l.name).join(', '), at: Math.min(...late.map((l) => l.expectedReadyAt)) })
+      items.push({ key: `late-${t.id}`, icon: <ChefHat className="size-4 text-kitchen" />, title: L('{table}: kitchen running late', { table: t.name }), detail: late.map((l) => l.name).join(', '), at: Math.min(...late.map((l) => l.expectedReadyAt)) })
     if (t.billRequestedAt && !t.billPresentedAt && now > t.billRequestedAt + sop.billPresentWithinMin * MIN)
-      items.push({ key: `bill-${t.id}`, icon: <ReceiptIcon className="size-4 text-warn" />, title: `${t.name}: waiting for the bill`, detail: `${server(t.serverId)?.name ?? ''}’s table`, at: t.billRequestedAt })
+      items.push({ key: `bill-${t.id}`, icon: <ReceiptIcon className="size-4 text-warn" />, title: L('{table}: waiting for the bill', { table: t.name }), detail: L('{name}’s table', { name: server(t.serverId)?.name ?? '' }), at: t.billRequestedAt })
     if (t.mood?.value === 'unhappy' && !t.recoveredAt)
-      items.push({ key: `mood-${t.id}`, icon: <Frown className="size-4 text-warn" />, title: `${t.name}: guests not happy`, detail: `${server(t.serverId)?.name ?? 'The server'} is putting it right`, at: t.mood.at })
+      items.push({ key: `mood-${t.id}`, icon: <Frown className="size-4 text-warn" />, title: L('{table}: guests not happy', { table: t.name }), detail: L('{name} is putting it right', { name: server(t.serverId)?.name ?? L('The server') }), at: t.mood.at })
   }
   return (
     <section className="rounded-2xl border bg-card p-4">
       <h2 className="mb-2 flex items-center gap-2 font-display text-xl">
-        Needs you now {items.length > 0 && <span className="grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular">{items.length}</span>}
+        {tx('ui.manager.needs_you_now')} {items.length > 0 && <span className="grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground tabular">{items.length}</span>}
       </h2>
       {items.length === 0 ? (
-        <BrandEmpty inline title="All calm">Nothing needs you right now. Requests, late tickets and unhappy tables show up here first.</BrandEmpty>
+        <BrandEmpty inline title={tx('ui.manager.all_calm')}>{tx('ui.manager.nothing_needs_you_right')}</BrandEmpty>
       ) : (
         <ul className="divide-y">
           <AnimatePresence initial={false}>
@@ -447,11 +453,11 @@ function Pulse({ snap }: { snap: Snap }) {
   const covers = seated.reduce((n, t) => n + (t.party?.size ?? 0), 0)
   const moods = a.moods.happy + a.moods.ok + a.moods.unhappy
   const items = [
-    { label: 'Seated now', value: `${seated.length}/${snap.tables.length}`, sub: `${covers} guests` },
-    { label: 'Tables served', value: a.visits, sub: snap.sim.waiting ? `${snap.sim.waiting} waiting for a table` : 'no one waiting' },
-    { label: 'Served to standard', value: a.smoothRate == null ? '—' : `${Math.round(a.smoothRate * 100)}%`, sub: 'no floor-controlled lapse' },
-    { label: 'Late steps', value: `${a.lapsesByOwner.floor} · ${a.lapsesByOwner.kitchen}`, sub: 'floor · kitchen' },
-    { label: 'Happy check-ins', value: moods ? `${Math.round((a.moods.happy / moods) * 100)}%` : '—', sub: moods ? `${moods} check-ins` : 'none yet' },
+    { label: L('Seated now'), value: `${seated.length}/${snap.tables.length}`, sub: `${covers} guests` },
+    { label: L('Tables served'), value: a.visits, sub: snap.sim.waiting ? L('{n} waiting for a table', { n: snap.sim.waiting }) : L('no one waiting') },
+    { label: L('Served to standard'), value: a.smoothRate == null ? '—' : `${Math.round(a.smoothRate * 100)}%`, sub: 'no floor-controlled lapse' },
+    { label: L('Late steps'), value: `${a.lapsesByOwner.floor} · ${a.lapsesByOwner.kitchen}`, sub: 'floor · kitchen' },
+    { label: L('Happy check-ins'), value: moods ? `${Math.round((a.moods.happy / moods) * 100)}%` : '—', sub: moods ? `${moods} check-ins` : 'none yet' },
   ]
   return (
     <section className="grid grid-cols-2 divide-border overflow-hidden rounded-2xl border bg-card sm:grid-cols-3 lg:grid-cols-5 lg:divide-x">
@@ -470,13 +476,14 @@ function Pulse({ snap }: { snap: Snap }) {
 
 /** Every section as a floor plan, with its server and how loaded they are (load, never performance). */
 function LiveFloor({ snap, managerId, onReconstruct }: { snap: Snap; managerId: string; onReconstruct: (t: Snap['tables'][number]) => void }) {
+  const tx = useT()
   const [picked, setPicked] = useState<string | undefined>()
   const a = snap.analytics!
   const sections = Object.entries(snap.config.sections)
   const table = snap.tables.find((t) => t.id === picked)
   return (
     <section>
-      <h2 className="mb-2 font-display text-xl">Live floor</h2>
+      <h2 className="mb-2 font-display text-xl">{tx('ui.manager.live_floor')}</h2>
       <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         {sections.map(([section, staffId]) => {
           const s = snap.config.staff.find((x) => x.id === staffId)
@@ -489,10 +496,10 @@ function LiveFloor({ snap, managerId, onReconstruct }: { snap: Snap; managerId: 
                 {s && <Avatar staff={s} className="size-7 text-xs" />}
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium leading-tight">{s?.name ?? 'Unassigned'}</span>
-                  <span className="block text-[11px] text-muted-foreground">Section {section}</span>
+                  <span className="block text-[11px] text-muted-foreground">{tx('ui.manager.section')} {section}</span>
                 </span>
                 <span className={cn('rounded-full px-2 py-0.5 text-[11px] tabular', load?.overloaded ? 'bg-warn/15 text-warn' : 'bg-secondary text-muted-foreground')}>
-                  {load?.activeTables ?? 0} {load?.activeTables === 1 ? 'table' : 'tables'} · {open} to do
+                  {load?.activeTables ?? 0} {load?.activeTables === 1 ? 'table' : 'tables'} · {open} {tx('ui.manager.to_do')}
                 </span>
               </div>
               <FloorPlan snap={snap} tables={tables} tasks={[]} picked={picked} onPick={(id) => setPicked(id === picked ? undefined : id)} compact mini />
@@ -506,6 +513,7 @@ function LiveFloor({ snap, managerId, onReconstruct }: { snap: Snap; managerId: 
 }
 
 function TableSummary({ snap, table: t, managerId, onReconstruct }: { snap: Snap; table: Snap['tables'][number]; managerId: string; onReconstruct: () => void }) {
+  const tx = useT()
   return (
     <div className="mt-3 flex flex-wrap items-start gap-x-6 gap-y-2 rounded-2xl border bg-card p-4 text-sm">
       <div>
@@ -513,25 +521,25 @@ function TableSummary({ snap, table: t, managerId, onReconstruct }: { snap: Snap
         <div className="text-xs text-muted-foreground capitalize">{t.status.replace('_', ' ')}</div>
       </div>
       <div>
-        <div className="text-xs text-muted-foreground">Guests</div>
+        <div className="text-xs text-muted-foreground">{tx('ui.manager.guests')}</div>
         {t.visitId ? `${t.party?.guestName ?? 'Party'} of ${t.party?.size ?? '?'}, seated ${t.seatedAt ? ago(t.seatedAt, snap.now) : ''}` : 'Free'}
       </div>
       <HandTo snap={snap} table={t} managerId={managerId} />
       {t.party?.allergies.length || t.party?.needs?.length || (t.party?.language && t.party.language !== 'en') ? (
         <div>
-          <div className="text-xs text-muted-foreground">Needs</div>
+          <div className="text-xs text-muted-foreground">{tx('ui.manager.needs')}</div>
           {[...(t.party?.allergies.map((x) => `${x} allergy`) ?? []), ...(t.party?.needs ?? []), ...(t.party?.language && t.party.language !== 'en' ? [`prefers ${languageName(t.party.language)}`] : [])].join(', ')}
         </div>
       ) : null}
       {t.lines.length > 0 && (
         <div className="min-w-0 flex-1">
-          <div className="text-xs text-muted-foreground">Order</div>
+          <div className="text-xs text-muted-foreground">{tx('ui.manager.order')}</div>
           {t.lines.map((l) => `${l.qty}× ${l.name} (${l.status === 'fired' ? 'cooking' : l.status === 'ready' ? 'at the pass' : l.status})`).join(', ')}
         </div>
       )}
       {t.visitId && (
         <Button variant="outline" size="sm" className="ml-auto self-center" onClick={onReconstruct}>
-          <History /> What’s happened so far
+          <History /> {tx('ui.manager.what_s_happened_so')}
         </Button>
       )}
     </div>
@@ -540,25 +548,26 @@ function TableSummary({ snap, table: t, managerId, onReconstruct }: { snap: Snap
 
 /** Which outside systems are feeding TableMate (or receiving alerts) right now, with a way in. */
 function ConnectedSystems({ snap }: { snap: Snap }) {
+  const tx = useT()
   const ready = (snap.integrations ?? []).filter((i) => i.mode === 'live' && i.id !== 'export')
   const alerts = snap.config.alerts
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border bg-card px-4 py-3 text-sm">
       <span className="inline-flex items-center gap-1.5 font-medium">
-        <Plug className="size-4 text-primary" /> Connected
+        <Plug className="size-4 text-primary" /> {tx('ui.manager.connected')}
       </span>
       {ready.map((i) => {
         const on = i.id === 'webhook' ? !!alerts?.url : i.id === 'generic' ? i.eventCount > 0 : i.id === 'sim' ? snap.sim.startedAt !== null : i.eventCount > 0
         return (
           <span key={i.id} className="inline-flex items-center gap-1.5 text-muted-foreground">
             <span className={cn('size-2 rounded-full', on ? 'bg-good' : 'bg-muted-foreground/40')} aria-hidden />
-            {i.id === 'webhook' ? 'Alerts out' : i.id === 'generic' ? 'POS / booking feed' : i.name}
-            <span className="sr-only">{on ? '(active)' : '(not active)'}</span>
+            {i.id === 'webhook' ? L('Alerts out') : i.id === 'generic' ? L('POS / booking feed') : i.name}
+            <span className="sr-only">{on ? '(active)' : L('(not active)')}</span>
           </span>
         )
       })}
       <Link to="/demo?tab=integrations" className="ml-auto font-medium text-primary underline-offset-4 hover:underline">
-        Integrations
+        {tx('ui.manager.integrations')}
       </Link>
     </div>
   )

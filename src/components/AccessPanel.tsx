@@ -5,7 +5,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } f
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
+import { LANGUAGES, useT, type Key, L } from '../i18n/index.ts'
 import { DEFAULT_PREFS, setPrefs, usePrefs, type Prefs } from '../lib/prefs.ts'
 import { canSpeak, cuisineVoices, hasVoice, speak, speakTask, voicesFor } from '../lib/speech.ts'
 import { MENU_FOR_TEST } from '../lib/pronounce.ts'
@@ -161,7 +161,7 @@ export function AccessPanel({ open, onOpenChange }: { open: boolean; onOpenChang
                 // A real card, so people hear table numbers and dish names the way service will sound.
                 const title = t('t.pickup', { table: 'T3', course: '@course.starter' })
                 speakTask(`${t('acc.testPhrase')} ${title}`, '2× Galouti kebab, 1× Burrata & heirloom tomato', {
-                  title: `Hello, I’m TableMate. Your next task will be read like this. Pick up T3 starters from the pass`,
+                  title: L(`Hello, I’m TableMate. Your next task will be read like this. Pick up T3 starters from the pass`),
                   hint: '2× Galouti kebab, 1× Burrata & heirloom tomato',
                 })
               }}

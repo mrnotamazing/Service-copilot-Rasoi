@@ -1,6 +1,7 @@
 // The front door at "/": what TableMate is, the problem it answers, what it does, who it is for, and
 // the ways in (the live demo, the film, the real screens). It stands apart from the app's own menu.
 
+import { useT, L } from '../i18n/index.ts'
 import { Accessibility, ArrowRight, BellRing, Check, ChefHat, Clapperboard, Eye, HeartHandshake, Languages, Lock, Play, Receipt, ShieldCheck, Sparkles, Timer, Type, Users, Volume2 } from 'lucide-react'
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -18,11 +19,11 @@ import { useRolePage } from '../lib/role.ts'
 // ---------------------------------------------------------------------------
 // Header
 
-const LINKS = [
-  { href: '#problem', label: 'The problem' },
-  { href: '#product', label: 'What it does' },
-  { href: '#teams', label: 'Who it is for' },
-  { href: '#everyone', label: 'For everyone' },
+const LINKS = () => [
+  { href: '#problem', label: L('The problem') },
+  { href: '#product', label: L('What it does') },
+  { href: '#teams', label: L('Who it is for') },
+  { href: '#everyone', label: L('For everyone') },
 ]
 
 /**
@@ -71,23 +72,24 @@ function useSection(ids: string[]) {
   }, [ids])
   return active
 }
-const SECTION_IDS = LINKS.map((l) => l.href.slice(1))
+const SECTION_IDS = LINKS().map((l) => l.href.slice(1))
 
 function Header() {
+  const tx = useT()
   const active = useSection(SECTION_IDS)
   return (
     <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top,0px)] backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <a href="#main" onClick={skipToMain} className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-1.5 focus:text-sm focus:text-primary-foreground">
-        Skip to main content
+        {tx('ui.landing.skip_to_main_content')}
       </a>
       <ScrollChef />
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 md:gap-6 md:px-6">
-        <Link to="/" className="inline-flex min-h-11 items-center gap-2" aria-label="TableMate home">
+        <Link to="/" className="inline-flex min-h-11 items-center gap-2" aria-label={tx('ui.landing.tablemate_home')}>
           <Mark className="h-6 w-auto text-tomato" />
           <Wordmark className="text-xl leading-none" />
         </Link>
-        <nav aria-label="On this page" className="hidden items-center gap-1 md:flex">
-          {LINKS.map((l) => (
+        <nav aria-label={tx('ui.landing.on_this_page')} className="hidden items-center gap-1 md:flex">
+          {LINKS().map((l) => (
             <a key={l.href} href={l.href} onClick={(e) => scrollToId(e, l.href.slice(1))}
               aria-current={active === l.href.slice(1) ? 'location' : undefined}
               className={cn('inline-flex h-9 items-center rounded-lg px-3 text-sm transition-colors hover:bg-secondary/60 hover:text-foreground', active === l.href.slice(1) ? 'bg-secondary font-medium text-foreground' : 'text-muted-foreground')}
@@ -99,7 +101,7 @@ function Header() {
         <div className="ml-auto flex items-center gap-1.5">
           <AccessButton />
           <Button asChild size="sm" className="h-9 rounded-full px-4 pointer-coarse:h-11">
-            <Link to="/demo">Try the demo</Link>
+            <Link to="/demo">{tx('ui.landing.try_the_demo')}</Link>
           </Button>
         </div>
       </div>
@@ -117,13 +119,13 @@ interface Move {
   action: string
   safety?: boolean
 }
-const MOVES: Move[] = [
-  { id: 'greet', title: 'Greet Table 4', why: 'Seated 90 seconds ago. Anniversary dinner, one nut allergy.', action: 'Greeted' },
-  { id: 'late', title: 'Tell Table 2 the mains are late', why: 'The grill is 6 minutes behind. A heads-up now beats an apology later.', action: 'Told them' },
-  { id: 'bill', title: 'Bring the bill to Table 6', why: 'Asked for it a minute ago.', action: 'Brought' },
-  { id: 'allergy', title: 'Priya has a nut allergy', why: 'The satay on Table 3 has peanut sauce. Tell the kitchen before it is plated.', action: 'Tell the kitchen', safety: true },
-  { id: 'check', title: 'Check back on Table 1', why: 'Mains arrived 2 minutes ago.', action: 'Checked' },
-  { id: 'dessert', title: 'Offer dessert at Table 5', why: 'Plates cleared, no order yet.', action: 'Offered' },
+const MOVES = (): Move[] => [
+  { id: 'greet', title: L('Greet Table 4'), why: L('Seated 90 seconds ago. Anniversary dinner, one nut allergy.'), action: 'Greeted' },
+  { id: 'late', title: L('Tell Table 2 the mains are late'), why: L('The grill is 6 minutes behind. A heads-up now beats an apology later.'), action: L('Told them') },
+  { id: 'bill', title: L('Bring the bill to Table 6'), why: L('Asked for it a minute ago.'), action: 'Brought' },
+  { id: 'allergy', title: L('Priya has a nut allergy'), why: L('The satay on Table 3 has peanut sauce. Tell the kitchen before it is plated.'), action: L('Tell the kitchen'), safety: true },
+  { id: 'check', title: L('Check back on Table 1'), why: L('Mains arrived 2 minutes ago.'), action: 'Checked' },
+  { id: 'dessert', title: L('Offer dessert at Table 5'), why: L('Plates cleared, no order yet.'), action: 'Offered' },
 ]
 
 function MoveCard({ m, lead, onDone }: { m: Move; lead: boolean; onDone: () => void }) {
@@ -158,11 +160,12 @@ function MoveCard({ m, lead, onDone }: { m: Move; lead: boolean; onDone: () => v
 }
 
 function HeroPhone() {
+  const tx = useT()
   const device = useReducedMotion()
   const still = usePrefs().reduceMotion || !!device
   const [n, setN] = useState(0)
   const [touched, setTouched] = useState(false)
-  const visible = [0, 1, 2].map((i) => ({ m: MOVES[(n + i) % MOVES.length], key: n + i }))
+  const visible = [0, 1, 2].map((i) => ({ m: MOVES()[(n + i) % MOVES().length], key: n + i }))
 
   // Left alone it plays on its own; the first tap hands it over to the visitor.
   useEffect(() => {
@@ -176,9 +179,9 @@ function HeroPhone() {
       <div className="rounded-[2.6rem] bg-chocolate p-2.5 ring-1 ring-border shadow-[0_40px_70px_-34px_color-mix(in_oklab,var(--chocolate)_70%,transparent)]">
         <div className="overflow-hidden rounded-[2.1rem] bg-background">
           <div className="flex items-baseline justify-between px-5 pb-2 pt-5">
-            <span className="font-display text-lg">Next up</span>
+            <span className="font-display text-lg">{tx('ui.landing.next_up')}</span>
             <span className="text-xs tabular text-muted-foreground" aria-live="polite">
-              {n} done
+              {n} {tx('ui.landing.done')}
             </span>
           </div>
           <div className="grid h-[440px] content-start gap-3 overflow-hidden px-3 pb-4">
@@ -206,41 +209,41 @@ function HeroPhone() {
           </div>
         </div>
       </div>
-      <p className="mt-4 text-center text-sm text-muted-foreground">{touched ? 'Suggestions, never orders. Nothing here is forced on the server.' : 'Try it: tap the button on the top card.'}</p>
+      <p className="mt-4 text-center text-sm text-muted-foreground">{touched ? L('Suggestions, never orders. Nothing here is forced on the server.') : L('Try it: tap the button on the top card.')}</p>
     </div>
   )
 }
 
 function Hero() {
+  const tx = useT()
   return (
     <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-14 pt-10 md:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:pb-20 lg:pt-16">
       <div className="min-w-0">
-        <Mascot className="-ml-1 w-[min(150px,40vw)]" speed="var(--foreground)" title="TableMate's running chef" />
+        <Mascot className="-ml-1 w-[min(150px,40vw)]" speed="var(--foreground)" title={tx('ui.about.tablemate_s_running_chef')} />
         <p className="tagline mt-3 text-muted-foreground">{TAGLINE}</p>
         <h1 className="mt-5 text-balance font-display text-[clamp(2.3rem,4.8vw,3.7rem)] leading-[1.05] tracking-[-0.035em]">
-          Every table on time. <span className="text-primary">No one blamed for what was never theirs.</span>
+          {tx('ui.landing.every_table_on_time')} <span className="text-primary">{tx('ui.landing.no_one_blamed_for')}</span>
         </h1>
         <p className="mt-6 max-w-[34rem] text-pretty text-lg leading-relaxed text-muted-foreground">
-          TableMate is an AI copilot for fine-dining servers. It shows each server the next three things that matter, keeps the kitchen and the floor on the same page, and records whose step every
-          delay really was.
+          {tx('ui.landing.tablemate_is_an_ai')}
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Button asChild size="lg" className="h-12 rounded-full px-6 text-base">
             <Link to="/demo">
-              Try the live demo <ArrowRight />
+              {tx('ui.landing.try_the_live_demo')} <ArrowRight />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="h-12 rounded-full px-6 text-base">
             <Link to="/intro">
-              <Play /> Watch the film
+              <Play /> {tx('ui.landing.watch_the_film')}
             </Link>
           </Button>
         </div>
         <p className="mt-5 text-sm text-muted-foreground">
           <Link to="/about" className="font-medium text-foreground underline underline-offset-4 hover:text-primary">
-            Read how it works
+            {tx('ui.landing.read_how_it_works')}
           </Link>{' '}
-          · Reads your POS, no new hardware · Six languages
+          {tx('ui.landing.reads_your_pos_no')}
         </p>
       </div>
       <HeroPhone />
@@ -266,16 +269,17 @@ function ServiceLine() {
 // The problem
 
 function Problem() {
+  const tx = useT()
   const items: { icon: ReactNode; title: string; body: string }[] = [
-    { icon: <Users />, title: 'Six tables, one head', body: 'Greetings, courses, check-backs, bills, resets. Each step is simple. Holding all of them at once, at pace, is where servers slip.' },
-    { icon: <ChefHat />, title: 'News stops at the pass', body: 'The POS knows a dish is late or gone. The server learns when the guest asks. Kitchen and floor still talk by shouting.' },
-    { icon: <Receipt />, title: 'Blame lands on the floor', body: 'Guests and managers see the server, so a slow grill reads as slow service. And retraining fixes what people know, not what a rush asks of them.' },
+    { icon: <Users />, title: L('Six tables, one head'), body: L('Greetings, courses, check-backs, bills, resets. Each step is simple. Holding all of them at once, at pace, is where servers slip.') },
+    { icon: <ChefHat />, title: L('News stops at the pass'), body: L('The POS knows a dish is late or gone. The server learns when the guest asks. Kitchen and floor still talk by shouting.') },
+    { icon: <Receipt />, title: L('Blame lands on the floor'), body: L('Guests and managers see the server, so a slow grill reads as slow service. And retraining fixes what people know, not what a rush asks of them.') },
   ]
   return (
     <section id="problem" className="scroll-mt-16 border-t">
       <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
-        <h2 className="max-w-[22ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">Restaurants digitised the order. Not the server’s job.</h2>
-        <p className="mt-4 max-w-[56ch] text-pretty text-lg text-muted-foreground">Servers know the standards. A busy night is what makes them slip, and then the wrong person carries the blame.</p>
+        <h2 className="max-w-[22ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">{tx('ui.landing.restaurants_digitised_the_order')}</h2>
+        <p className="mt-4 max-w-[56ch] text-pretty text-lg text-muted-foreground">{tx('ui.landing.servers_know_the_standards')}</p>
         <div className="mt-10 grid gap-8 md:grid-cols-3">
           {items.map((x) => (
             <div key={x.title} className="border-l-2 border-primary pl-5">
@@ -316,32 +320,33 @@ function Pane({ children }: { children: ReactNode }) {
 }
 
 function OnTrackPicture() {
+  const tx = useT()
   return (
     <Pane>
       <div className="grid gap-3">
         <div className="rounded-2xl border border-destructive/50 bg-card p-4">
           <div className="flex items-center gap-2.5 font-display text-lg">
-            <ShieldCheck className="size-5 text-destructive" aria-hidden /> Priya has a nut allergy
+            <ShieldCheck className="size-5 text-destructive" aria-hidden /> {tx('ui.landing.priya_has_a_nut')}
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">Table 3 · Satay skewers are on the order</p>
-          <div className="mt-3 rounded-full bg-primary py-2 text-center text-sm font-medium text-primary-foreground">Tell the kitchen</div>
+          <p className="mt-1 text-sm text-muted-foreground">{tx('ui.landing.table_3_satay_skewers')}</p>
+          <div className="mt-3 rounded-full bg-primary py-2 text-center text-sm font-medium text-primary-foreground">{tx('ui.landing.tell_the_kitchen')}</div>
         </div>
         <div className="mx-auto h-6 w-px border-l-2 border-dashed border-muted-foreground/50" aria-hidden />
         <div className="rounded-2xl border bg-card p-4">
           <div className="flex items-center justify-between gap-2">
             <span className="flex items-center gap-2 font-medium text-kitchen">
-              <ChefHat className="size-5" aria-hidden /> Kitchen · Table 3
+              <ChefHat className="size-5" aria-hidden /> {tx('ui.landing.kitchen_table_3')}
             </span>
-            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">fired 0:12</span>
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">{tx('ui.landing.fired_0_12')}</span>
           </div>
           <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-muted px-3.5 py-2.5 text-sm">
-            <span className="font-medium">Satay skewers</span>
+            <span className="font-medium">{tx('ui.landing.satay_skewers')}</span>
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-0.5 text-xs font-medium text-accent-foreground">
-              <ShieldCheck className="size-3.5" aria-hidden /> nut allergy
+              <ShieldCheck className="size-3.5" aria-hidden /> {tx('ui.landing.nut_allergy')}
             </span>
           </div>
           <p className="mt-3 flex items-center gap-2 text-sm text-good">
-            <Check className="size-4" strokeWidth={3} aria-hidden /> Chef: swapped the sauce, no nuts
+            <Check className="size-4" strokeWidth={3} aria-hidden /> {tx('ui.landing.chef_swapped_the_sauce')}
           </p>
         </div>
       </div>
@@ -350,19 +355,20 @@ function OnTrackPicture() {
 }
 
 function FairPicture() {
+  const tx = useT()
   return (
     <Pane>
       <div className="rounded-2xl border bg-card p-4">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="font-display text-lg">Table 4 · 1 h 42 min</span>
-          <span className="text-xs text-muted-foreground">Example receipt</span>
+          <span className="font-display text-lg">{tx('ui.landing.table_4_1_h')}</span>
+          <span className="text-xs text-muted-foreground">{tx('ui.landing.example_receipt')}</span>
         </div>
         <ul className="mt-3 divide-y text-sm">
           {[
             ['Greeted', '0:42', 'Floor', false],
-            ['Order sent to the kitchen', '1:05', 'Floor', false],
-            ['Mains ready', '+14:00', 'Kitchen', true],
-            ['Bill brought', '1:50', 'Floor', false],
+            [L('Order sent to the kitchen'), '1:05', 'Floor', false],
+            [L('Mains ready'), '+14:00', 'Kitchen', true],
+            [L('Bill brought'), '1:50', 'Floor', false],
           ].map(([step, time, who, late]) => (
             <li key={String(step)} className="flex items-center gap-3 py-2.5">
               <span className={cn('grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-bold', late ? 'bg-kitchen/15 text-kitchen' : 'bg-good/15 text-good')}>{late ? '!' : <Check className="size-3.5" strokeWidth={3} aria-hidden />}</span>
@@ -372,12 +378,12 @@ function FairPicture() {
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-muted" role="img" aria-label="The extra time: 87 percent kitchen, 13 percent floor">
+        <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-muted" role="img" aria-label={tx('ui.landing.the_extra_time_87')}>
           <div className="h-full" style={{ width: '87%', background: 'var(--kitchen-mark)' }} />
           <div className="h-full" style={{ width: '13%', background: 'var(--floor-mark)' }} />
         </div>
         <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-good/12 px-3 py-1 text-sm text-good">
-          <Check className="size-4" strokeWidth={3} aria-hidden /> Aisha’s steps: all within standard
+          <Check className="size-4" strokeWidth={3} aria-hidden /> {tx('ui.landing.aisha_s_steps_all')}
         </p>
       </div>
     </Pane>
@@ -385,6 +391,7 @@ function FairPicture() {
 }
 
 function FloorPicture() {
+  const tx = useT()
   const tbl = (n: string, extra?: ReactNode, tone?: 'move') => (
     <span key={n} className={cn('relative grid size-12 place-items-center rounded-full border-[3px] bg-card font-display text-sm', tone === 'move' ? 'border-primary' : 'border-border')}>
       {n}
@@ -395,8 +402,8 @@ function FloorPicture() {
     <Pane>
       <div className="grid grid-cols-2 gap-3">
         {[
-          { who: 'Aisha’s section', count: '4 tables', tables: [tbl('T1'), tbl('T2'), tbl('T3'), tbl('T4', <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium text-primary">हिन्दी</span>, 'move')] },
-          { who: 'Meera’s section', count: '2 tables', tables: [tbl('T5'), tbl('T6')] },
+          { who: L('Aisha’s section'), count: '4 tables', tables: [tbl('T1'), tbl('T2'), tbl('T3'), tbl('T4', <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-xs font-medium text-primary">हिन्दी</span>, 'move')] },
+          { who: L('Meera’s section'), count: '2 tables', tables: [tbl('T5'), tbl('T6')] },
         ].map((r) => (
           <div key={r.who} className="rounded-2xl border-2 border-dashed bg-card/60 p-3">
             <div className="flex items-baseline justify-between gap-2 text-xs">
@@ -412,8 +419,8 @@ function FloorPicture() {
           <Sparkles className="size-5" aria-hidden />
         </span>
         <div className="min-w-0 text-sm">
-          <p className="font-medium">Table 4 speaks Hindi. Meera does, and has the lighter section.</p>
-          <div className="mt-2 inline-block rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground">Hand to Meera</div>
+          <p className="font-medium">{tx('ui.landing.table_4_speaks_hindi')}</p>
+          <div className="mt-2 inline-block rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground">{tx('ui.landing.hand_to_meera')}</div>
         </div>
       </div>
     </Pane>
@@ -421,13 +428,14 @@ function FloorPicture() {
 }
 
 function GrowPicture() {
+  const tx = useT()
   const R = 38
   const C = 2 * Math.PI * R
   return (
     <Pane>
       <div className="grid gap-3">
-        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-muted px-4 py-3 text-sm">Is the satay safe for me? I’m allergic to nuts.</div>
-        <div className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-accent px-4 py-3 text-sm text-accent-foreground">Thank you for telling me. Let me check with the chef and come straight back.</div>
+        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-muted px-4 py-3 text-sm">{tx('ui.landing.is_the_satay_safe')}</div>
+        <div className="ml-auto max-w-[88%] rounded-2xl rounded-br-md bg-accent px-4 py-3 text-sm text-accent-foreground">{tx('ui.landing.thank_you_for_telling')}</div>
         <div className="flex items-center gap-4 rounded-2xl border bg-card p-4">
           <svg width="88" height="88" viewBox="0 0 88 88" aria-hidden>
             <circle cx="44" cy="44" r={R} fill="none" stroke="var(--muted)" strokeWidth="9" />
@@ -438,13 +446,13 @@ function GrowPicture() {
           </svg>
           <div className="min-w-0 text-sm">
             <p className="flex items-center gap-2">
-              <Check className="size-4 text-good" strokeWidth={3} aria-hidden /> Named the allergy
+              <Check className="size-4 text-good" strokeWidth={3} aria-hidden /> {tx('ui.landing.named_the_allergy')}
             </p>
             <p className="mt-1 flex items-center gap-2">
-              <Check className="size-4 text-good" strokeWidth={3} aria-hidden /> Went to the chef
+              <Check className="size-4 text-good" strokeWidth={3} aria-hidden /> {tx('ui.landing.went_to_the_chef')}
             </p>
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-              <Lock className="size-3" aria-hidden /> Only the server sees this
+              <Lock className="size-3" aria-hidden /> {tx('ui.landing.only_the_server_sees')}
             </p>
           </div>
         </div>
@@ -453,74 +461,75 @@ function GrowPicture() {
   )
 }
 
-const GROUPS: { id: string; tab: string; title: string; lead: string; items: [string, string][]; picture: ReactNode }[] = [
+const GROUPS = (): { id: string; tab: string; title: string; lead: string; items: [string, string][]; picture: ReactNode }[] => [
   {
     id: 'track',
-    tab: 'On track',
-    title: 'Every table stays on track',
-    lead: 'Quick and correct, in the order the guests need it.',
+    tab: L('On track'),
+    title: L('Every table stays on track'),
+    lead: L('Quick and correct, in the order the guests need it.'),
     items: [
-      ['The next three moves', 'Each server sees only what matters now, ranked by guest impact and urgency, with the reason for each. They are suggestions, never orders.'],
-      ['Allergies caught before the plate is made', 'A nut allergy at the table and a dish with nuts on the order become the top card, and the kitchen ticket carries the same flag. It is a rule, never an AI guess.'],
-      ['One answer for every guest question', 'Guests ask “is it vegetarian?”. The kitchen answers once, and the answer is saved for the next server.'],
+      [L('The next three moves'), L('Each server sees only what matters now, ranked by guest impact and urgency, with the reason for each. They are suggestions, never orders.')],
+      [L('Allergies caught before the plate is made'), L('A nut allergy at the table and a dish with nuts on the order become the top card, and the kitchen ticket carries the same flag. It is a rule, never an AI guess.')],
+      [L('One answer for every guest question'), L('Guests ask “is it vegetarian?”. The kitchen answers once, and the answer is saved for the next server.')],
     ],
     picture: <OnTrackPicture />,
   },
   {
     id: 'fair',
-    tab: 'Fair',
-    title: 'Delays go to whoever controlled them',
-    lead: 'So a slow grill is never marked against a server.',
+    tab: L('Fair'),
+    title: L('Delays go to whoever controlled them'),
+    lead: L('So a slow grill is never marked against a server.'),
     items: [
-      ['A receipt for every table', 'Each step is timed against the restaurant’s own standard and coloured by who controlled it: the floor or the kitchen.'],
-      ['The kitchen and floor share one picture', 'Late tickets, dishes that are off, notes both ways. News no longer travels by shouting.'],
-      ['Process, never people', 'Managers see where time goes, not a ranking of staff. Personal stats stay on the server’s own screen.'],
+      [L('A receipt for every table'), L('Each step is timed against the restaurant’s own standard and coloured by who controlled it: the floor or the kitchen.')],
+      [L('The kitchen and floor share one picture'), L('Late tickets, dishes that are off, notes both ways. News no longer travels by shouting.')],
+      [L('Process, never people'), L('Managers see where time goes, not a ranking of staff. Personal stats stay on the server’s own screen.')],
     ],
     picture: <FairPicture />,
   },
   {
     id: 'floor',
-    tab: 'Balanced floor',
-    title: 'The floor stays balanced',
-    lead: 'The manager sees where help is needed and can act in one tap.',
+    tab: L('Balanced floor'),
+    title: L('The floor stays balanced'),
+    lead: L('The manager sees where help is needed and can act in one tap.'),
     items: [
-      ['The live floor', 'Every table’s stage and mood, with the ones that need a manager flagged first.'],
-      ['Share the floor', 'Hand a table to a colleague who speaks the guests’ language or has more room. It returns to its section after the visit.'],
-      ['Suggestions and what-ifs', 'AI-suggested moves for the next fifteen minutes, and “what if we add a grill cook?” answered before it is tried.'],
+      [L('The live floor'), L('Every table’s stage and mood, with the ones that need a manager flagged first.')],
+      [L('Share the floor'), L('Hand a table to a colleague who speaks the guests’ language or has more room. It returns to its section after the visit.')],
+      [L('Suggestions and what-ifs'), L('AI-suggested moves for the next fifteen minutes, and “what if we add a grill cook?” answered before it is tried.')],
     ],
     picture: <FloorPicture />,
   },
   {
     id: 'grow',
-    tab: 'Growing',
-    title: 'People get better at the hard moments',
-    lead: 'Practice that fits between rushes, in private.',
+    tab: L('Growing'),
+    title: L('People get better at the hard moments'),
+    lead: L('Practice that fits between rushes, in private.'),
     items: [
-      ['Practise tough conversations', 'Realistic guests, an honest score, and an ideal reply to compare with. Scores and progress belong to the server.'],
-      ['A coach, not a scoreboard', 'Short lessons and tips that follow what that server actually met on the floor.'],
-      ['Built for every server', 'Six languages, read-aloud, large text, colour-safe cues, and alerts that flash and buzz as well as chime.'],
+      [L('Practise tough conversations'), L('Realistic guests, an honest score, and an ideal reply to compare with. Scores and progress belong to the server.')],
+      [L('A coach, not a scoreboard'), L('Short lessons and tips that follow what that server actually met on the floor.')],
+      [L('Built for every server'), L('Six languages, read-aloud, large text, colour-safe cues, and alerts that flash and buzz as well as chime.')],
     ],
     picture: <GrowPicture />,
   },
 ]
 
 function Product() {
+  const tx = useT()
   return (
     <section id="product" className="scroll-mt-16 border-t bg-secondary/30">
       <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
-        <h2 className="max-w-[24ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">One copilot for the server, the kitchen and the manager.</h2>
-        <p className="mt-4 max-w-[56ch] text-pretty text-lg text-muted-foreground">It listens to events your POS already produces. No new hardware, and no one types an order twice.</p>
+        <h2 className="max-w-[24ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">{tx('ui.landing.one_copilot_for_the')}</h2>
+        <p className="mt-4 max-w-[56ch] text-pretty text-lg text-muted-foreground">{tx('ui.landing.it_listens_to_events')}</p>
         <Tabs defaultValue="track" className="mt-10 gap-6">
           <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
             <TabsList className="h-auto w-max gap-1 rounded-full bg-background p-1.5 ring-1 ring-border">
-              {GROUPS.map((g) => (
+              {GROUPS().map((g) => (
                 <TabsTrigger key={g.id} value={g.id} className="h-9 flex-none rounded-full px-5 text-sm text-muted-foreground pointer-coarse:h-11 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-none">
                   {g.tab}
                 </TabsTrigger>
               ))}
             </TabsList>
           </div>
-          {GROUPS.map((g) => (
+          {GROUPS().map((g) => (
             <TabsContent key={g.id} value={g.id} className="rise-in grid items-center gap-8 lg:grid-cols-2 lg:gap-14">
               <div className="min-w-0">
                 <h3 className="text-balance font-display text-2xl leading-tight tracking-[-0.02em] md:text-4xl">{g.title}</h3>
@@ -554,31 +563,32 @@ function Screen({ role, to, cta, children, className }: { role: string; to: stri
 }
 
 function Teams() {
+  const tx = useT()
   return (
     <section id="teams" className="scroll-mt-16 border-t">
       <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
-        <h2 className="max-w-[22ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">One moment, three screens.</h2>
+        <h2 className="max-w-[22ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">{tx('ui.landing.one_moment_three_screens')}</h2>
         <p className="mt-4 max-w-[58ch] text-pretty text-lg text-muted-foreground">
-          It is 8:42 on a busy Saturday and the grill falls behind. Here is what each person sees, and what they do next. Open any of them to try it for real.
+          {tx('ui.landing.it_is_8_42')}
         </p>
         <div className="mt-10 grid items-start gap-8 lg:grid-cols-[0.85fr_1.15fr_1fr] lg:gap-6">
           <Screen role="The server" to="/servers" cta="Open a server’s phone">
             <div className="rounded-2xl border border-primary/60 bg-background p-4 shadow-md">
-              <div className="font-display text-base leading-snug">Tell Table 2 the mains are late</div>
+              <div className="font-display text-base leading-snug">{tx('ui.landing.tell_table_2_the')}</div>
               <div className="mt-1 flex items-start gap-1.5 text-[13px] leading-snug text-muted-foreground">
                 <Sparkles className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
-                <span>The grill is 6 minutes behind. A heads-up now beats an apology later.</span>
+                <span>{tx('ui.landing.the_grill_is_6')}</span>
               </div>
-              <div className="mt-3 rounded-full bg-primary py-2 text-center text-sm font-medium text-primary-foreground">Told them</div>
+              <div className="mt-3 rounded-full bg-primary py-2 text-center text-sm font-medium text-primary-foreground">{tx('ui.landing.told_them')}</div>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">She tells the table before they ask. The guest hears it from her, calmly.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{tx('ui.landing.she_tells_the_table')}</p>
           </Screen>
           <Screen role="The kitchen" to="/kitchen" cta="Open the kitchen pass" className="lg:mt-10">
             <ul className="divide-y text-sm">
               {[
-                ['T2 · Mains', '+6:10', true],
-                ['T6 · Mains', '+3:40', true],
-                ['T9 · Starters', '1:20', false],
+                [L('T2 · Mains'), '+6:10', true],
+                [L('T6 · Mains'), '+3:40', true],
+                [L('T9 · Starters'), '1:20', false],
               ].map(([t, time, late]) => (
                 <li key={String(t)} className="flex items-center gap-3 py-2.5">
                   <span className="min-w-0 flex-1 font-medium">{t}</span>
@@ -588,27 +598,27 @@ function Teams() {
             </ul>
             <div className="mt-3 flex items-center gap-2 rounded-xl bg-muted px-3 py-2 text-sm">
               <ChefHat className="size-4 shrink-0 text-kitchen" aria-hidden />
-              <span className="min-w-0 flex-1">Grill backed up, about 5 min</span>
-              <span className="rounded-full bg-background px-2 py-0.5 text-xs text-good">Sent to the floor</span>
+              <span className="min-w-0 flex-1">{tx('ui.landing.grill_backed_up_about')}</span>
+              <span className="rounded-full bg-background px-2 py-0.5 text-xs text-good">{tx('ui.landing.sent_to_the_floor')}</span>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">One note reaches every server at once. No one walks the pass to ask.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{tx('ui.landing.one_note_reaches_every')}</p>
           </Screen>
           <Screen role="The manager" to="/manager" cta="Open the manager view" className="lg:mt-4">
             <div className="flex items-start gap-3 rounded-2xl bg-accent/60 p-3.5">
               <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-background text-primary">
                 <Sparkles className="size-5" aria-hidden />
               </span>
-              <p className="text-sm font-medium leading-snug">The grill is behind on 3 tables. This is a kitchen pattern, not a server one.</p>
+              <p className="text-sm font-medium leading-snug">{tx('ui.landing.the_grill_is_behind')}</p>
             </div>
             <ul className="mt-3 space-y-2 text-sm">
               <li className="flex items-center gap-2">
-                <Check className="size-4 text-good" strokeWidth={3} aria-hidden /> Aisha’s steps: all within standard
+                <Check className="size-4 text-good" strokeWidth={3} aria-hidden /> {tx('ui.landing.aisha_s_steps_all')}
               </li>
               <li className="flex items-center gap-2">
-                <Lock className="size-4 text-muted-foreground" aria-hidden /> No ranking of people, only where time goes
+                <Lock className="size-4 text-muted-foreground" aria-hidden /> {tx('ui.landing.no_ranking_of_people')}
               </li>
             </ul>
-            <p className="mt-3 text-sm text-muted-foreground">She sees the cause, not a slow server, and can step in at the grill.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{tx('ui.landing.she_sees_the_cause')}</p>
           </Screen>
         </div>
       </div>
@@ -619,28 +629,29 @@ function Teams() {
 // ---------------------------------------------------------------------------
 // Principles and access
 
-const PRINCIPLES: { icon: ReactNode; title: string; body: string }[] = [
-  { icon: <Timer />, title: 'Suggestions, never orders', body: 'The server stays in charge. Every card can wait, and the reason is always shown.' },
-  { icon: <ShieldCheck />, title: 'Safety is a rule, not a guess', body: 'Allergy checks and menu answers come from your kitchen’s own data. AI only helps with wording.' },
-  { icon: <Lock />, title: 'Never a ranking of people', body: 'Managers see the process. Personal scores, streaks and practice stay on the server’s own screen.' },
-  { icon: <HeartHandshake />, title: 'Works without the AI', body: 'If no AI service is connected, a built-in writer takes over. Nothing on the floor depends on it.' },
+const PRINCIPLES = (): { icon: ReactNode; title: string; body: string }[] => [
+  { icon: <Timer />, title: L('Suggestions, never orders'), body: L('The server stays in charge. Every card can wait, and the reason is always shown.') },
+  { icon: <ShieldCheck />, title: L('Safety is a rule, not a guess'), body: L('Allergy checks and menu answers come from your kitchen’s own data. AI only helps with wording.') },
+  { icon: <Lock />, title: L('Never a ranking of people'), body: L('Managers see the process. Personal scores, streaks and practice stay on the server’s own screen.') },
+  { icon: <HeartHandshake />, title: L('Works without the AI'), body: L('If no AI service is connected, a built-in writer takes over. Nothing on the floor depends on it.') },
 ]
 const LANGS = ['English', 'हिन्दी', 'தமிழ்', 'বাংলা', 'Español', 'नेपाली']
-const ACCESS: { icon: ReactNode; label: string }[] = [
-  { icon: <Volume2 />, label: 'Read aloud' },
-  { icon: <Type />, label: 'Large text' },
-  { icon: <Eye />, label: 'Colour-safe cues' },
-  { icon: <BellRing />, label: 'Flash and buzz alerts' },
+const ACCESS = (): { icon: ReactNode; label: string }[] => [
+  { icon: <Volume2 />, label: L('Read aloud') },
+  { icon: <Type />, label: L('Large text') },
+  { icon: <Eye />, label: L('Colour-safe cues') },
+  { icon: <BellRing />, label: L('Flash and buzz alerts') },
 ]
 
 function Trust() {
+  const tx = useT()
   return (
     <section id="everyone" className="scroll-mt-16 border-t bg-secondary/30">
       <div className="mx-auto grid max-w-6xl gap-14 px-4 py-16 md:px-6 md:py-24 lg:grid-cols-2">
         <div>
-          <h2 className="max-w-[18ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">Built to be trusted on the floor.</h2>
+          <h2 className="max-w-[18ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">{tx('ui.landing.built_to_be_trusted')}</h2>
           <ul className="mt-8 space-y-6">
-            {PRINCIPLES.map((p) => (
+            {PRINCIPLES().map((p) => (
               <li key={p.title} className="flex gap-4">
                 <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-accent text-primary [&_svg]:size-5">{p.icon}</span>
                 <div>
@@ -652,10 +663,10 @@ function Trust() {
           </ul>
         </div>
         <div>
-          <h2 className="max-w-[18ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">Made for every server.</h2>
-          <p className="mt-4 text-lg text-muted-foreground">In their own language, and in whatever way works best for them.</p>
+          <h2 className="max-w-[18ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">{tx('ui.landing.made_for_every_server')}</h2>
+          <p className="mt-4 text-lg text-muted-foreground">{tx('ui.landing.in_their_own_language')}</p>
           <div className="mt-8 flex items-center gap-2 text-sm font-medium">
-            <Languages className="size-4 text-primary" aria-hidden /> Six languages across the app
+            <Languages className="size-4 text-primary" aria-hidden /> {tx('ui.landing.six_languages_across_the')}
           </div>
           <ul className="mt-3 flex flex-wrap gap-2.5">
             {LANGS.map((l) => (
@@ -665,10 +676,10 @@ function Trust() {
             ))}
           </ul>
           <div className="mt-8 flex items-center gap-2 text-sm font-medium">
-            <Accessibility className="size-4 text-primary" aria-hidden /> Comfort and access, in Settings
+            <Accessibility className="size-4 text-primary" aria-hidden /> {tx('ui.landing.comfort_and_access_in')}
           </div>
           <ul className="mt-3 grid grid-cols-2 gap-2.5">
-            {ACCESS.map((a) => (
+            {ACCESS().map((a) => (
               <li key={a.label} className="flex items-center gap-3 rounded-xl bg-accent px-4 py-3 text-sm font-medium text-accent-foreground [&_svg]:size-5">
                 {a.icon}
                 {a.label}
@@ -685,20 +696,20 @@ function Trust() {
 // The way in
 
 function Finale() {
+  const tx = useT()
   return (
     <section className="px-4 py-14 md:px-6 md:py-20">
       <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-hero p-8 text-hero-foreground md:p-14">
         <Mascot className="pointer-events-none absolute bottom-5 right-8 w-48 max-md:hidden" speed="var(--hero-foreground)" />
-        <h2 className="max-w-[18ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">See it run before you decide.</h2>
+        <h2 className="max-w-[18ch] text-balance font-display text-3xl leading-tight tracking-[-0.025em] md:text-5xl">{tx('ui.landing.see_it_run_before')}</h2>
         <p className="mt-4 max-w-[48ch] text-pretty text-lg opacity-85">
-          Start a simulated Saturday service, play a server, and watch the kitchen and the manager react. Presenting? One tap sets up a service already 100 minutes in, with something to show on
-          every screen.
+          {tx('ui.landing.start_a_simulated_saturday')}
         </p>
         <ol className="mt-6 grid max-w-[44rem] gap-3 text-[15px] sm:grid-cols-3">
           {[
-            ['Open the demo', 'and press Start service.'],
-            ['Tap Set up a presentation', 'and pick the server you play.'],
-            ['Follow the seven stops', 'each one has something to show.'],
+            [L('Open the demo'), L('and press Start service.')],
+            [L('Tap Set up a presentation'), L('and pick the server you play.')],
+            [L('Follow the seven stops'), L('each one has something to show.')],
           ].map(([a, b], i) => (
             <li key={a} className="flex gap-3 border-t border-hero-foreground/25 pt-3">
               <span className="font-display text-lg tabular-nums text-primary-2" aria-hidden>
@@ -710,20 +721,20 @@ function Finale() {
             </li>
           ))}
         </ol>
-        <p className="mt-3 text-sm opacity-75">About two minutes, and no account needed.</p>
+        <p className="mt-3 text-sm opacity-75">{tx('ui.landing.about_two_minutes_and')}</p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Button asChild size="lg" className="h-12 rounded-full px-6 text-base">
             <Link to="/demo">
-              Open the demo <ArrowRight />
+              {tx('ui.landing.open_the_demo')} <ArrowRight />
             </Link>
           </Button>
           <Button asChild size="lg" variant="outline" className="h-12 rounded-full border-hero-foreground/30 bg-transparent px-6 text-base text-hero-foreground hover:bg-hero-foreground/10 hover:text-hero-foreground">
             <Link to="/intro">
-              <Clapperboard /> Watch the film
+              <Clapperboard /> {tx('ui.landing.watch_the_film')}
             </Link>
           </Button>
           <Button asChild size="lg" variant="ghost" className="h-12 rounded-full px-5 text-base text-hero-foreground hover:bg-hero-foreground/10 hover:text-hero-foreground">
-            <Link to="/about">Read how it works</Link>
+            <Link to="/about">{tx('ui.landing.read_how_it_works')}</Link>
           </Button>
         </div>
       </div>
@@ -732,6 +743,7 @@ function Finale() {
 }
 
 function Footer() {
+  const tx = useT()
   return (
     <footer className="border-t">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground md:px-6">
@@ -740,17 +752,17 @@ function Footer() {
           <Wordmark className="text-base leading-none text-foreground" />
           <span className="ml-2">{TAGLINE}</span>
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <nav aria-label={tx('ui.landing.footer')} className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <Link to="/demo" className="inline-flex min-h-11 min-w-11 items-center justify-center hover:text-foreground">
-            Demo
+            {tx('ui.landing.demo')}
           </Link>
           <Link to="/about" className="inline-flex min-h-11 items-center hover:text-foreground">
-            How it works
+            {tx('ui.landing.how_it_works')}
           </Link>
           <Link to="/intro" className="inline-flex min-h-11 min-w-11 items-center justify-center hover:text-foreground">
-            Film
+            {tx('ui.landing.film')}
           </Link>
-          <span>OB Project · Working Group B3</span>
+          <span>{tx('ui.landing.ob_project_working_group')}</span>
         </nav>
       </div>
     </footer>

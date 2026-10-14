@@ -2,6 +2,7 @@
 // spicy it is, what it is and what the kitchen can change. Servers' questions are answered from
 // this; the kitchen's answers to new questions are kept here too, so each is only asked once.
 
+import { useT, L } from '../i18n/index.ts'
 import { ChefHat, Flame, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -23,7 +24,8 @@ const BLANK: MenuItem = { id: '', name: '', course: 'main', station: 'hot', prep
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
 
 function Spice({ level }: { level?: MenuItem['spice'] }) {
-  if (level === undefined) return <span className="text-xs text-warn">Spice not recorded</span>
+  const tx = useT()
+  if (level === undefined) return <span className="text-xs text-warn">{tx('ui.menueditor.spice_not_recorded')}</span>
   return (
     <span className="inline-flex items-center gap-0.5" title={SPICE_WORDS[level]} role="img" aria-label={`Spice: ${SPICE_WORDS[level]}`}>
       {[1, 2, 3].map((i) => (
@@ -34,6 +36,7 @@ function Spice({ level }: { level?: MenuItem['spice'] }) {
 }
 
 export function MenuEditor({ snap }: { snap: Snapshot }) {
+  const tx = useT()
   const [editing, setEditing] = useState<MenuItem | null>(null)
   const menu = snap.config.menu
   const missing = menu.filter((m) => m.spice === undefined || !m.description).length
@@ -41,15 +44,15 @@ export function MenuEditor({ snap }: { snap: Snapshot }) {
     <Card className="lg:col-span-2">
       <CardHeader>
         <CardTitle>
-          <PanelTitle>Menu</PanelTitle>
+          <PanelTitle>{tx('ui.menueditor.menu')}</PanelTitle>
         </CardTitle>
         <CardDescription>
-          What each dish contains, how spicy it is, what it is and what can be changed. Servers’ questions are answered from these notes; anything they don’t cover goes to the kitchen, and the kitchen’s answer is saved here.
-          {missing > 0 && ` ${missing} ${missing === 1 ? 'dish needs' : 'dishes need'} details.`}
+          {tx('ui.menueditor.what_each_dish_contains')}
+          {missing > 0 && ' ' + (missing === 1 ? L('{n} dish needs details.', { n: missing }) : L('{n} dishes need details.', { n: missing }))}
         </CardDescription>
         <CardAction>
           <Button size="sm" onClick={() => setEditing({ ...BLANK })}>
-            <Plus /> Add a dish
+            <Plus /> {tx('ui.menueditor.add_a_dish')}
           </Button>
         </CardAction>
       </CardHeader>
@@ -69,12 +72,12 @@ export function MenuEditor({ snap }: { snap: Snapshot }) {
                           <Spice level={m.spice} />
                           {!m.description && (
                             <span className="inline-flex items-center gap-1 text-warn">
-                              <TriangleAlert className="size-3" /> No description
+                              <TriangleAlert className="size-3" /> {tx('ui.menueditor.no_description')}
                             </span>
                           )}
                           {m.facts?.length ? (
                             <span className="inline-flex items-center gap-1">
-                              <ChefHat className="size-3" /> {m.facts.length} kitchen {m.facts.length === 1 ? 'answer' : 'answers'}
+                              <ChefHat className="size-3" /> {m.facts.length} {tx('ui.menueditor.kitchen')} {m.facts.length === 1 ? 'answer' : 'answers'}
                             </span>
                           ) : null}
                         </span>
@@ -93,6 +96,7 @@ export function MenuEditor({ snap }: { snap: Snapshot }) {
 }
 
 function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => void }) {
+  const tx = useT()
   const [d, setD] = useState<MenuItem>(dish ?? BLANK)
   const [busy, setBusy] = useState(false)
   const isNew = !dish?.id
@@ -101,7 +105,7 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
     setBusy(true)
     try {
       await post('/api/menu', { item: d })
-      toast.success(isNew ? `${d.name} added to the menu` : `${d.name} saved`)
+      toast.success(isNew ? L('{name} added to the menu', { name: d.name }) : L('{name} saved', { name: d.name }))
       onClose()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e))
@@ -110,7 +114,7 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
     }
   }
   async function remove() {
-    if (!confirm(`Remove ${d.name} from the menu?`)) return
+    if (!confirm(L('Remove {name} from the menu?', { name: d.name }))) return
     await post('/api/menu', { deleteId: d.id })
     toast.success(`${d.name} removed`)
     onClose()
@@ -119,8 +123,8 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
     <Sheet open={!!dish} onOpenChange={(o) => !o && onClose()}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle className="font-display text-2xl">{isNew ? 'Add a dish' : d.name}</SheetTitle>
-          <SheetDescription>Servers answer guests from these notes, in their own language.</SheetDescription>
+          <SheetTitle className="font-display text-2xl">{isNew ? L('Add a dish') : d.name}</SheetTitle>
+          <SheetDescription>{tx('ui.menueditor.servers_answer_guests_from')}</SheetDescription>
         </SheetHeader>
         <form
           className="space-y-4 px-4 pb-6"
@@ -129,11 +133,11 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
             void save()
           }}
         >
-          <Field label="Name" id="dish-name">
+          <Field label={tx('ui.menueditor.name')} id="dish-name">
             <Input id="dish-name" value={d.name} onChange={(e) => set({ name: e.target.value })} required maxLength={80} />
           </Field>
           <div className="grid grid-cols-3 gap-2">
-            <Field label="Course" id="dish-course">
+            <Field label={tx('ui.menueditor.course')} id="dish-course">
               <Select value={d.course} onValueChange={(v) => set({ course: v as MenuItem['course'] })}>
                 <SelectTrigger id="dish-course" className="w-full">
                   <SelectValue />
@@ -147,7 +151,7 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Station" id="dish-station">
+            <Field label={tx('ui.manager.station')} id="dish-station">
               <Select value={d.station} onValueChange={(v) => set({ station: v as MenuItem['station'] })}>
                 <SelectTrigger id="dish-station" className="w-full">
                   <SelectValue />
@@ -161,13 +165,13 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Prep (min)" id="dish-prep">
+            <Field label={tx('ui.menueditor.prep_min')} id="dish-prep">
               <Input id="dish-prep" type="number" min={1} max={90} value={d.prepMin} onChange={(e) => set({ prepMin: Number(e.target.value) })} />
             </Field>
           </div>
 
           <fieldset>
-            <legend className="mb-1.5 text-sm font-medium">How spicy</legend>
+            <legend className="mb-1.5 text-sm font-medium">{tx('ui.menueditor.how_spicy')}</legend>
             <div className="grid grid-cols-5 gap-1 rounded-xl bg-muted p-1">
               {([undefined, 0, 1, 2, 3] as const).map((lvl) => (
                 <button
@@ -177,14 +181,14 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
                   onClick={() => set({ spice: lvl })}
                   className={cn('min-h-9 rounded-lg px-1 text-xs font-medium', d.spice === lvl ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}
                 >
-                  {lvl === undefined ? 'Not set' : ['None', 'Mild', 'Medium', 'Hot'][lvl]}
+                  {lvl === undefined ? L('Not set') : ['None', 'Mild', 'Medium', 'Hot'][lvl]}
                 </button>
               ))}
             </div>
           </fieldset>
 
           <fieldset>
-            <legend className="mb-1.5 text-sm font-medium">Contains (for the allergy and diet check)</legend>
+            <legend className="mb-1.5 text-sm font-medium">{tx('ui.menueditor.contains_for_the_allergy')}</legend>
             <div className="flex flex-wrap gap-1.5">
               {TAGS.map((tag) => {
                 const on = d.contains?.includes(tag)
@@ -203,16 +207,16 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
             </div>
           </fieldset>
 
-          <Field label="What it is" id="dish-desc" hint="A sentence or two a server can say: main ingredients, how it’s cooked, how it’s served.">
+          <Field label={tx('ui.menueditor.what_it_is')} id="dish-desc" hint={tx('ui.menueditor.a_sentence_or_two')}>
             <Textarea id="dish-desc" rows={3} maxLength={400} value={d.description ?? ''} onChange={(e) => set({ description: e.target.value })} />
           </Field>
-          <Field label="What the kitchen can change" id="dish-adjust" hint="E.g. “Can be made mild”, “No vegan version”, “Sauce on the side”.">
+          <Field label={tx('ui.menueditor.what_the_kitchen_can')} id="dish-adjust" hint={tx('ui.menueditor.e_g_can_be')}>
             <Textarea id="dish-adjust" rows={2} maxLength={300} value={d.adjust ?? ''} onChange={(e) => set({ adjust: e.target.value })} />
           </Field>
 
           {d.facts?.length ? (
             <div>
-              <div className="mb-1.5 text-sm font-medium">The kitchen’s answers</div>
+              <div className="mb-1.5 text-sm font-medium">{tx('ui.menueditor.the_kitchen_s_answers')}</div>
               <ul className="space-y-1.5">
                 {d.facts.map((f, i) => (
                   <li key={i} className="flex items-start gap-2 rounded-lg bg-muted/60 p-2 text-sm">
@@ -220,7 +224,7 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
                       <span className="block text-xs text-muted-foreground">{f.q}</span>
                       {f.a}
                     </span>
-                    <Button type="button" size="icon" variant="ghost" className="size-8 shrink-0" aria-label="Remove this answer" onClick={() => set({ facts: d.facts!.filter((_, j) => j !== i) })}>
+                    <Button type="button" size="icon" variant="ghost" className="size-8 shrink-0" aria-label={tx('ui.menueditor.remove_this_answer')} onClick={() => set({ facts: d.facts!.filter((_, j) => j !== i) })}>
                       <Trash2 />
                     </Button>
                   </li>
@@ -231,11 +235,11 @@ function DishSheet({ dish, onClose }: { dish: MenuItem | null; onClose: () => vo
 
           <div className="flex gap-2">
             <Button type="submit" className="flex-1" disabled={busy || !d.name.trim()}>
-              {isNew ? 'Add to the menu' : 'Save dish'}
+              {isNew ? L('Add to the menu') : L('Save dish')}
             </Button>
             {!isNew && (
               <Button type="button" variant="outline" onClick={() => void remove()}>
-                <Trash2 /> Remove
+                <Trash2 /> {tx('ui.menueditor.remove')}
               </Button>
             )}
           </div>

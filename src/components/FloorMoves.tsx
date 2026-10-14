@@ -3,6 +3,7 @@
 // one-tap button, and a picker to hand any table to another server by hand. Built from load and
 // language, never from how well anyone is doing.
 
+import { useT, L } from '../i18n/index.ts'
 import { ArrowRightLeft, ChefHat, CircleCheck, Languages, MessageSquare, Scale, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
@@ -34,6 +35,7 @@ export async function applyInsight(i: FloorInsight, managerId: string) {
 }
 
 export function FloorMoves({ snap, managerId }: { snap: Snapshot; managerId: string }) {
+  const tx = useT()
   const [hidden, setHidden] = useState<Set<string>>(new Set())
   const [busy, setBusy] = useState<string | null>(null)
   const list = (snap.insights ?? []).filter((i) => !hidden.has(i.id))
@@ -43,7 +45,7 @@ export function FloorMoves({ snap, managerId }: { snap: Snapshot; managerId: str
     setBusy(i.id)
     try {
       await applyInsight(i, managerId)
-      toast.success(i.action?.type === 'move' ? `${i.title.replace(/^Hand /, 'Handed ')}. Both servers have a note.` : i.action?.type === 'kitchen' ? 'Kitchen nudged' : 'Note sent')
+      toast.success(i.action?.type === 'move' ? L('{title}. Both servers have a note.', { title: i.title.replace(/^Hand /, L('Handed ')) }) : i.action?.type === 'kitchen' ? L('Kitchen nudged') : L('Note sent'))
       hide(i.id)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e))
@@ -56,14 +58,14 @@ export function FloorMoves({ snap, managerId }: { snap: Snapshot; managerId: str
     <Card>
       <CardHeader>
         <CardTitle>
-          <PanelTitle>Share the floor</PanelTitle>
+          <PanelTitle>{tx('ui.floormoves.share_the_floor')}</PanelTitle>
         </CardTitle>
-        <CardDescription>Suggested handovers and nudges, from each server’s load and the languages they speak. You decide; servers get a note either way.</CardDescription>
+        <CardDescription>{tx('ui.floormoves.suggested_handovers_and_nudges')}</CardDescription>
       </CardHeader>
       <CardContent>
         {list.length === 0 ? (
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
-            <CircleCheck className="mt-0.5 size-4 shrink-0 text-good" aria-hidden /> Load looks fair and every table has a server who speaks their language. Handover ideas show up here the moment one would help.
+            <CircleCheck className="mt-0.5 size-4 shrink-0 text-good" aria-hidden /> {tx('ui.floormoves.load_looks_fair_and')}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -85,7 +87,7 @@ export function FloorMoves({ snap, managerId }: { snap: Snapshot; managerId: str
                         {i.action.type === 'move' ? <ArrowRightLeft /> : i.action.type === 'note' ? <MessageSquare /> : <ChefHat />} {i.cta}
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="size-8" aria-label={`Not now: ${i.title}`} onClick={() => hide(i.id)}>
+                    <Button size="icon" variant="ghost" className="size-8" aria-label={L('Not now: {title}', { title: i.title })} onClick={() => hide(i.id)}>
                       <X />
                     </Button>
                   </span>
@@ -102,13 +104,14 @@ export function FloorMoves({ snap, managerId }: { snap: Snapshot; managerId: str
 
 /** "Hand to…": move one table to another server by hand. */
 export function HandTo({ snap, table: t, managerId }: { snap: Snapshot; table: TableState; managerId: string }) {
+  const tx = useT()
   const servers = snap.config.staff.filter((s) => s.role === 'server')
   const home = t.handover ? snap.config.staff.find((s) => s.id === t.handover!.from) : undefined
   async function move(serverId: string) {
     try {
       await post('/api/floor/move', { tableId: t.id, serverId, reason: 'manager', from: managerId })
       const to = servers.find((s) => s.id === serverId)?.name
-      toast.success(t.visitId ? `${t.name} handed to ${to}. Both servers have a note.` : `${t.name} is now ${to}’s table.`)
+      toast.success(t.visitId ? L('{table} handed to {to}. Both servers have a note.', { table: t.name, to: to ?? '' }) : L('{table} is now {to}’s table.', { table: t.name, to: to ?? '' }))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e))
     }
@@ -116,7 +119,7 @@ export function HandTo({ snap, table: t, managerId }: { snap: Snapshot; table: T
   return (
     <div>
       <label htmlFor={`hand-${t.id}`} className="block text-xs text-muted-foreground">
-        Server{home ? ` (handed over from ${home.name})` : ''}
+        {tx('ui.floormoves.server')}{home ? ` (${L('handed over from {name}', { name: home.name })})` : ''}
       </label>
       <Select value={t.serverId} onValueChange={(v) => void move(v)}>
         <SelectTrigger id={`hand-${t.id}`} size="sm" className="mt-0.5 h-8 min-w-36">

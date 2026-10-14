@@ -6,6 +6,7 @@
 // the picture, any scene can be jumped to, and the same page is what gets recorded as the video.
 // With Animations off in Settings, scenes show their finished frames instead of animating.
 
+import { useT, L } from '../i18n/index.ts'
 import { AnimatePresence, motion, useAnimationFrame, useReducedMotion } from 'motion/react'
 import { BookOpen, Maximize2, Pause, Play, RotateCcw, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -44,6 +45,7 @@ function ServiceLine({ elapsed, scene }: { elapsed: number; scene: number }) {
 // The player
 
 export default function Intro() {
+  const tx = useT()
   useRolePage(null)
   const [params] = useSearchParams()
   const first = Math.max(0, Math.min(SCENES.length - 1, Number(params.get('scene') ?? 0) || 0))
@@ -143,18 +145,18 @@ export default function Intro() {
         {!bare && (
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
             <div>
-              <h1 className="font-display text-2xl md:text-3xl">Meet TableMate</h1>
-              <p className="text-sm text-muted-foreground">A {Math.round(TOTAL / 1000)}-second film about the problem and what TableMate does about it.</p>
+              <h1 className="font-display text-2xl md:text-3xl">{tx('ui.intro.meet_tablemate')}</h1>
+              <p className="text-sm text-muted-foreground">A {Math.round(TOTAL / 1000)}{tx('ui.intro.second_film_about_the')}</p>
             </div>
             <Button asChild variant="outline" size="sm" className="rounded-full">
               <Link to="/about">
-                <BookOpen /> Read how it works
+                <BookOpen /> {tx('ui.landing.read_how_it_works')}
               </Link>
             </Button>
           </div>
         )}
         {/* The film is always light and on brand, whichever theme the app is in. */}
-        <div ref={stage} className={cn('film @container relative aspect-video w-full overflow-hidden', !bare && 'sm:rounded-3xl')} role="region" aria-label="TableMate introduction" style={{ background: 'var(--cream)', color: 'var(--chocolate)' }}>
+        <div ref={stage} className={cn('film @container relative aspect-video w-full overflow-hidden', !bare && 'sm:rounded-3xl')} role="region" aria-label={tx('ui.intro.tablemate_introduction')} style={{ background: 'var(--cream)', color: 'var(--chocolate)' }}>
           {!bare && <audio ref={audio} src={VOICE} preload="auto" />}
           <ClockProvider value={ctx}>
             <Stage>
@@ -171,28 +173,28 @@ export default function Intro() {
           </p>
           {blocked && playing && !muted && !bare && (
             <button type="button" onClick={() => void audio.current?.play().then(() => setBlocked(false), () => undefined)} className="absolute bottom-[2cqw] left-[2cqw] flex items-center gap-[0.8cqw] rounded-full bg-primary px-[1.8cqw] py-[0.9cqw] text-[1.5cqw] font-medium text-primary-foreground">
-              <Volume2 className="size-[1.8cqw]" /> Tap for sound
+              <Volume2 className="size-[1.8cqw]" /> {tx('ui.intro.tap_for_sound')}
             </button>
           )}
           {ended && !bare && (
             <button type="button" onClick={toggle} className="absolute right-[2cqw] top-[2cqw] flex items-center gap-[0.8cqw] rounded-full bg-primary px-[1.8cqw] py-[0.9cqw] text-[1.5cqw] font-medium text-primary-foreground">
-              <RotateCcw className="size-[1.8cqw]" /> Watch again
+              <RotateCcw className="size-[1.8cqw]" /> {tx('ui.intro.watch_again')}
             </button>
           )}
         </div>
 
         {/* Controls */}
         <div className={cn('mt-3 flex items-center gap-2', bare && 'hidden')}>
-          <Button size="icon" variant="ghost" aria-label="Previous scene" onClick={() => go(i - 1)} disabled={i === 0}>
+          <Button size="icon" variant="ghost" aria-label={tx('ui.intro.previous_scene')} onClick={() => go(i - 1)} disabled={i === 0}>
             <SkipBack />
           </Button>
-          <Button size="icon" className="rounded-full" aria-label={playing ? 'Pause' : ended ? 'Watch again' : 'Play'} onClick={toggle}>
+          <Button size="icon" className="rounded-full" aria-label={playing ? 'Pause' : ended ? L('Watch again') : 'Play'} onClick={toggle}>
             {ended ? <RotateCcw /> : playing ? <Pause /> : <Play />}
           </Button>
-          <Button size="icon" variant="ghost" aria-label="Next scene" onClick={() => go(i + 1)} disabled={i === SCENES.length - 1}>
+          <Button size="icon" variant="ghost" aria-label={tx('ui.intro.next_scene')} onClick={() => go(i + 1)} disabled={i === SCENES.length - 1}>
             <SkipForward />
           </Button>
-          <div className="flex min-w-0 flex-1 gap-1" role="group" aria-label="Scenes">
+          <div className="flex min-w-0 flex-1 gap-1" role="group" aria-label={tx('ui.intro.scenes')}>
             {SCENES.map((s, k) => (
               <button key={s.id} type="button" onClick={() => go(k)} aria-label={`Scene ${k + 1}: ${s.id}`} aria-current={k === i ? 'true' : undefined} className="group relative h-6 flex-1">
                 <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-muted transition-[height] group-hover:h-2">
@@ -204,14 +206,14 @@ export default function Intro() {
           <span className="hidden w-24 text-right text-xs tabular text-muted-foreground sm:block">
             {Math.floor(elapsed / 60000)}:{String(Math.floor((elapsed % 60000) / 1000)).padStart(2, '0')} / {Math.floor(TOTAL / 60000)}:{String(Math.floor((TOTAL % 60000) / 1000)).padStart(2, '0')}
           </span>
-          <Button size="icon" variant="ghost" aria-label={muted ? 'Turn sound on' : 'Turn sound off'} aria-pressed={!muted} onClick={() => setMuted((m) => !m)}>
+          <Button size="icon" variant="ghost" aria-label={muted ? L('Turn sound on') : L('Turn sound off')} aria-pressed={!muted} onClick={() => setMuted((m) => !m)}>
             {muted ? <VolumeX /> : <Volume2 />}
           </Button>
-          <Button size="icon" variant="ghost" aria-label="Full screen" onClick={() => void stage.current?.requestFullscreen?.()}>
+          <Button size="icon" variant="ghost" aria-label={tx('ui.intro.full_screen')} onClick={() => void stage.current?.requestFullscreen?.()}>
             <Maximize2 />
           </Button>
         </div>
-        {!bare && <p className="mt-2 text-xs text-muted-foreground">Space to pause, arrow keys to change scene, F for full screen. With Animations off in Settings, each scene shows its finished frame.</p>}
+        {!bare && <p className="mt-2 text-xs text-muted-foreground">{tx('ui.intro.space_to_pause_arrow')}</p>}
       </main>
     </div>
   )
