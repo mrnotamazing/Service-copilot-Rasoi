@@ -4,7 +4,7 @@
 // language, never from how well anyone is doing.
 
 import { useT, L } from '../i18n/index.ts'
-import { ArrowRightLeft, ChefHat, CircleCheck, Languages, MessageSquare, Scale, X } from 'lucide-react'
+import { ArrowRightLeft, ChefHat, CircleCheck, Languages, MessageSquare, Scale, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -19,6 +19,7 @@ import { act, noteId, post } from '../lib/live.ts'
 import { PanelTitle } from './kit.tsx'
 
 const ICON: Record<FloorInsight['kind'], typeof Scale> = {
+  first_visit: Sparkles,
   load_move: Scale,
   language_move: Languages,
   language_help: Languages,

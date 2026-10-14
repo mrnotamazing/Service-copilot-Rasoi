@@ -6,6 +6,7 @@ import { predictReady, upcomingFor } from '../shared/predict.ts'
 import { floorInsights, handoverNotes } from '../shared/floorInsights.ts'
 import { crunchAhead, forecast, learningPlan, shiftIntel, whyFirst } from '../shared/intel.ts'
 import { cleanProfile } from '../shared/profile.ts'
+import { bestFit } from '../shared/match.ts'
 import { crewView } from '../shared/crew.ts'
 import { PRIORITY_FIELDS } from '../shared/priority.ts'
 import { PRACTICE_MIN_SCORE, playerView, teamView } from '../shared/game.ts'
@@ -27,6 +28,15 @@ export type ApiBody = Record<string, unknown>
 export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
   const ai = createAi(hub, dify)
   const outbound = createOutbound(hub)
+
+  // Auto mode: a first-time party is given to the best-fitting server the moment they are seated.
+  hub.onEvent((ev) => {
+    if (ev.type !== 'table.seated' || !ev.payload.firstVisit || hub.config.firstVisit !== 'auto') return
+    const fit = bestFit(hub.state, hub.config, ev.payload.tableId, hub.tasks())
+    const t = hub.state.tables[ev.payload.tableId]
+    if (!fit || !t || fit.server.id === t.serverId) return
+    hub.ingest({ type: 'table.assigned', source: 'manager', payload: { tableId: t.id, serverId: fit.server.id, reason: 'first_visit' } })
+  })
 
   function integrations(): IntegrationStatus[] {
     return CATALOG.map((c) => {
@@ -132,7 +142,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       if (!t) throw new Error('Unknown table.')
       if (!to) throw new Error('Pick a server.')
       if (t.serverId === to.id) return { ok: true }
-      const reason = body.reason === 'language' || body.reason === 'load' ? body.reason : 'manager'
+      const reason = body.reason === 'language' || body.reason === 'load' || body.reason === 'first_visit' ? body.reason : 'manager'
       const fromStaff = hub.config.staff.find((s) => s.id === t.serverId)
       const manager = typeof body.from === 'string' && hub.config.staff.some((s) => s.id === body.from) ? body.from : (hub.config.staff.find((s) => s.role === 'manager')?.id ?? 'manager')
       const seated = !!t.visitId
@@ -269,6 +279,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         }
         patch.game = next
       }
+      if (body.firstVisit === 'off' || body.firstVisit === 'suggest' || body.firstVisit === 'auto') patch.firstVisit = body.firstVisit
       if (typeof body.name === 'string') patch.name = body.name.slice(0, 80)
       if (body.sections && typeof body.sections === 'object') patch.sections = { ...hub.config.sections, ...(body.sections as Record<string, string>) }
       hub.updateConfig(patch)

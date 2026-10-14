@@ -270,7 +270,7 @@ export class Simulator {
     }
     switch (kind) {
       case 'arrival':
-        return this.seat({}, 'a new party arrives', staffId) ? say(true, 'a new party arrives') : say(false, 'No free table right now; they’ll be seated when one frees up.')
+        return this.seat({ firstVisit: true }, 'a new party arrives', staffId) ? say(true, 'a new party arrives') : say(false, 'No free table right now; they’ll be seated when one frees up.')
       case 'allergy': {
         // A nut allergy, and an order that already has a dish with nuts in it: the safety check fires.
         const free = this.freeTable(2, staffId)
@@ -477,6 +477,7 @@ export class Simulator {
           occasion: chance(0.18) ? pick(OCCASIONS) : undefined,
           allergies: chance(0.2) ? [pick(ALLERGIES)] : [],
           vip: chance(0.12),
+          firstVisit: chance(0.3),
           needs: chance(0.22) ? [pick(NEEDS)] : [],
           language: chance(0.2) ? this.guestLanguage() : undefined,
           ...g.party,

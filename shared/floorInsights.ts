@@ -6,13 +6,14 @@
 
 import type { EngineState } from './engine.ts'
 import { languageName } from './profile.ts'
+import { bestFit } from './match.ts'
 import type { RestaurantConfig, Staff, TableState, Task } from './types.ts'
 
 const MIN = 60_000
 
 export type FloorAction =
   /** Hand the table to another server for this visit (it goes back afterwards). */
-  | { type: 'move'; tableId: string; serverId: string; reason: 'language' | 'load' }
+  | { type: 'move'; tableId: string; serverId: string; reason: 'language' | 'load' | 'first_visit' }
   /** A note from the manager to a teammate, e.g. "join Table 5 to welcome them in Tamil". */
   | { type: 'note'; to: string; tableId?: string; text: string }
   /** A note to the kitchen pass. */
@@ -20,7 +21,7 @@ export type FloorAction =
 
 export interface FloorInsight {
   id: string
-  kind: 'language_move' | 'language_help' | 'language_gap' | 'load_move' | 'question_wait'
+  kind: 'first_visit' | 'language_move' | 'language_help' | 'language_gap' | 'load_move' | 'question_wait'
   tableId?: string
   /** What to do, in one line. */
   title: string
@@ -54,10 +55,29 @@ export function floorInsights(state: EngineState, config: RestaurantConfig, now:
   const tablesWord = (n: number) => (n === 0 ? 'no tables' : `${n} ${n === 1 ? 'table' : 'tables'}`)
   const moved = new Set<string>()
 
+  // First-time guests: suggest the server who fits them best for the welcome, until they've been greeted.
+  if ((config.firstVisit ?? 'suggest') !== 'off') {
+    for (const t of seated) {
+      if (!t.party?.firstVisit || t.greetedAt || t.firstOrderAt || t.handover || now - (t.seatedAt ?? now) > 8 * MIN) continue
+      const fit = bestFit(state, config, t.id, tasks)
+      if (!fit || fit.server.id === t.serverId) continue
+      moved.add(t.id)
+      out.push({
+        id: `first-${t.id}-${fit.server.id}`,
+        kind: 'first_visit',
+        tableId: t.id,
+        title: `First visit at ${t.name}: ${fit.server.name} for the welcome`,
+        why: `${fit.reasons.join('; ')}. ${first(staff(t.serverId))} introduces ${first(fit.server)}, and the table goes back afterwards.`,
+        action: { type: 'move', tableId: t.id, serverId: fit.server.id, reason: 'first_visit' },
+        cta: `Give to ${fit.server.name}`,
+      })
+    }
+  }
+
   // Language: guests who'd be more at ease in a language their server doesn't list.
   for (const t of seated) {
     const lang = t.party?.language
-    if (!lang || lang === 'en') continue
+    if (!lang || lang === 'en' || moved.has(t.id)) continue
     const mine = staff(t.serverId)
     if (speaks(mine, lang)) continue
     const name = languageName(lang)
@@ -140,14 +160,14 @@ export function floorInsights(state: EngineState, config: RestaurantConfig, now:
     })
   }
 
-  const order: FloorInsight['kind'][] = ['question_wait', 'load_move', 'language_move', 'language_help', 'language_gap']
+  const order: FloorInsight['kind'][] = ['question_wait', 'first_visit', 'load_move', 'language_move', 'language_help', 'language_gap']
   return out.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).slice(0, 6)
 }
 
 /** The messages a handover sends, so both servers know what's happening and the guests are introduced. */
-export function handoverNotes(t: TableState, fromName: string, toName: string, reason: 'language' | 'load' | 'manager', homeName = fromName): { toNew: string; toOld: string } {
+export function handoverNotes(t: TableState, fromName: string, toName: string, reason: 'language' | 'load' | 'first_visit' | 'manager', homeName = fromName): { toNew: string; toOld: string } {
   const lang = t.party?.language && t.party.language !== 'en' ? languageName(t.party.language) : ''
-  const why = reason === 'language' && lang ? `the guests prefer ${lang}` : reason === 'load' ? `${fromName} has a full section` : ''
+  const why = reason === 'language' && lang ? `the guests prefer ${lang}` : reason === 'load' ? `${fromName} has a full section` : reason === 'first_visit' ? 'their first visit, so we want the best welcome' : ''
   return {
     toNew: `${t.name} is yours for this visit${why ? `: ${why}` : ''}. ${fromName} will introduce you; it goes back to ${homeName} afterwards.`,
     toOld: `${t.name} goes to ${toName} for this visit${why ? ` (${why})` : ''}. Please introduce ${toName} to the guests and pass on anything they've told you.`,

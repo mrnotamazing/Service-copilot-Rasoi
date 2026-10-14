@@ -88,6 +88,7 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
 
       <KitchenPriorities snap={snap} />
       <LevelsEditor snap={snap} />
+      <FirstVisitCard snap={snap} />
 
       <Card>
         <CardHeader>
@@ -336,6 +337,42 @@ function LevelsEditor({ snap }: { snap: Snapshot }) {
             </Button>
           </div>
         </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** First-time guests: whether TableMate only suggests the best-fitting server for the welcome, does it, or stays out. */
+function FirstVisitCard({ snap }: { snap: Snapshot }) {
+  const mode = snap.config.firstVisit ?? 'suggest'
+  const options: { id: 'off' | 'suggest' | 'auto'; label: string; hint: string }[] = [
+    { id: 'suggest', label: L('Suggest'), hint: L('The manager sees the best-fitting server and decides.') },
+    { id: 'auto', label: L('Assign automatically'), hint: L('First-time guests go straight to the best-fitting server; the table returns afterwards.') },
+    { id: 'off', label: L('Off'), hint: L('Tables stay with their section server.') },
+  ]
+  return (
+    <Card>
+      <CardHeader>
+        <Heading>{L('Welcoming first-time guests')}</Heading>
+        <CardDescription>{L('Matches newcomers to a server by shared language, room in their section, how busy they are and whose turn it is. Never by ranking people.')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div role="radiogroup" aria-label={L('Welcoming first-time guests')} className="grid gap-2">
+          {options.map((o) => (
+            <Button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={mode === o.id}
+              variant={mode === o.id ? 'default' : 'outline'}
+              className="h-auto flex-col items-start gap-0.5 whitespace-normal py-2 text-left"
+              onClick={() => void post('/api/config', { firstVisit: o.id })}
+            >
+              <span>{o.label}</span>
+              <span className="text-xs font-normal opacity-80">{o.hint}</span>
+            </Button>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

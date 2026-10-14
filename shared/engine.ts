@@ -107,7 +107,7 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       t.visitId = `${t.id}@${at}`
       t.seatedAt = at
       t.lastAttentionAt = at
-      t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], needs: p.needs ?? [], occasion: p.occasion, vip: p.vip, language: p.language }
+      t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], needs: p.needs ?? [], occasion: p.occasion, vip: p.vip, language: p.language, firstVisit: p.firstVisit }
       break
     }
     case 'table.assigned': {
@@ -378,6 +378,7 @@ function closeVisit(state: EngineState, t: TableState, config: RestaurantConfig,
     tableName: t.name,
     serverId: t.serverId,
     partySize: t.party?.size ?? 0,
+    firstVisit: t.party?.firstVisit,
     seatedAt: t.seatedAt ?? at,
     endedAt: at,
     segments,

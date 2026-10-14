@@ -95,6 +95,8 @@ export interface RestaurantConfig {
   priority?: Partial<import('./priority.ts').PriorityConfig>
   /** The restaurant's game rules: the practice score that earns XP, and the names and XP steps of the levels. */
   game?: { practiceMinScore?: number; levels?: { xp: number; title: string }[] }
+  /** First-time guests: 'suggest' shows the manager the best-fitting server (default), 'auto' seats them with that server, 'off' leaves it. */
+  firstVisit?: 'off' | 'suggest' | 'auto'
   /** Alerts sent out to a webhook (Zapier, n8n…) for WhatsApp, Slack, email or Sheets. */
   alerts?: { url: string; kinds: AlertKind[] }
 }
@@ -145,6 +147,8 @@ export interface Party {
   vip?: boolean
   /** The language the guests are most at ease in (an id from shared/profile.ts SPOKEN), if they said. */
   language?: string
+  /** Their first time here (from the booking or POS guest record). TableMate suggests the best-fitting server for the welcome. */
+  firstVisit?: boolean
 }
 
 export interface TableState {
@@ -200,6 +204,7 @@ export interface VisitRecord {
   seatedAt: number
   endedAt: number
   segments: Segment[]
+  firstVisit?: boolean
   smooth: boolean
   mood?: Mood
   recovered?: boolean
