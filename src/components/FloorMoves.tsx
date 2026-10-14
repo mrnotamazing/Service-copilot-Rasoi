@@ -3,6 +3,7 @@
 // one-tap button, and a picker to hand any table to another server by hand. Built from load and
 // language, never from how well anyone is doing.
 
+import { S } from '../i18n/sentences.ts'
 import { useT, L } from '../i18n/index.ts'
 import { ArrowRightLeft, ChefHat, CircleCheck, Languages, MessageSquare, Scale, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -79,16 +80,16 @@ export function FloorMoves({ snap, managerId }: { snap: Snapshot; managerId: str
                     <Icon className="size-4 text-primary" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1 basis-56">
-                    <span className="block text-sm font-medium">{i.title}</span>
-                    <span className="block text-xs text-muted-foreground text-pretty">{i.why}</span>
+                    <span className="block text-sm font-medium">{S(i.title)}</span>
+                    <span className="block text-xs text-muted-foreground text-pretty">{S(i.why)}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1 self-center">
                     {i.action && (
                       <Button size="sm" className="h-8 rounded-full" disabled={busy === i.id} onClick={() => void apply(i)}>
-                        {i.action.type === 'move' ? <ArrowRightLeft /> : i.action.type === 'note' ? <MessageSquare /> : <ChefHat />} {i.cta}
+                        {i.action.type === 'move' ? <ArrowRightLeft /> : i.action.type === 'note' ? <MessageSquare /> : <ChefHat />} {S(i.cta)}
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="size-8" aria-label={L('Not now: {title}', { title: i.title })} onClick={() => hide(i.id)}>
+                    <Button size="icon" variant="ghost" className="size-8" aria-label={L('Not now: {title}', { title: S(i.title) })} onClick={() => hide(i.id)}>
                       <X />
                     </Button>
                   </span>

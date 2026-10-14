@@ -1,4 +1,5 @@
 import { useT, L } from '../i18n/index.ts'
+import { S } from '../i18n/sentences.ts'
 import { CrewCard } from '../components/CrewCard.tsx'
 import { Plug, ChefHat, History, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
@@ -183,7 +184,7 @@ export default function ManagerView() {
                 <CardContent className="grid gap-2">
                   {a.suggestions.map((s) => (
                     <p key={s} className="rounded-lg bg-muted p-3 text-sm">
-                      {s}
+                      {S(s)}
                     </p>
                   ))}
                 </CardContent>

@@ -35,21 +35,21 @@ export function bestFit(state: EngineState, config: RestaurantConfig, tableId: s
     let score = 0
     if (lang && s.languages?.includes(lang)) {
       score += 40
-      reasons.push(`speaks ${languageName(lang)}, which the guests prefer`)
+      reasons.push(`${s.name} speaks ${languageName(lang)}, which the guests prefer`)
     }
     score += Math.max(-30, (max - n) * 8)
     if (n >= max) score -= 25
     score -= open(s.id) * (careful ? 4 : 2)
     score -= hosted(s.id) * 6
     if (own) score += 3
-    if (n === 0) reasons.push('has no tables right now')
-    else if (n < max - 1) reasons.push(`has room (${n} ${n === 1 ? 'table' : 'tables'})`)
-    if (open(s.id) === 0) reasons.push('has no open cards')
-    if (hosted(s.id) === 0) reasons.push('hasn’t welcomed a newcomer tonight')
+    if (n === 0) reasons.push(`${s.name} has no tables right now`)
+    else if (n < max - 1) reasons.push(`${s.name} has room (${n} ${n === 1 ? 'table' : 'tables'})`)
+    if (open(s.id) === 0) reasons.push(`${s.name} has no open cards`)
+    if (hosted(s.id) === 0) reasons.push(`${s.name} hasn’t welcomed a newcomer tonight`)
     return { server: s, score, reasons }
   })
   scored.sort((a, b) => b.score - a.score)
   const top = scored[0]
   const shown = top.reasons.slice(0, 3)
-  return { server: top.server, reasons: shown.length ? shown.map((r, i) => (i === 0 ? `${top.server.name} ${r}` : r)) : [`${top.server.name} is the best fit right now`] }
+  return { server: top.server, reasons: shown.length ? shown : [`${top.server.name} is the best fit right now`] }
 }

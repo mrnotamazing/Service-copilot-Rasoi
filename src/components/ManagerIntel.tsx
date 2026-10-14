@@ -2,6 +2,7 @@
 // why tonight is going the way it is, what the next 15 minutes look like, what happened at one
 // table, and what would change with more guests, a server off sick or an extra cook.
 
+import { S } from '../i18n/sentences.ts'
 import { useT, L } from '../i18n/index.ts'
 import { ChefHat, CircleHelp, FlaskConical, History, Loader2, Play, Sparkles, TrendingUp, UsersRound } from 'lucide-react'
 import { useState } from 'react'
@@ -54,11 +55,11 @@ export function WhyTonight({ intel }: { intel: ShiftIntel }) {
             <li key={l.id} className="rounded-xl border p-2.5">
               <div className="flex items-center justify-between gap-2 text-sm font-medium">
                 <span className="inline-flex items-center gap-1.5">
-                  <RiskDot risk={l.level} /> {l.label}
+                  <RiskDot risk={l.level} /> {S(l.label)}
                 </span>
                 <span className="text-xs font-normal text-muted-foreground">{RISK_WORD()[l.level]}</span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">{l.text}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{S(l.text)}</p>
             </li>
           ))}
         </ul>
@@ -76,7 +77,7 @@ export function WhyTonight({ intel }: { intel: ShiftIntel }) {
         )}
         <ul className="space-y-1.5 text-sm">
           {intel.why.map((w) => (
-            <li key={w}>{w}</li>
+            <li key={w}>{S(w)}</li>
           ))}
         </ul>
         {intel.actions.length > 0 && (
@@ -84,7 +85,7 @@ export function WhyTonight({ intel }: { intel: ShiftIntel }) {
             <div className="mb-1 text-xs font-medium text-muted-foreground">{tx('ui.managerintel.what_would_help')}</div>
             <ul className="list-disc space-y-1 pl-4 text-sm">
               {intel.actions.map((a) => (
-                <li key={a}>{a}</li>
+                <li key={a}>{S(a)}</li>
               ))}
             </ul>
           </div>
@@ -118,7 +119,7 @@ export function NextFifteen({ forecast, name }: { forecast: Forecast; name: (id:
               {forecast.stations.map((s) => (
                 <li key={s.station} className="flex items-start gap-2 text-sm">
                   <RiskDot risk={s.risk} />
-                  <span className="-mt-1 min-w-0">{s.text}</span>
+                  <span className="-mt-1 min-w-0">{S(s.text)}</span>
                 </li>
               ))}
             </ul>
@@ -141,7 +142,7 @@ export function NextFifteen({ forecast, name }: { forecast: Forecast; name: (id:
               </li>
             ))}
           </ul>
-          {forecast.rebalance && <p className="mt-2 rounded-xl bg-accent/60 p-3 text-sm">{forecast.rebalance}</p>}
+          {forecast.rebalance && <p className="mt-2 rounded-xl bg-accent/60 p-3 text-sm">{S(forecast.rebalance)}</p>}
         </div>
       </CardContent>
     </Card>
@@ -182,7 +183,7 @@ export function IncidentSheet({ r, onClose, server }: { r: Reconstruction | null
                   <li key={i} className={cn('rounded-xl border p-3', s === r.biggest && 'border-warn')}>
                     <div className="flex items-baseline justify-between gap-2 text-sm">
                       <span className="font-medium">
-                        {s.label}
+                        {S(s.label)}
                         {s.station && <span className="font-normal text-muted-foreground"> · {s.station}</span>}
                       </span>
                       <span className="shrink-0 text-xs text-muted-foreground tabular">{clock(s.start)}</span>
@@ -206,7 +207,7 @@ export function IncidentSheet({ r, onClose, server }: { r: Reconstruction | null
                 {tx('ui.manager.kitchen')} {r.overByOwner.kitchen} {tx('ui.managerintel.min_floor')} {r.overByOwner.floor} {tx('ui.manager.min')}
                 {r.biggest && (
                   <p className="mt-1">
-                    {tx('ui.managerintel.biggest_delay')} <b className="font-medium">{r.biggest.label}</b>
+                    {tx('ui.managerintel.biggest_delay')} <b className="font-medium">{S(r.biggest.label)}</b>
                     {r.biggest.station ? ` (${r.biggest.station})` : ''}, +{r.biggest.overMin} {tx('ui.managerintel.min')} {r.biggest.owner === 'kitchen' ? 'kitchen' : 'floor'}{tx('ui.managerintel.controlled')}
                   </p>
                 )}
@@ -216,7 +217,7 @@ export function IncidentSheet({ r, onClose, server }: { r: Reconstruction | null
                   <div className="mb-1 text-xs font-medium text-muted-foreground">{tx('ui.managerintel.what_would_have_helped')}</div>
                   <ul className="list-disc space-y-1 pl-4">
                     {r.helped.map((h) => (
-                      <li key={h}>{h}</li>
+                      <li key={h}>{S(h)}</li>
                     ))}
                   </ul>
                 </div>

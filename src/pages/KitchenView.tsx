@@ -1,4 +1,5 @@
 import { useT, L } from '../i18n/index.ts'
+import { S } from '../i18n/sentences.ts'
 import { CrewCard } from '../components/CrewCard.tsx'
 import { MessageCircleQuestion, BellRing, RefreshCw, Sparkles, Bot, Check, Flame, HandPlatter, HeartPulse, Send, ShieldAlert, Timer, UtensilsCrossed } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
@@ -234,7 +235,7 @@ function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now
           {pri.level !== 'normal' && <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium', LEVEL_CHIP[pri.level])}>{LEVEL_LABEL()[pri.level]}</span>}
           {pri.reasons.map((r) => (
             <span key={r} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
-              {r}
+              {S(r)}
             </span>
           ))}
         </div>
@@ -325,7 +326,7 @@ function ChefsCall({ ranked }: { ranked: { k: Ticket; p: TicketPriority }[] }) {
             <span className={cn('mt-0.5 grid size-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold', i === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>{i + 1}</span>
             <span className="min-w-0">
               <span className="font-medium">{k.table.name}</span> <span className="text-muted-foreground">{dishes(k)}</span>
-              {p.reasons.length > 0 && <span className={cn('block text-xs', p.level === 'late' || p.level === 'critical' ? 'text-kitchen' : 'text-muted-foreground')}>{p.reasons.join(' · ')}</span>}
+              {p.reasons.length > 0 && <span className={cn('block text-xs', p.level === 'late' || p.level === 'critical' ? 'text-kitchen' : 'text-muted-foreground')}>{p.reasons.map((r) => S(r)).join(' · ')}</span>}
             </span>
           </li>
         ))}

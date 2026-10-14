@@ -1,4 +1,5 @@
 import { useT, L } from '../i18n/index.ts'
+import { S } from '../i18n/sentences.ts'
 import { Languages, MessageCircleQuestion, Plug,
   Accessibility,
   BellRing,
@@ -234,8 +235,8 @@ function Moments({ snap }: { snap: Snapshot }) {
     setBusy(kind)
     try {
       const r = await post<{ ok: boolean; text: string }>('/api/sim/moment', { kind })
-      if (r.ok) toast.success(`Staged: ${r.text}`)
-      else toast(r.text)
+      if (r.ok) toast.success(S(`Staged: ${r.text}`))
+      else toast(S(r.text))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : L('Couldn’t stage that'))
     } finally {
@@ -374,7 +375,7 @@ function Feed({ feed }: { feed: FeedItem[] }) {
               <li key={f.id} className={cn('flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors duration-700', f.id === fresh && 'bg-accent', f.kind === 'demo' && 'font-medium')}>
                 <span className="w-16 shrink-0 pt-px text-xs text-muted-foreground tabular">{clock(f.at)}</span>
                 <Icon className={cn('mt-0.5 size-4 shrink-0', f.kind === 'alert' ? 'text-warn' : f.kind === 'kitchen' ? 'text-kitchen' : f.kind === 'demo' ? 'text-primary' : 'text-muted-foreground')} aria-hidden />
-                <span className="min-w-0">{f.text}</span>
+                <span className="min-w-0">{S(f.text)}</span>
               </li>
             )
           })}

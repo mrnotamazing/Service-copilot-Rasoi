@@ -1,4 +1,5 @@
 import { LogOut, Accessibility, Armchair, Languages, PanelRightClose, PanelRightOpen, Gauge, Bot, CakeSlice, Clock3, HandPlatter, Hourglass, ReceiptText, ShieldAlert, Flame, HeartHandshake, HeartPulse, Lock, MessageSquareText, Send, Shield, Sparkles, Star, Target, Trophy, UserRound, Users, UtensilsCrossed } from 'lucide-react'
+import { S } from '../i18n/sentences.ts'
 import { Mark, Mascot, TAGLINE } from '../brand/marks.tsx'
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -739,7 +740,7 @@ function KitchenThread({ snap, staffId, myTables, className }: { snap: Snapshot;
               <div className={cn('max-w-[80%] rounded-2xl px-3 py-2 text-sm', mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-secondary', n.text.startsWith('ALLERGY') && 'ring-2 ring-warn')}>
                 {n.label && <span className="block text-xs text-muted-foreground">{n.label}</span>}
                 {n.tableId && <span className={cn('mr-1 text-xs font-semibold', mine ? '' : 'text-muted-foreground')}>{n.tableId}</span>}
-                {n.text}
+                {S(n.text)}
                 <div className={cn('mt-0.5 text-right text-[10px] tabular', mine ? '' : 'text-muted-foreground')}>
                   {ago(snap.now, n.at)}
                   {mine && n.ackAt ? ` · ${tr('kitchen.seen')}` : ''}
@@ -1097,7 +1098,7 @@ function KitchenPopup({ fresh, onOpenChat, kitchenTab }: { fresh: KitchenNews[];
             <li key={n.id} className="rounded-2xl rounded-bl-md bg-secondary px-3 py-2.5">
               {n.label && <div className="text-xs text-muted-foreground">{n.label}</div>}
               {n.tableId && <span className="mr-1 text-xs font-semibold text-muted-foreground">{n.tableId}</span>}
-              <span className="text-base">{n.text}</span>
+              <span className="text-base">{S(n.text)}</span>
             </li>
           ))}
         </ul>

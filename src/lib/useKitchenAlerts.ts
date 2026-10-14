@@ -3,6 +3,8 @@
 // moving up a level alerts, and a ticket that stays late alerts again every few minutes. How the alert sounds and feels
 // (chime, flash, buzz) is the person's own choice in Settings.
 
+import { S } from '../i18n/sentences.ts'
+import { L } from '../i18n/index.ts'
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import type { Level } from '../../shared/priority.ts'
@@ -43,16 +45,16 @@ export function useKitchenAlerts(items: AlertItem[] | null, now: number, realert
         continue
       }
       map.set(i.id, { level: i.level, at: now })
-      const why = i.reasons.length ? ` · ${i.reasons.join(' · ')}` : ''
+      const why = i.reasons.length ? ` · ${i.reasons.map((r) => S(r)).join(' · ')}` : ''
       if (i.level === 'soon') {
         // A gentle heads-up: a soft tone and a small tap, no screen flash.
         if (getPrefs().chime) chime()
         haptic.done()
-        toast.message(`${i.table} is nearly due`, { id: `kt:${i.id}`, description: `${i.dishes}${why}` })
+        toast.message(L('{t} is nearly due', { t: i.table }), { id: `kt:${i.id}`, description: `${i.dishes}${why}` })
       } else {
         alertNew()
-        const text = i.minsOver >= 1 ? `${Math.round(i.minsOver)} min over standard` : 'past its standard time'
-        ;(i.level === 'critical' ? toast.error : toast.warning)(`${i.table}: ${again && !up ? 'still ' : ''}${text}`, { id: `kt:${i.id}`, description: `${i.dishes}${why}`, duration: 8000 })
+        const text = i.minsOver >= 1 ? L('{n} min over standard', { n: Math.round(i.minsOver) }) : L('past its standard time')
+        ;(i.level === 'critical' ? toast.error : toast.warning)(again && !up ? L('{t}: still {text}', { t: i.table, text }) : L('{t}: {text}', { t: i.table, text }), { id: `kt:${i.id}`, description: `${i.dishes}${why}`, duration: 8000 })
       }
     }
     // The sorted order and the tick are what change; the items themselves are rebuilt every render.

@@ -162,11 +162,20 @@ export function forecast(state: EngineState, config: RestaurantConfig, now: numb
       const risk: Risk = expectedOverMin >= tol ? 'likely' : expectedOverMin >= tol / 2 ? 'watch' : 'ok'
       const peakInMin = e?.n ? Math.max(1, Math.round((e.at - now) / MIN)) : 0
       const name = station[0].toUpperCase() + station.slice(1)
-      const record = past && past.lapses ? ` Tonight it has run late on ${past.lapses} of ${past.tickets} ${past.tickets === 1 ? 'ticket' : 'tickets'}.` : ''
-      const text =
+      // One short sentence per fact, so each can be shown in the person's language.
+      const record = past && past.lapses ? [`Tonight it has run late on ${past.lapses} of ${past.tickets} ${past.tickets === 1 ? 'ticket' : 'tickets'}.`] : []
+      const text = (
         risk === 'ok'
-          ? `${name}: ${c} cooking${n >= 0.5 ? `, about ${Math.round(n)} more due in ${WINDOW_MIN} min` : ''}. Comfortable.`
-          : `${name} ${risk === 'likely' ? 'likely to fall behind' : 'getting busy'}${peakInMin ? ` in about ${peakInMin} min` : ''}: ${c} ${c === 1 ? 'dish' : 'dishes'} cooking${n >= 0.5 ? `, about ${Math.round(n)} more due by ${istClock(now + WINDOW_MIN * MIN)}` : ''}. New tickets may wait ~${Math.max(1, Math.round(expectedOverMin))} min extra.${record}`
+          ? [`${name}: ${c} cooking.`, ...(n >= 0.5 ? [`About ${Math.round(n)} more due in ${WINDOW_MIN} min.`] : []), 'Comfortable.']
+          : [
+              `${name} is ${risk === 'likely' ? 'likely to fall behind' : 'getting busy'}.`,
+              ...(peakInMin ? [`Peak in about ${peakInMin} min.`] : []),
+              `${c} ${c === 1 ? 'dish' : 'dishes'} cooking.`,
+              ...(n >= 0.5 ? [`About ${Math.round(n)} more due by ${istClock(now + WINDOW_MIN * MIN)}.`] : []),
+              `New tickets may wait ~${Math.max(1, Math.round(expectedOverMin))} min extra.`,
+              ...record,
+            ]
+      ).join(' ')
       return { station, cooking: c, expected: n, expectedOverMin, peakInMin, risk, text }
     })
     .sort((x, y) => y.expectedOverMin - x.expectedOverMin)
@@ -191,9 +200,9 @@ export function forecast(state: EngineState, config: RestaurantConfig, now: numb
     // Only send new guests to a section with room under the table limit.
     const room = [...sections].filter((x) => x.section !== busiest.section && x.active < config.sop.maxActiveTablesPerServer).sort((x, y) => x.jobs - y.jobs || x.active - y.active)[0]
     rebalance =
-      `Section ${busiest.section} has ${busiest.jobs} jobs due in the next 10 min; section ${lightest.section} has ${lightest.jobs === 1 ? '1 job' : lightest.jobs}. ` +
-      `Ask section ${lightest.section} to run section ${busiest.section}'s food from the pass for a few minutes` +
-      (room ? `, and seat the next party in section ${room.section}.` : '. Every other section is at its table limit, so hold new parties at the door for a few minutes.')
+      `Section ${busiest.section} has ${busiest.jobs} jobs due in the next 10 min; section ${lightest.section} has ${lightest.jobs === 1 ? '1 job' : `${lightest.jobs} jobs`}. ` +
+      `Ask section ${lightest.section} to run section ${busiest.section}’s food from the pass for a few minutes.` +
+      (room ? ` Seat the next party in section ${room.section}.` : ' Every other section is at its table limit, so hold new parties at the door for a few minutes.')
   }
 
   const headlines = [...stations.filter((s) => s.risk !== 'ok').map((s) => s.text), ...(rebalance ? [rebalance] : [])]
@@ -275,8 +284,8 @@ export function reconstructVisit(v: VisitRecord, config: RestaurantConfig, live 
     const kitchenShare = overByOwner.kitchen / Math.max(0.1, overByOwner.kitchen + overByOwner.floor)
     story.push(
       `Biggest delay: ${biggest.label.toLowerCase()}${biggest.station ? ` on the ${biggest.station} station` : ''}, ${biggest.overMin} min over (${biggest.owner === 'kitchen' ? 'kitchen' : 'floor'}-controlled). ` +
-        `In all, ${overByOwner.kitchen} min over in the kitchen and ${overByOwner.floor} min on the floor` +
-        (kitchenShare >= 0.7 ? ', so this table’s wait was mostly the kitchen’s, not the server’s.' : kitchenShare <= 0.3 ? ', so most of the lost time was on the floor.' : '.'),
+        `In all, ${overByOwner.kitchen} min over in the kitchen and ${overByOwner.floor} min on the floor.` +
+        (kitchenShare >= 0.7 ? ' This table’s wait was mostly the kitchen’s, not the server’s.' : kitchenShare <= 0.3 ? ' Most of the lost time was on the floor.' : ''),
     )
   }
   const helped = [...new Set(steps.filter((s) => s.overMin > 0.25).sort((a, b) => b.overMin - a.overMin).map((s) => HELPED[s.stage]))].slice(0, 2)
@@ -354,7 +363,10 @@ export function shiftIntel(state: EngineState, config: RestaurantConfig): ShiftI
       id: 'guests',
       label: 'Guests',
       level: unrecovered >= 2 || a.managerRequests.length ? 'likely' : unrecovered === 1 ? 'watch' : 'ok',
-      text: moods.happy + moods.ok + moods.unhappy === 0 ? 'No check-ins yet.' : `${moods.happy} happy, ${moods.ok} fine, ${moods.unhappy} unhappy${moods.recovered ? ` (${moods.recovered} won back)` : ''}${a.managerRequests.length ? `; ${a.managerRequests.length} waiting for you` : ''}.`,
+      text:
+        moods.happy + moods.ok + moods.unhappy === 0
+          ? 'No check-ins yet.'
+          : `${moods.happy} happy, ${moods.ok} fine, ${moods.unhappy} unhappy${moods.recovered ? ` (${moods.recovered} won back)` : ''}.${a.managerRequests.length ? ` ${a.managerRequests.length} waiting for you.` : ''}`,
     },
     { id: 'kitchen', label: 'Kitchen', level: kLateRate >= 0.35 ? 'likely' : kLateRate >= 0.15 ? 'watch' : 'ok', text: kitchenLate.length ? `${pct(kLateRate)} of tickets past standard.` : 'No tickets finished yet.' },
     { id: 'floor', label: 'Floor', level: fLateRate >= 0.3 ? 'likely' : fLateRate >= 0.12 ? 'watch' : 'ok', text: floor.length ? `${pct(fLateRate)} of floor steps past standard.` : 'No steps measured yet.' },
@@ -370,7 +382,7 @@ export function shiftIntel(state: EngineState, config: RestaurantConfig): ShiftI
           : `Lost time is split between kitchen (${Math.round(overMin.kitchen)} min) and floor (${Math.round(overMin.floor)} min).`,
     )
   if (bottleneck) why.push(`The biggest single bottleneck is ${bottleneck.label.toLowerCase()}: ${bottleneck.detail}.`)
-  if (window) why.push(`It bunched up between ${istClock(window.from)} and ${istClock(window.to)}: ${window.lapses} ${window.lapses === 1 ? 'step' : 'steps'} ran late, with ${window.fires} ${window.fires === 1 ? 'ticket' : 'tickets'} fired around then${window.fires >= 6 ? ', a wave of orders landing together' : ''}.`)
+  if (window) why.push(`It bunched up between ${istClock(window.from)} and ${istClock(window.to)}: ${window.lapses} ${window.lapses === 1 ? 'step' : 'steps'} ran late, with ${window.fires} ${window.fires === 1 ? 'ticket' : 'tickets'} fired around then.${window.fires >= 6 ? ' A wave of orders landed together.' : ''}`)
   const overloaded = a.load.filter((l) => l.overloaded)
   if (overloaded.length) why.push(`${overloaded.length === 1 ? 'One section is' : `${overloaded.length} sections are`} above the ${config.sop.maxActiveTablesPerServer}-table limit right now, which slows every step there.`)
   if (!why.length) why.push(all.length ? 'Service is running to standard so far. Nothing stands out.' : 'Nothing to explain yet: tables are still early in their visits.')
