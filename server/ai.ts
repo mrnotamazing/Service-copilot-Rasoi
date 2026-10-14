@@ -310,6 +310,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
         ? [
             `- Mode: PRACTICE. You play a ${other} in this situation (their opening line, to say in ${language}): "${scenarioOpening(sc!.id)}"`,
             `- Play them like a real person, not a pushover: react to exactly what ${asker} said. One polite sentence doesn't fix things. If they're vague, push for specifics (what exactly, how long). If they apologise, act and give a time, soften a little but raise a real follow-up worry. Excuses, blame, guesses about safety or judging you make you more upset. Natural spoken ${language}, 1-2 short sentences, real emotion, no stage directions, never abusive or cartoonish.`,
+            `- Judge only what the reply actually says about THIS situation. A reply that is off-topic, ignores or denies the concern ("is that even real?", "you're overreacting"), is rude, dismissive, or makes no sense scores 0-20, and the ${other} reacts the way a real person would: confused, irritated or more upset. They never thank, praise or cheer up after such a reply, and never answer as if it were helpful.`,
             `- The ${other}'s patience right now: ${patienceBefore}/${PATIENCE_MAX} (0 = gives up and leaves or asks for the manager, ${PATIENCE_MAX} = won over). A strong reply (score 75+) raises it by 1, a weak one (under 45) lowers it by 1, and two strong replies in total win them over. If it reaches ${PATIENCE_MAX}, close warmly and add [END]; if it reaches 0, leave or ask for the manager and add [END]. After ${MAX_REPLIES} replies, wrap up either way with [END].`,
             req.finish
               ? `- ${manager ? 'The manager' : 'The server'} asked to finish. Step out of character and give a short debrief in ${language}: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).`
@@ -397,7 +398,10 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             const modelScore = scoreText && !/\d\s*[-–]\s*\d/.test(scoreText) ? Number(scoreText.match(/\d{1,3}/)?.[0]) : NaN
             // A small local model is a shakier judge: blend its score with the rubric's.
             const judged = Number.isFinite(modelScore) ? (opts?.local ? Math.round((modelScore + own.score) / 2) : modelScore) : own.score
-            const score = Math.max(0, Math.min(own.penalty ? 40 : 100, judged))
+            // A model can be too kind: where the rubric finds nothing of value (off-topic, dismissive, rude, nonsense),
+            // the model's score may rise only a little above the rubric's.
+            const kind = own.score < 15 ? Math.min(judged, own.score + 30) : judged
+            const score = Math.max(0, Math.min(own.penalty ? 40 : 100, kind))
             const state = patienceAfter([...past, { score, penalty: own.penalty }])
             const done = ended || !!state.outcome
             const outcome = state.outcome ?? (done ? (state.patience >= 3 ? 'won' : state.patience <= 1 ? 'lost' : 'ok') : undefined)

@@ -157,7 +157,7 @@ describe('practice with a language model', () => {
     const chat = chatWith('COACH: ✓ Great\nSCORE: 90\nIDEAL: …\nGUEST: Thank you, that’s sorted.', seen)
     const a = await createAi(new Hub(memoryStore()), { chat }).ask({
       kind: 'chat', mode: 'practice', scenario: 'cold_food', staffId: 's_aisha',
-      messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: 'first', score: 85 }, { role: 'assistant', text: 'y' }, { role: 'user', text: 'second' }],
+      messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: 'first', score: 85 }, { role: 'assistant', text: 'y' }, { role: 'user', text: 'I’m so sorry about that. I’ll bring a fresh one right away, it will be with you in five minutes.' }],
     })
     expect(seen.live).toMatch(/patience right now: 3\/4/)
     expect(a).toMatchObject({ done: true, outcome: 'won', patience: 4 })
@@ -190,5 +190,22 @@ describe('practice with a language model', () => {
       messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: 'I’m so sorry. Let me replace it right away; it’ll be with you in 10 minutes.' }],
     })
     expect(b.score).toBe(60)
+  })
+})
+
+describe('a too-kind model is held to common sense', () => {
+  const chatWith = (answer: string) => ({ name: 'claude' as const, reply: async () => answer })
+  it.each([
+    'Is a nut allergy even real? I think people just make it up.',
+    'What is your favourite football team? The weather is nice today.',
+    'asdf blah blah 123 purple banana',
+  ])('scores %s low even when the model praises it', async (text) => {
+    const chat = chatWith('COACH: ✓ Friendly → add an apology\nSCORE: 85\nIDEAL: …\nGUEST: Thank you, that’s great.')
+    const a = await createAi(new Hub(memoryStore()), { chat }).ask({
+      kind: 'chat', mode: 'practice', scenario: 'allergy', staffId: 's_aisha',
+      messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text }],
+    })
+    expect(a.score).toBeLessThanOrEqual(40)
+    expect(a.mood).toBe('worse')
   })
 })
