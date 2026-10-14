@@ -32,6 +32,7 @@ interface Message extends ChatTurn {
   criteria?: AiAnswer['criteria']
   ideal?: string
   xp?: number
+  xpMin?: number
   /** Practice, on their lines: how they took your last reply. */
   mood?: AiAnswer['mood']
   patience?: number
@@ -161,7 +162,7 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
       // In practice, the score, coaching, ideal reply and XP belong under the reply they are about.
       const scored = practice && !finish && a.score !== undefined
       const withCoach = scored
-        ? history.map((m, i) => (i === history.length - 1 && m.role === 'user' ? { ...m, feedback: a.feedback, stars: a.stars, score: a.score, judgedBy: a.judgedBy, criteria: a.criteria, ideal: a.ideal, xp: a.xp } : m))
+        ? history.map((m, i) => (i === history.length - 1 && m.role === 'user' ? { ...m, feedback: a.feedback, stars: a.stars, score: a.score, judgedBy: a.judgedBy, criteria: a.criteria, ideal: a.ideal, xp: a.xp, xpMin: a.xpMin } : m))
         : history
       const reply: Message = finish
         ? { role: 'assistant', text: a.text, source: a.source, debrief: true, stars: a.stars, score: a.score, xp: a.xp, lang }
@@ -414,7 +415,7 @@ function ScoreCard({ m }: { m: Message }) {
             })}
         </ul>
       ) : null}
-      {m.xp === 0 && m.score !== undefined && <p className="mt-1.5 text-[11px] text-muted-foreground">{t('practice.capped')}</p>}
+      {m.xp === 0 && m.score !== undefined && <p className="mt-1.5 text-[11px] text-muted-foreground">{m.score < (m.xpMin ?? 65) ? t('practice.noXp', { n: m.xpMin ?? 65 }) : t('practice.capped')}</p>}
       {m.judgedBy && <p className="mt-1.5 text-[11px] text-muted-foreground">{t(m.judgedBy === 'model' ? 'practice.judgedAi' : 'practice.judgedRubric')}</p>}
       {m.ideal && (
         <div className="mt-2 border-t border-primary/20 pt-2">

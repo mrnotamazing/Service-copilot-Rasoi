@@ -66,7 +66,7 @@ export function ShiftRecap({ snap, staffId, open, onOpenChange }: { snap: Snapsh
       <DrawerContent className="mx-auto max-h-[92dvh] max-w-xl">
         <DrawerHeader className="text-center">
           <DrawerDescription>{t('recap.title')}</DrawerDescription>
-          <DrawerTitle className="font-display text-3xl">{words.rank(level.index)}</DrawerTitle>
+          <DrawerTitle className="font-display text-3xl">{words.level(level)}</DrawerTitle>
         </DrawerHeader>
         <div className="space-y-6 overflow-y-auto px-4 pb-2">
           <div className="grid grid-cols-3 gap-2">

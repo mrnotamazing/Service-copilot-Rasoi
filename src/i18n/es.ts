@@ -696,7 +696,8 @@ export const es: Record<Key, string> = {
   "h.kitchen_answer": "Preguntaste: {q}",
   "action.kitchen_answer": "Entendido",
   "chat.askKitchen": "Preguntar a cocina",
-  "chat.askedKitchen": "Enviado a cocina. Su respuesta te llegará como tarjeta y quedará guardada para la próxima vez.",  // --- merged ui strings ---
+  "chat.askedKitchen": "Enviado a cocina. Su respuesta te llegará como tarjeta y quedará guardada para la próxima vez.",  "practice.noXp": "Esta vez no hay XP: una respuesta necesita {n}+ para ganar XP. Usa la respuesta ideal e inténtalo de nuevo.",
+  // --- merged ui strings ---
   "ui.about.tablemate_s_running_chef": "El chef en marcha de TableMate",
   "ui.about.six_tables_twelve_standards": "Seis mesas. Doce estándares. Un par de manos.",
   "ui.about.tablemate_is_a_service": "TableMate es un copiloto de servicio para meseros de alta cocina. Lee lo que el POS del restaurante ya sabe y muestra los tres próximos pasos importantes en el teléfono del mesero, en el orden que el cliente querría que se hicieran. Cuando algo se retrasa, registra de quién fue el paso, así nadie es culpado por una parrilla lenta.",

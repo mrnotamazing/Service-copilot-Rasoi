@@ -696,7 +696,8 @@ export const ta: Record<Key, string> = {
   "h.kitchen_answer": "நீங்கள் கேட்டது: {q}",
   "action.kitchen_answer": "புரிந்தது",
   "chat.askKitchen": "சமையலறையிடம் கேளுங்கள்",
-  "chat.askedKitchen": "சமையலறைக்கு அனுப்பப்பட்டது. பதில் கார்டாக வரும், அடுத்த முறைக்காகச் சேமிக்கப்படும்.",  // --- merged ui strings ---
+  "chat.askedKitchen": "சமையலறைக்கு அனுப்பப்பட்டது. பதில் கார்டாக வரும், அடுத்த முறைக்காகச் சேமிக்கப்படும்.",  "practice.noXp": "இந்த முறை XP இல்லை: XP பெற பதில் {n}+ மதிப்பெண் பெற வேண்டும். சிறந்த பதிலைப் பார்த்து மீண்டும் முயலுங்கள்.",
+  // --- merged ui strings ---
   "ui.about.tablemate_s_running_chef": "TableMate's running chef",
   "ui.about.six_tables_twelve_standards": "Six tables. Twelve standards. One pair of hands.",
   "ui.about.tablemate_is_a_service": "TableMate is a service copilot for fine-dining servers. It reads what the restaurant’s POS already knows and puts the next three things that matter on the server’s phone, in the order the guest would want them done. When something runs late, it records whose step it was, so nobody is blamed for a slow grill.",

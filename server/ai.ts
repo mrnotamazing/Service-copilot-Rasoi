@@ -112,8 +112,9 @@ export interface AiAnswer {
   mood?: Mood
   patience?: number
   outcome?: Outcome
-  /** Practice: XP earned by this turn (added by the API, which records it). */
+  /** Practice: XP earned by this turn (added by the API, which records it), and the score a reply needs to earn any. */
   xp?: number
+  xpMin?: number
   /** Language of `text` when it isn't the app's language (the built-in trainer answers in English). */
   lang?: string
   /** A question about a dish: offer to send it to the kitchen (`unsure`: the menu notes didn't answer it). */

@@ -78,12 +78,20 @@ export const LEVELS: { xp: number; title: string }[] = [
   { xp: 1700, title: 'Maître d’' },
 ]
 
-export function levelFor(xp: number) {
+/** The levels this restaurant uses: its own (2 to 8, set in Setup) or the standard ones. */
+export function levelsOf(config?: Pick<RestaurantConfig, 'game'>): { xp: number; title: string }[] {
+  const own = config?.game?.levels
+  return own && own.length >= 2 ? own : LEVELS
+}
+
+export function levelFor(xp: number, levels: { xp: number; title: string }[] = LEVELS) {
   let i = 0
-  while (i + 1 < LEVELS.length && xp >= LEVELS[i + 1].xp) i++
-  const cur = LEVELS[i]
-  const next = LEVELS[i + 1]
+  while (i + 1 < levels.length && xp >= levels[i + 1].xp) i++
+  const cur = levels[i]
+  const next = levels[i + 1]
   return {
+    /** True when the restaurant named its own levels, so the title is shown as written. */
+    custom: levels !== LEVELS,
     index: i,
     level: i + 1,
     title: cur.title,
@@ -138,11 +146,20 @@ export const QUESTS: QuestDef[] = [
 /** Most XP practice can earn in one day (IST), so it rewards learning rather than grinding. */
 export const PRACTICE_DAILY_XP = 150
 
-/** XP for a practice turn: up to 10 per reply (score ÷ 10); at the end, 10 per star and 10 more for winning them over. */
-export function practiceXp(score: number, final?: boolean, outcome?: 'won' | 'lost' | 'ok'): number {
-  if (!final) return Math.round(Math.max(0, Math.min(100, score)) / 10)
-  const stars = score >= 80 ? 3 : score >= 50 ? 2 : 1
-  return stars * 10 + (outcome === 'won' ? 10 : 0)
+/** A practice reply earns XP only from this score up (the restaurant can change it in Setup). */
+export const PRACTICE_MIN_SCORE = 65
+
+/**
+ * XP for a practice turn. Nothing below the minimum score, so a poor reply never pays. From the minimum
+ * it grows with the score: 3 to 15 for a reply, and at the end 15 to 40 by the final score, plus 10 for
+ * winning the other side over.
+ */
+export function practiceXp(score: number, final?: boolean, outcome?: 'won' | 'lost' | 'ok', min = PRACTICE_MIN_SCORE): number {
+  const s = Math.max(0, Math.min(100, score))
+  if (s < min) return 0
+  const share = (s - min) / Math.max(1, 100 - min)
+  if (!final) return Math.round(3 + share * 12)
+  return Math.round(15 + share * 25) + (outcome === 'won' ? 10 : 0)
 }
 
 /** Cooperative goal for the whole floor. */
@@ -203,7 +220,7 @@ export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineStat
     if (!p) return
     const dayKey = `practiceXp:${new Date(ev.at + 5.5 * 60 * MIN).toISOString().slice(0, 10)}`
     const used = p.counters[dayKey] ?? 0
-    const xp = Math.max(0, Math.min(practiceXp(score, final, outcome), PRACTICE_DAILY_XP - used))
+    const xp = Math.max(0, Math.min(practiceXp(score, final, outcome, config.game?.practiceMinScore ?? PRACTICE_MIN_SCORE), PRACTICE_DAILY_XP - used))
     p.counters[dayKey] = used + xp
     p.practiceLog.push({ at: ev.at, scenario, score: Math.round(score), final: final || undefined })
     if (p.practiceLog.length > 120) p.practiceLog.splice(0, p.practiceLog.length - 120)
@@ -360,13 +377,13 @@ function award(
 ) {
   const p = game.players[staffId]
   if (!p) return
-  const before = levelFor(p.xp).level
+  const levels = levelsOf(config)
+  const before = levelFor(p.xp, levels).level
   p.xp += xp
   push(game, { id: `a${++game.seq}`, staffId, at, kind, xp, title, detail, ...i18n })
-  const after = levelFor(p.xp)
+  const after = levelFor(p.xp, levels)
   if (after.level > before)
-    push(game, { id: `a${++game.seq}`, staffId, at, kind: 'level', xp: 0, title: `Level ${after.level}: ${after.title}`, detail: 'New rank unlocked', k: 'a.level', p: { n: after.level, rank: `@rank.${after.index}` }, dk: 'd.newRank' })
-  void config
+    push(game, { id: `a${++game.seq}`, staffId, at, kind: 'level', xp: 0, title: `Level ${after.level}: ${after.title}`, detail: 'New rank unlocked', k: 'a.level', p: { n: after.level, rank: after.custom ? after.title : `@rank.${after.index}` }, dk: 'd.newRank' })
 }
 
 function push(game: GameState, a: Award) {
@@ -406,12 +423,12 @@ export interface PlayerView {
   quests: (QuestDef & { done: boolean; progress: number })[]
 }
 
-export function playerView(game: GameState, staffId: string): PlayerView | null {
+export function playerView(game: GameState, staffId: string, config?: Pick<RestaurantConfig, 'game'>): PlayerView | null {
   const p = game.players[staffId]
   if (!p) return null
   return {
     player: p,
-    level: levelFor(p.xp),
+    level: levelFor(p.xp, levelsOf(config)),
     awards: game.awards.filter((a) => a.staffId === staffId).slice(-25),
     badges: BADGES.map((b) => ({ ...b, earnedAt: p.badges[b.id] ?? null, progress: Math.min(b.target, p.counters[b.counter] ?? 0) })),
     quests: QUESTS.map((q) => ({ ...q, done: !!p.quests[q.id], progress: Math.min(q.target, p.counters[q.counter] ?? 0) })),

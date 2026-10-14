@@ -87,8 +87,8 @@ export default function ServerView() {
   if (!snap) return <PhoneSkeleton />
   if (!me || !snap.me) return <div className="p-8 text-muted-foreground">{t('srv.notFound')}</div>
   const game = snap.me.game
-  const rank = awardText.rank(game?.level.index)
-  const nextRank = game?.level.next ? awardText.rank(game.level.index + 1) : null
+  const rank = game ? awardText.level(game.level) : ''
+  const nextRank = game?.level.next ? awardText.nextLevel(game.level) : null
 
   const overlays = (
     <>
@@ -825,10 +825,10 @@ function ProgressTab({ snap, staffId, wide }: { snap: Snapshot; staffId: string;
       <section className="relative overflow-hidden rounded-3xl bg-hero p-5 text-hero-foreground">
         <div className="pointer-events-none absolute -right-10 -top-10 size-40 rounded-full bg-primary/25 blur-2xl" aria-hidden />
         <div className="text-sm opacity-75">{t('profile.level', { n: level.level })}</div>
-        <div className="font-display text-3xl">{words.rank(level.index)}</div>
+        <div className="font-display text-3xl">{words.level(level)}</div>
         <div className="mt-4 flex items-baseline justify-between text-sm">
           <span className="font-semibold tabular">{player.xp} {tx('ui.server.xp')}</span>
-          <span className="opacity-75">{level.next ? t('hdr.xpTo', { xp: level.next - player.xp, rank: words.rank(level.index + 1) }) : t('profile.topRank')}</span>
+          <span className="opacity-75">{level.next ? t('hdr.xpTo', { xp: level.next - player.xp, rank: words.nextLevel(level) }) : t('profile.topRank')}</span>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/15">
           <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${level.progress * 100}%` }} transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }} />

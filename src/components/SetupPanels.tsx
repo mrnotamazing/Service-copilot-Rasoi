@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import { DEFAULT_PRIORITY, PRIORITY_FIELDS, priorityOf, type PriorityConfig } from '../../shared/priority.ts'
+import { LEVELS, PRACTICE_MIN_SCORE, levelsOf } from '../../shared/game.ts'
 import { STANDALONE, post } from '../lib/live.ts'
 
 // The restaurant's setup, shown on the Demo & setup page: service standards, the AI behind the
@@ -86,6 +87,7 @@ export function SetupPanels({ snap }: { snap: Snapshot }) {
       </Card>
 
       <KitchenPriorities snap={snap} />
+      <LevelsEditor snap={snap} />
 
       <Card>
         <CardHeader>
@@ -238,6 +240,96 @@ function KitchenPriorities({ snap }: { snap: Snapshot }) {
               onClick={() => {
                 setP(DEFAULT_PRIORITY)
                 setDirty(true)
+              }}
+            >
+              {tx('ui.setup.reset_to_defaults')}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+/** The ladder servers climb and how good a practice reply must be to earn XP; both are the restaurant's to define. */
+function LevelsEditor({ snap }: { snap: Snapshot }) {
+  const tx = useT()
+  const [min, setMin] = useState(snap.config.game?.practiceMinScore ?? PRACTICE_MIN_SCORE)
+  const [levels, setLevels] = useState(() => levelsOf(snap.config).map((l) => ({ ...l })))
+  const [dirty, setDirty] = useState(false)
+  const edit = (next: typeof levels) => {
+    setLevels(next)
+    setDirty(true)
+  }
+  return (
+    <Card>
+      <CardHeader>
+        <Heading>{L('Levels and practice rewards')}</Heading>
+        <CardDescription>{L('Practice replies earn XP only from this score up, and better replies earn more. Name the levels your team climbs.')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form
+          className="space-y-4"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            await post('/api/config', { game: { practiceMinScore: min, levels } })
+            setDirty(false)
+            toast.success(L('Levels saved'))
+          }}
+        >
+          <div className="grid gap-1">
+            <div className="flex items-baseline justify-between text-sm">
+              <label htmlFor="practice-min">{L('Lowest practice score that earns XP')}</label>
+              <span className="tabular text-xs text-muted-foreground">{min} / 100</span>
+            </div>
+            <Slider
+              id="practice-min"
+              min={50}
+              max={95}
+              step={5}
+              value={[min]}
+              onValueChange={([v]) => {
+                setMin(v)
+                setDirty(true)
+              }}
+              aria-label={L('Lowest practice score that earns XP')}
+            />
+          </div>
+          <ol className="space-y-2">
+            {levels.map((l, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <Input aria-label={L('Level name')} value={l.title} maxLength={24} onChange={(e) => edit(levels.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)))} />
+                <Input
+                  aria-label={L('XP needed')}
+                  className="w-24 tabular"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  disabled={i === 0}
+                  value={l.xp}
+                  onChange={(e) => edit(levels.map((x, j) => (j === i ? { ...x, xp: Number(e.target.value) } : x)))}
+                />
+                <Button type="button" variant="ghost" size="sm" disabled={levels.length <= 2 || i === 0} onClick={() => edit(levels.filter((_, j) => j !== i))}>
+                  {L('Remove')}
+                </Button>
+              </li>
+            ))}
+          </ol>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={levels.length >= 8} onClick={() => edit([...levels, { xp: levels[levels.length - 1].xp + 500, title: L('New level') }])}>
+              {L('Add level')}
+            </Button>
+            <Button type="submit" disabled={!dirty}>
+              {L('Save levels')}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setMin(PRACTICE_MIN_SCORE)
+                setLevels(LEVELS.map((l) => ({ ...l })))
+                setDirty(true)
+                void post('/api/config', { game: { practiceMinScore: PRACTICE_MIN_SCORE, levels: null } })
               }}
             >
               {tx('ui.setup.reset_to_defaults')}

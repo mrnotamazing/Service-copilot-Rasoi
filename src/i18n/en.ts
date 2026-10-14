@@ -718,6 +718,7 @@ export const en = {
   "action.kitchen_answer": "Got it",
   "chat.askKitchen": "Ask the kitchen",
   "chat.askedKitchen": "Sent to the kitchen. Their answer will come to you as a card, and it’s saved for next time.",
+  "practice.noXp": "No XP this time: a reply needs {n}+ to earn XP. Use the ideal reply and try again.",
   // --- merged ui strings ---
   "ui.about.tablemate_s_running_chef": "TableMate's running chef",
   "ui.about.six_tables_twelve_standards": "Six tables. Twelve standards. One pair of hands.",

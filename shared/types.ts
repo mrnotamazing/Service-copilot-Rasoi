@@ -93,6 +93,8 @@ export interface RestaurantConfig {
   sop: Sop
   /** What the kitchen should do first, as the restaurant set it (see priority.ts). Missing values use the defaults. */
   priority?: Partial<import('./priority.ts').PriorityConfig>
+  /** The restaurant's game rules: the practice score that earns XP, and the names and XP steps of the levels. */
+  game?: { practiceMinScore?: number; levels?: { xp: number; title: string }[] }
   /** Alerts sent out to a webhook (Zapier, n8n…) for WhatsApp, Slack, email or Sheets. */
   alerts?: { url: string; kinds: AlertKind[] }
 }

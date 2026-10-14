@@ -8,7 +8,7 @@ import { crunchAhead, forecast, learningPlan, shiftIntel, whyFirst } from '../sh
 import { cleanProfile } from '../shared/profile.ts'
 import { crewView } from '../shared/crew.ts'
 import { PRIORITY_FIELDS } from '../shared/priority.ts'
-import { playerView, teamView } from '../shared/game.ts'
+import { PRACTICE_MIN_SCORE, playerView, teamView } from '../shared/game.ts'
 import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
 import type { RestaurantConfig } from '../shared/types.ts'
@@ -71,7 +71,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
           queued,
           stats: staffStats(hub.state, hub.config).find((s) => s.staffId === staffId) ?? null,
           myVisits: myVisits.slice(-40).reverse(),
-          game: playerView(hub.game, staffId),
+          game: playerView(hub.game, staffId, hub.config),
           upcoming: crunch ? [crunch, ...upcoming] : upcoming,
           // Every open task of mine (not just the top three), for the per-table view on the floor plan.
           tasks: mine.slice(0, 30),
@@ -256,6 +256,19 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         }
         patch.priority = next
       }
+      if (body.game && typeof body.game === 'object') {
+        // Practice threshold (50 to 95) and the restaurant's own level names: 2 to 8 steps, starting at 0 XP, rising.
+        const g = body.game as { practiceMinScore?: unknown; levels?: unknown }
+        const next: NonNullable<RestaurantConfig['game']> = { ...hub.config.game }
+        if (typeof g.practiceMinScore === 'number' && g.practiceMinScore >= 50 && g.practiceMinScore <= 95) next.practiceMinScore = Math.round(g.practiceMinScore)
+        if (g.levels === null) delete next.levels
+        else if (Array.isArray(g.levels) && g.levels.length >= 2 && g.levels.length <= 8) {
+          const lv = g.levels.map((l: { xp?: unknown; title?: unknown }) => ({ xp: Number(l?.xp), title: String(l?.title ?? '').trim().slice(0, 24) }))
+          const ok = lv[0].xp === 0 && lv.every((l, i) => Number.isFinite(l.xp) && l.title && (i === 0 || l.xp > lv[i - 1].xp))
+          if (ok) next.levels = lv
+        }
+        patch.game = next
+      }
       if (typeof body.name === 'string') patch.name = body.name.slice(0, 80)
       if (body.sections && typeof body.sections === 'object') patch.sections = { ...hub.config.sections, ...(body.sections as Record<string, string>) }
       hub.updateConfig(patch)
@@ -307,6 +320,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         const before = hub.game.players[req.staffId].xp
         hub.ingest({ type: 'practice.scored', source: 'app', payload: { staffId: req.staffId, scenario: req.scenario, score: answer.score, final: req.finish || undefined, outcome: answer.outcome } })
         answer.xp = hub.game.players[req.staffId].xp - before
+        answer.xpMin = hub.config.game?.practiceMinScore ?? PRACTICE_MIN_SCORE
       }
       return answer
     },

@@ -696,7 +696,8 @@ export const bn: Record<Key, string> = {
   "h.kitchen_answer": "আপনি জিজ্ঞেস করেছিলেন: {q}",
   "action.kitchen_answer": "বুঝেছি",
   "chat.askKitchen": "কিচেনকে জিজ্ঞেস করুন",
-  "chat.askedKitchen": "কিচেনে পাঠানো হয়েছে। উত্তর কার্ড হিসেবে আসবে, আর পরের বারের জন্য সেভ থাকবে।",  // --- merged ui strings ---
+  "chat.askedKitchen": "কিচেনে পাঠানো হয়েছে। উত্তর কার্ড হিসেবে আসবে, আর পরের বারের জন্য সেভ থাকবে।",  "practice.noXp": "এবার XP নেই: XP পেতে উত্তরের স্কোর {n}+ হতে হবে। আদর্শ উত্তর দেখে আবার চেষ্টা করুন।",
+  // --- merged ui strings ---
   "ui.about.tablemate_s_running_chef": "TableMate's running chef",
   "ui.about.six_tables_twelve_standards": "Six tables. Twelve standards. One pair of hands.",
   "ui.about.tablemate_is_a_service": "TableMate is a service copilot for fine-dining servers. It reads what the restaurant’s POS already knows and puts the next three things that matter on the server’s phone, in the order the guest would want them done. When something runs late, it records whose step it was, so nobody is blamed for a slow grill.",

@@ -20,6 +20,9 @@ export function useAwardText() {
     badge: (b: { id: string; title: string; description: string }) => ({ title: t.any(`badge.${b.id}.t`), description: t.any(`badge.${b.id}.d`) }),
     quest: (q: { id: string }) => t.any(`quest.${q.id}`),
     rank: (index: number | null | undefined) => (index == null ? '' : t.any(`rank.${index}`)),
+    /** A level's name: the restaurant's own wording when it set its own levels, otherwise translated. */
+    level: (lv: { index: number; title: string; custom?: boolean }) => (lv.custom ? lv.title : t.any(`rank.${lv.index}`)),
+    nextLevel: (lv: { index: number; nextTitle: string | null; custom?: boolean }) => (lv.nextTitle == null ? '' : lv.custom ? lv.nextTitle : t.any(`rank.${lv.index + 1}`)),
   }
 }
 

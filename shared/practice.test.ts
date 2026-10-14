@@ -3,7 +3,7 @@ import { createAi } from '../server/ai.ts'
 import { createApi } from '../server/api.ts'
 import { Hub, memoryStore } from '../server/hub.ts'
 import { Simulator } from '../server/simulator.ts'
-import { PRACTICE_DAILY_XP, practiceXp } from './game.ts'
+import { PRACTICE_DAILY_XP, levelFor, levelsOf, practiceXp } from './game.ts'
 import { patienceAfter, practiceDebrief, practiceStep, SCENARIOS, scoreReply } from './practice.ts'
 import { PRACTICE_TEXT } from './practiceText/index.ts'
 
@@ -100,10 +100,15 @@ describe('a realistic other side', () => {
 })
 
 describe('practice XP', () => {
-  it('pays up to 10 per reply and a finishing bonus', () => {
-    expect(practiceXp(73)).toBe(7)
-    expect(practiceXp(90, true, 'won')).toBe(40)
-    expect(practiceXp(40, true, 'lost')).toBe(10)
+  it('pays nothing below the minimum score, and more the better the reply', () => {
+    expect(practiceXp(64)).toBe(0)
+    expect(practiceXp(40, true, 'lost')).toBe(0)
+    expect(practiceXp(65)).toBe(3)
+    expect(practiceXp(73)).toBe(6)
+    expect(practiceXp(100)).toBe(15)
+    expect(practiceXp(90, true, 'won')).toBe(43)
+    expect(practiceXp(100, true, 'won')).toBe(50)
+    expect(practiceXp(70, false, undefined, 80)).toBe(0)
   })
 
   it('records XP for each scored reply and the finish, through the API, capped per day', async () => {
@@ -111,11 +116,11 @@ describe('practice XP', () => {
     const api = createApi(hub, new Simulator(hub))
     const good = 'I’m so sorry. Let me replace it right away; it’ll be with you in 10 minutes.'
     const r1 = await api.ask({ kind: 'chat', mode: 'practice', scenario: 'cold_food', staffId: 's_aisha', messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: good }] })
-    expect(r1).toMatchObject({ score: 100, xp: 10, mood: 'better' })
+    expect(r1).toMatchObject({ score: 100, xp: 15, mood: 'better' })
     const done = await api.ask({ kind: 'chat', mode: 'practice', scenario: 'cold_food', staffId: 's_aisha', finish: true, messages: [{ role: 'user', text: good, score: 100 }, { role: 'assistant', text: 'x' }, { role: 'user', text: good, score: 100 }] })
     expect(done.outcome).toBe('won')
-    // 30 for three stars + 10 for winning them over + 30 for the first-rehearsal badge + 20 for the quest
-    expect(done.xp).toBe(90)
+    // 40 for a perfect finish + 10 for winning them over + 30 for the first-rehearsal badge + 20 for the quest
+    expect(done.xp).toBe(100)
     const p = hub.game.players.s_aisha
     expect(p.badges.first_rehearsal).toBeTruthy()
     expect(p.quests.q_practice).toBeTruthy()
@@ -128,7 +133,7 @@ describe('practice XP', () => {
   it('lets managers earn training XP too', async () => {
     const hub = new Hub(memoryStore())
     const api = createApi(hub, new Simulator(hub))
-    const r = await api.ask({ kind: 'chat', mode: 'practice', scenario: 'm_allergy', staffId: 'm_floor', messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: 'Calling 112 for an ambulance now; let’s help him use his EpiPen.' }] })
+    const r = await api.ask({ kind: 'chat', mode: 'practice', scenario: 'm_allergy', staffId: 'm_floor', messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: 'Call 112 now and get the ambulance; I’ll help him use his EpiPen.' }] })
     expect(r.xp).toBeGreaterThan(0)
   })
 })
@@ -207,5 +212,15 @@ describe('a too-kind model is held to common sense', () => {
     })
     expect(a.score).toBeLessThanOrEqual(40)
     expect(a.mood).toBe('worse')
+  })
+})
+
+describe('restaurant-defined levels', () => {
+  it('applies a restaurant's own levels and practice minimum', async () => {
+    const hub = new Hub(memoryStore())
+    hub.updateConfig({ game: { practiceMinScore: 80, levels: [{ xp: 0, title: 'Trainee' }, { xp: 50, title: 'Host' }] } })
+    expect(practiceXp(75, false, undefined, hub.config.game!.practiceMinScore)).toBe(0)
+    expect(levelFor(60, levelsOf(hub.config)).title).toBe('Host')
+    expect(levelFor(60).title).toBe('Commis')
   })
 })
