@@ -31,9 +31,9 @@ export function readRanking(file: string): Ranking | null {
 const GUESS: Record<string, { q: number; ms: number }> = {
   claude: { q: 92, ms: 3500 },
   gemini: { q: 84, ms: 2500 },
-  groq: { q: 84, ms: 700 },
+  groq: { q: 88, ms: 550 },
   cerebras: { q: 80, ms: 600 },
-  openrouter: { q: 72, ms: 2500 },
+  openrouter: { q: 80, ms: 1100 },
   cloud: { q: 75, ms: 2000 },
   ollama: { q: 55, ms: 12000 },
 }

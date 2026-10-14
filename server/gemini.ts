@@ -91,9 +91,12 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
       // Try the model that last worked, then the chosen one, then the others; skip any that failed in the last minute.
       const order = [...new Set([lastGood, first, ...others].filter((m): m is string => !!m))]
       const ready = order.filter((m) => (rested.get(m) ?? 0) < now)
-      const tries = (ready.length ? ready : order).slice(0, 8)
+      // Three models at most: when Gemini is overloaded (503s) every model is, so the next service in the line-up answers sooner.
+      const tries = (ready.length ? ready : order).slice(0, 3)
       let lastError: unknown
+      let busy = 0
       for (const name of tries) {
+        if (busy >= 2) break
         try {
           const text = await replyWith(name, system, turns, onText, o)
           lastGood = name
@@ -105,6 +108,7 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
             throw e
           }
           rested.set(name, Date.now() + 60_000)
+          if ((e as { status?: number }).status === 503 || (e as Error).name === 'TimeoutError') busy++
           console.warn(`[gemini] ${name} couldn't answer (${(e as { status?: number }).status ?? (e as Error).name}); trying the next model`)
         }
       }
@@ -126,7 +130,7 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
         const res = await doFetch(`${BASE}/models/${name}:streamGenerateContent?alt=sse`, {
           method: 'POST',
           headers,
-          signal: o?.signal ? AbortSignal.any([AbortSignal.timeout(60_000), o.signal]) : AbortSignal.timeout(60_000),
+          signal: o?.signal ? AbortSignal.any([AbortSignal.timeout(25_000), o.signal]) : AbortSignal.timeout(25_000),
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: `${system.stable}\n\n${system.live}` }] },
             contents,
