@@ -132,7 +132,7 @@ export function createGemini(opts: { key: string; model?: string; fetchImpl?: ty
             contents,
             generationConfig: {
               maxOutputTokens: o?.maxTokens ?? 1024,
-              temperature: 0.6,
+              temperature: o?.temperature ?? 0.6,
               ...(think ? { thinkingConfig: think } : {}),
               // Fixed fields (e.g. a scored practice turn): Gemini returns exactly that JSON.
               ...(json ? { responseMimeType: 'application/json', responseSchema: json } : {}),

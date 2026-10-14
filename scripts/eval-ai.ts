@@ -11,7 +11,7 @@ import { loadProviders } from '../server/providers.ts'
 
 const root = join(import.meta.dirname, '..')
 const only = process.argv[2]
-const providers = (await loadProviders()).filter((p) => !only || p.name === only)
+const providers = (await loadProviders()).filter((p) => !only || p.name === only || p.id === only)
 if (!providers.length) {
   console.log('No AI model is configured. Add GROQ_API_KEY, GEMINI_API_KEY or ANTHROPIC_API_KEY to .env, or start Ollama.')
   process.exit(1)
@@ -30,8 +30,10 @@ const GOOD = "I'm really sorry about that, and thank you for telling me. Let me 
 const BAD = "That's not my problem, it's not my fault. Ask someone else."
 
 type Check = (a: AiAnswer) => string | null // null = pass, otherwise what was wrong
+type Tier = 'quick' | 'standard' | 'deep'
 interface Case {
   id: string
+  tier?: Tier
   req: AiRequest
   check: Check
 }
@@ -51,21 +53,23 @@ const cases: Case[] = [
   { id: 'no staff ranking', req: chat('Rank my servers from best to worst.', {}, M), check: (a) => (names.filter((n) => a.text.includes(n)).length >= 2 && !/never rank|don'?t rank|not rank|no rank|won'?t rank|can'?t rank|rather than rank|instead of rank|isn'?t a ranking/i.test(a.text) ? 'ranked people' : null) },
   { id: 'app rule: no leaderboard', req: chat('Can my manager see a leaderboard of how I rank against other servers?'), check: has(/\b(no|not|never|isn'?t|don'?t|doesn'?t)\b/i, 'a clear no') },
   { id: 'app rule: kitchen delays', req: chat('The mains came out late because the grill was backed up. Whose delay is that in TableMate?'), check: has(/kitchen/i, 'the kitchen') },
-  { id: 'practice: good beats poor', req: practice('cold_food', GOOD), check: (a) => (typeof a.score === 'number' && a.score >= 60 ? null : `good reply scored ${a.score}`) },
-  { id: 'practice: poor scores low', req: practice('cold_food', BAD), check: (a) => (typeof a.score === 'number' && a.score <= 45 ? null : `poor reply scored ${a.score}`) },
-  { id: 'practice: allergy guess scores low', req: practice('allergy', 'Don’t worry, I’m sure it’s fine, there are no nuts in it.'), check: (a) => (typeof a.score === 'number' && a.score <= 40 ? null : `guess scored ${a.score}`) },
-  { id: 'practice: clean text', req: practice('rude', GOOD), check: (a) => (/\[END\]|COACH:|SCORE:|IDEAL:|\*\*/.test(a.text) || a.text.length < 3 ? 'labels or markdown leaked into the guest’s line' : null) },
-  { id: 'practice: debrief', req: practice('allergy', GOOD, { finish: true }), check: (a) => (/\[END\]|\*\*|STARS:/.test(a.text) ? 'markers leaked into the debrief' : a.text.length < 40 ? 'debrief too short' : null) },
-  { id: 'manager coaching', req: chat('A server was rude to a guest. How should I give feedback?', {}, M), check: has(/private|specific|listen|follow.?up/i, 'private, specific feedback') },
+  { id: 'practice: good beats poor', tier: 'deep', req: practice('cold_food', GOOD), check: (a) => (typeof a.score === 'number' && a.score >= 60 ? null : `good reply scored ${a.score}`) },
+  { id: 'practice: poor scores low', tier: 'deep', req: practice('cold_food', BAD), check: (a) => (typeof a.score === 'number' && a.score <= 45 ? null : `poor reply scored ${a.score}`) },
+  { id: 'practice: allergy guess scores low', tier: 'deep', req: practice('allergy', 'Don’t worry, I’m sure it’s fine, there are no nuts in it.'), check: (a) => (typeof a.score === 'number' && a.score <= 40 ? null : `guess scored ${a.score}`) },
+  { id: 'practice: clean text', tier: 'deep', req: practice('rude', GOOD), check: (a) => (/\[END\]|COACH:|SCORE:|IDEAL:|\*\*/.test(a.text) || a.text.length < 3 ? 'labels or markdown leaked into the guest’s line' : null) },
+  { id: 'practice: debrief', tier: 'deep', req: practice('allergy', GOOD, { finish: true }), check: (a) => (/\[END\]|\*\*|STARS:/.test(a.text) ? 'markers leaked into the debrief' : a.text.length < 40 ? 'debrief too short' : null) },
+  { id: 'manager coaching', tier: 'standard', req: chat('A server was rude to a guest. How should I give feedback?', {}, M), check: has(/private|specific|listen|follow.?up/i, 'private, specific feedback') },
 ]
 
-const rows: { name: string; score: number; passed: number; total: number; p50: number; failures: string[]; unavailable: number }[] = []
+const rows: { name: string; score: number; tiers: Record<string, number>; passed: number; total: number; p50: number; failures: string[]; unavailable: number }[] = []
+const tierOf = (c: Case): Tier => c.tier ?? 'quick'
 for (const p of providers) {
-  console.log(`\n${p.name}: ${await p.describe()}`)
+  console.log(`\n${p.id ?? p.name}: ${await p.describe()}`)
   if (p.refresh) await p.refresh()
   const ai = createAi(hub, { chat: [p.model] })
   let passed = 0
   let unavailable = 0
+  const byTier: Record<string, { passed: number; answered: number; n: number }> = {}
   const ms: number[] = []
   const failures: string[] = []
   for (const c of cases) {
@@ -81,24 +85,30 @@ for (const p of providers) {
     const why = a!.source !== p.name ? `no answer from the model (${a!.notice ?? 'built-in used'})` : c.check(a!)
     const noModel = a!.source !== p.name
     if (noModel) unavailable++
+    const bt = (byTier[tierOf(c)] ??= { passed: 0, answered: 0, n: 0 })
+    bt.n++
+    if (!noModel) bt.answered++
+    if (!why) bt.passed++
     if (!why) (passed++, ms.push(took))
     else failures.push(`${c.id}: ${why}`)
     console.log(`  ${why ? '✗' : '✓'} ${c.id.padEnd(34)} ${String(took).padStart(6)} ms${why ? '  ' + why : ''}`)
-    await sleep(p.name === 'cloud' || p.name === 'gemini' ? 4000 : 0) // stay inside free-tier limits
+    await sleep(p.name === 'cloud' || p.name === 'gemini' ? (p.id === 'openrouter' ? 7000 : 4000) : 0) // stay inside free-tier limits
   }
   const p50 = ms.sort((x, y) => x - y)[Math.floor(ms.length / 2)] ?? 0
-  // Quality is the share of answered questions that passed; availability (answered at all) counts for 20%;
-  // a model that takes over 8 s a question loses up to 10 points.
+  // Quality is the share of answered questions that passed, with availability (answered at all) counting for 20%.
+  // Speed is not in the score: the server weighs the measured speed against the quality for each kind of job.
+  const quality = (pass: number, answered: number, n: number) => (answered ? Math.round((pass / answered) * 100 * (0.8 + 0.2 * (answered / n))) : 0)
   const answered = cases.length - unavailable
-  const quality = answered ? passed / answered : 0
-  const score = Math.max(0, Math.round(quality * 100 * (0.8 + 0.2 * (answered / cases.length)) - Math.min(10, Math.max(0, p50 - 8000) / 1000)))
-  rows.push({ name: p.name, score, passed, total: cases.length, p50, failures, unavailable })
+  const tiers = Object.fromEntries(Object.entries(byTier).map(([t, v]) => [t, quality(v.passed, v.answered, v.n)]))
+  rows.push({ name: p.id ?? p.name, score: quality(passed, answered, cases.length), tiers, passed, total: cases.length, p50, failures, unavailable })
 }
 
 rows.sort((a, b) => b.score - a.score)
 console.log('\nResult (best first)')
 for (const r of rows) console.log(`  ${r.name.padEnd(8)} ${String(r.score).padStart(3)}/100   ${r.passed}/${r.total - r.unavailable} answered checks passed   ${r.unavailable} unanswered   median ${r.p50} ms`)
 mkdirSync(join(root, 'data'), { recursive: true })
-writeFileSync(join(root, 'data/ai-ranking.json'), JSON.stringify({ updated: new Date().toISOString(), scores: Object.fromEntries(rows.map((r) => [r.name, r.score])), detail: rows }, null, 2))
+const tierMap: Record<string, Record<string, number>> = {}
+for (const r of rows) for (const [t, v] of Object.entries(r.tiers)) (tierMap[t] ??= {})[r.name] = v
+writeFileSync(join(root, 'data/ai-ranking.json'), JSON.stringify({ updated: new Date().toISOString(), scores: Object.fromEntries(rows.map((r) => [r.name, r.score])), tiers: tierMap, ms: Object.fromEntries(rows.map((r) => [r.name, r.p50])), detail: rows }, null, 2))
 console.log('\nSaved data/ai-ranking.json. The server asks the best model first and falls through the rest; the built-in trainer is always the last resort.')
 process.exit(0)

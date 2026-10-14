@@ -53,15 +53,15 @@ describe('cloud AI (OpenAI-compatible)', () => {
     const f = vi.fn(async () => sse('ok'))
     const { model } = createOpenAi({ ...cfg, fetchImpl: f as unknown as typeof fetch })
     await model.reply(sys, turns)
-    expect(f.mock.calls.every((c) => !String(c[0]).endsWith('/models'))).toBe(true)
+    expect((f.mock.calls as unknown as [string][]).every((c) => !String(c[0]).endsWith('/models'))).toBe(true)
     const body = JSON.parse((f.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
     expect(body.model).toBe('nvidia/nemotron-3.5-lightning:free')
-    expect(body.reasoning).toEqual({ effort: 'low' })
+    expect(body.reasoning).toEqual({ enabled: false })
   })
 
   it('picks the preset from the environment', () => {
     expect(fromEnv({})).toBeNull()
     expect(fromEnv({ GROQ_API_KEY: 'g' } as NodeJS.ProcessEnv)).toMatchObject({ id: 'groq', url: 'https://api.groq.com/openai/v1' })
-    expect(fromEnv({ CEREBRAS_API_KEY: 'c', AI_MODEL: 'x' } as NodeJS.ProcessEnv)?.models[0]).toBe('x')
+    expect(fromEnv({ CEREBRAS_API_KEY: 'c', AI_CLOUD: 'cerebras', AI_MODEL: 'x' } as NodeJS.ProcessEnv)?.models[0]).toBe('x')
   })
 })

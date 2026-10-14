@@ -10,6 +10,8 @@ import type { ChatModel } from './ai.ts'
 
 export interface Provider {
   name: ChatModel['name']
+  /** Unique key for the line-up ("groq", "openrouter", "gemini"…). */
+  id?: string
   model: ChatModel
   /** Why a call failed, in plain words. */
   reason: (e: unknown) => string
@@ -37,10 +39,9 @@ export async function loadProviders(env: NodeJS.ProcessEnv = process.env): Promi
   }
   if (want('cloud')) {
     const o = await import('./openai.ts')
-    const cfg = o.fromEnv(env)
-    if (cfg) {
+    for (const cfg of o.allFromEnv(env)) {
       const c = o.createOpenAi(cfg)
-      all.push({ name: 'cloud', model: c.model, reason: o.cloudErrorReason, describe: () => `Free cloud AI (${c.model.label?.()})` })
+      all.push({ name: 'cloud', id: cfg.id, model: c.model, reason: o.cloudErrorReason, describe: () => `${cfg.id[0].toUpperCase()}${cfg.id.slice(1)} (${c.model.label?.()?.split(': ')[1] ?? cfg.models[0]})` })
     }
   }
   if (want('ollama') && env.OLLAMA !== 'off') {
@@ -59,5 +60,7 @@ export async function loadProviders(env: NodeJS.ProcessEnv = process.env): Promi
     })
   }
   const order = (env.AI_PRIORITY ?? '').split(',').map((s) => s.trim()).filter(Boolean)
-  return order.length ? [...all].sort((a, b) => (order.indexOf(a.name) + 1 || 99) - (order.indexOf(b.name) + 1 || 99)) : all
+  const key = (p: Provider) => p.id ?? p.name
+  const rank = (p: Provider) => Math.min(order.indexOf(p.name) + 1 || 99, order.indexOf(key(p)) + 1 || 99)
+  return order.length ? [...all].sort((a, b) => rank(a) - rank(b)) : all
 }

@@ -51,11 +51,11 @@ For real vibration on iPhone (including alerts that arrive on their own) and pus
 
 The server keeps a line-up of every AI model it has a key for and asks them best first. If one is rate limited, offline or gives an unusable answer (empty, or repeating its instructions), the next answers at once, and the one that failed rests for 30 seconds, then 2 minutes, then 10 while it keeps failing. The built-in trainer is always the last resort.
 
-Default order: Claude, Gemini, free cloud AI (Groq, Cerebras or OpenRouter), Ollama (local). Change it with `AI_PRIORITY=cloud,gemini,ollama,claude`; use only the local model with `AI_PROVIDER=ollama`.
+Every model in the line-up (Claude, Gemini, each free cloud service you add keys for such as Groq, Cerebras or OpenRouter, and Ollama) gets the same knowledge, the same instructions and the same settings for the same kind of job (`server/tasks.ts`): a steady temperature of 0.3 for judging a practice reply, 0.4 for summaries, 0.5 for everyday answers; the same answer-length caps; the same output format.
 
-Every model gets the same knowledge: the restaurant's standards, menu with ingredient tags, training notes, the app's own rules (suggestions not orders, safety check, fair delays, private stats, no rankings) and the practice rubric.
+**The order depends on the job.** Quick everyday answers (a guest line, a tip, a short question) go to the fast, good model first. Careful jobs (scoring a practice reply, a debrief) lean towards the strongest model. Each model's rank is its quality minus a penalty for slowness: a second of waiting costs a quick job 6 points, a standard job 3 and a careful job 1. Quality comes from `npm run eval:ai`, or a sensible starting guess until you run it; speed is measured while the app runs, so a model having a slow day moves down by itself. Pin an order yourself with `AI_PRIORITY=openrouter,gemini,groq`. The built-in trainer is always the last resort, and a failing model rests for 30 seconds, then 2 minutes, then 10.
 
-Run `npm run eval:ai` (optionally `npm run eval:ai gemini`) to test each model on the same 20 checks (safety, fairness, languages, scoring, product knowledge, clean formatting). It prints a report and writes `data/ai-ranking.json`; a model that scores clearly better is asked first from then on. `GET /api/health` shows the line-up and how each model is doing.
+Run `npm run eval:ai` (optionally `npm run eval:ai gemini`, `npm run eval:ai openrouter`) to test each model on the same 20 checks (safety, fairness, languages, scoring, product knowledge, clean formatting). It prints a report and writes `data/ai-ranking.json`; a model that scores clearly better is asked first from then on. `GET /api/health` shows the line-up and how each model is doing.
 
 ## Before you roll out
 

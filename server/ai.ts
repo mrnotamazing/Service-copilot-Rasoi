@@ -15,6 +15,7 @@ import { menuForNeed, safetyIssues } from '../shared/safety.ts'
 import { istClock } from '../shared/time.ts'
 import { type Audience, findLessons, type Lesson, lessonsFor, MANAGER_STARTERS, STARTERS } from '../shared/training.ts'
 import { createRanker, type Ranker } from './ranker.ts'
+import { profileFor, type Tier } from './tasks.ts'
 import type { Hub } from './hub.ts'
 import { parseWhatIf, runWhatIf, whatIfText } from './whatif.ts'
 
@@ -33,6 +34,8 @@ export interface ChatTurn {
 /** A conversational language model (Claude, or a local Ollama model). `stable` is cacheable; `live` changes every message. */
 export interface ChatModel {
   name: 'claude' | 'gemini' | 'cloud' | 'ollama'
+  /** A unique key for this model in the line-up and the ranking (several cloud services share the name "cloud"). Defaults to the name. */
+  id?: string
   /** False while the model can't be used (e.g. the demo page hasn't been granted Claude); the next provider answers. */
   available?(): boolean
   /** Small local models can get menu facts wrong: add the menu's own line for any dish the question names. */
@@ -46,7 +49,7 @@ export interface ChatModel {
   /** `reminder` restates the format and length in one line; small local models follow it far better than the long system prompt. */
   /** `onText`, when given, receives the whole answer so far as it's written (for streaming to the screen). */
   /** `opts.maxTokens` caps the answer's length; `opts.signal` cancels a request that is taking too long. */
-  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[], onText?: (text: string) => void, opts?: { maxTokens?: number; signal?: AbortSignal; json?: Record<string, unknown> }): Promise<string>
+  reply(system: { stable: string; live: string; reminder?: string }, turns: ChatTurn[], onText?: (text: string) => void, opts?: { maxTokens?: number; temperature?: number; signal?: AbortSignal; json?: Record<string, unknown> }): Promise<string>
 }
 
 export interface PracticeTurn {
@@ -136,7 +139,8 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
   const models = [opts.chat ?? []].flat()
   const ranker = opts.ranker ?? createRanker()
   /** The models that can answer now, best first. */
-  const candidates = () => ranker.order(models.filter((m) => m.available?.() ?? true).map((m) => m.name)).map((n) => models.find((m) => m.name === n)!)
+  const idOf = (m: ChatModel) => m.id ?? m.name
+  const candidates = (tier: Tier = 'quick') => ranker.order(models.filter((m) => m.available?.() ?? true).map(idOf), tier).map((n) => models.find((m) => idOf(m) === n)!)
   const doFetch = opts.fetchImpl ?? fetch
 
   const name = (id?: string) => hub.config.staff.find((s) => s.id === id)?.name ?? 'the team'
@@ -524,7 +528,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     },
     /** Which models are ready, in the order they are asked, for the Setup page and health check. */
     get lineup() {
-      return ranker.snapshot(models.map((m) => m.name)).map((r) => ({ ...r, ready: models.find((m) => m.name === r.name)?.available?.() ?? true }))
+      return ranker.snapshot(models.map(idOf)).map((r) => ({ ...r, ready: models.find((m) => idOf(m) === r.name)?.available?.() ?? true }))
     },
     /** `onText` receives the answer so far while a model writes it (plain-text answers only). */
     async ask(req: AiRequest, onText?: (text: string) => void): Promise<AiAnswer> {
@@ -534,7 +538,8 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       const fallback = built.fallback
       if (built.instant) return { text: fallback, source: 'built-in', ...built.extra }
       let notice: string | undefined
-      const line = candidates()
+      const profile = profileFor(req)
+      const line = candidates(profile.tier)
       let partial: { model: ChatModel; answer: string } | undefined
       const done = (model: ChatModel, answer: string) => {
         const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name }
@@ -554,7 +559,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
           const full = built.system ?? { stable: quickSystem(hub.config), live: `Reply in ${language}.` }
           const system = (model.compact || model.lean) && built.compact ? { ...built.compact, reminder: full.reminder } : full
           const stream = quick || built.streamable ? (t: string) => ((started = true), onText?.(t)) : undefined
-          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], stream, { maxTokens: quick ? (QUICK_TOKENS[req.kind] ?? 240) : undefined, signal: ctrl.signal, json: built.json })
+          const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], stream, { maxTokens: quick ? (QUICK_TOKENS[req.kind] ?? 240) : undefined, signal: ctrl.signal, temperature: profile.temperature, json: built.json })
           const bad = unusable(answer)
           if (bad) throw new Error(bad)
           // A scored practice turn with no score: another model may judge it properly, so ask the next one
@@ -564,10 +569,10 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             console.warn(`[ai] ${model.name} sent no score for the practice reply; asking the next model`)
             continue
           }
-          ranker.ok(model.name, Date.now() - t0)
+          ranker.ok(idOf(model), Date.now() - t0)
           return done(model, answer)
         } catch (e) {
-          ranker.fail(model.name)
+          ranker.fail(idOf(model))
           console.warn(`[ai] ${model.name} couldn't answer (${e instanceof Error ? e.message : e}); ${n < line.length - 1 ? 'asking the next model' : 'no model left'}`.slice(0, 220))
           notice = ctrl.signal.aborted ? 'The AI took too long, so this is the built-in answer.' : `${opts.chatErrorReason?.(e, model) ?? (e instanceof Error ? e.message : String(e))}. Showing the built-in answer.`
         } finally {

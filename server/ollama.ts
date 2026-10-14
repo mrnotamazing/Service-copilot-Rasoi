@@ -94,7 +94,7 @@ export function createOllama(opts: { host?: string; model?: string; fetchImpl?: 
           stream: true,
           keep_alive: '2h',
           // Answers are short by design; the cap stops a rambling model from holding things up.
-          options: { num_ctx: NUM_CTX, num_predict: opts?.maxTokens ?? 320, temperature: 0.6 },
+          options: { num_ctx: NUM_CTX, num_predict: opts?.maxTokens ?? 320, temperature: opts?.temperature ?? 0.6 },
           messages,
         }),
       })

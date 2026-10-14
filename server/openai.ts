@@ -24,18 +24,26 @@ export const PRESETS: Record<string, Preset> = {
  * set wins; AI_CLOUD=openrouter picks another), or a custom OPENAI_COMPAT_URL + OPENAI_COMPAT_KEY. The model comes
  * from <NAME>_MODEL (for example OPENROUTER_MODEL) or AI_MODEL, and the service's other models follow it.
  */
-export function fromEnv(env: NodeJS.ProcessEnv): { key: string; url: string; models: string[]; id: string; discover: boolean } | null {
+export type CloudConfig = { key: string; url: string; models: string[]; id: string; discover: boolean }
+
+/** Every cloud service the environment has a key for, in preset order. AI_CLOUD=name lists that one first. */
+export function allFromEnv(env: NodeJS.ProcessEnv): CloudConfig[] {
+  const out: CloudConfig[] = []
   const custom = env.OPENAI_COMPAT_URL && env.OPENAI_COMPAT_KEY
-  if (custom) return { id: 'custom', key: env.OPENAI_COMPAT_KEY!, url: env.OPENAI_COMPAT_URL!.replace(/\/+$/, ''), models: env.AI_MODEL ? [env.AI_MODEL] : ['default'], discover: false }
+  if (custom) out.push({ id: 'custom', key: env.OPENAI_COMPAT_KEY!, url: env.OPENAI_COMPAT_URL!.replace(/\/+$/, ''), models: env.AI_MODEL ? [env.AI_MODEL] : ['default'], discover: false })
   const wanted = env.AI_CLOUD?.toLowerCase()
   for (const [name, p] of Object.entries(PRESETS)) {
-    if (wanted && wanted !== name) continue
     const key = env[`${name.toUpperCase()}_API_KEY`]
     if (!key) continue
-    const own = env[`${name.toUpperCase()}_MODEL`] || (wanted === name || !wanted ? env.AI_MODEL : undefined)
-    return { id: p.id, key, url: p.url, models: own ? [own, ...p.models.filter((m) => m !== own)] : p.models, discover: p.discover !== false }
+    const own = env[`${name.toUpperCase()}_MODEL`] || (wanted === name ? env.AI_MODEL : undefined)
+    out.push({ id: p.id, key, url: p.url, models: own ? [own, ...p.models.filter((m) => m !== own)] : p.models, discover: p.discover !== false })
   }
-  return null
+  return wanted ? [...out.filter((c) => c.id === wanted), ...out.filter((c) => c.id !== wanted)] : out
+}
+
+/** The first of them (AI_CLOUD picks which). */
+export function fromEnv(env: NodeJS.ProcessEnv): CloudConfig | null {
+  return allFromEnv(env)[0] ?? null
 }
 
 /** Best first: strong, fast chat models. Anything not named here comes after, in the service's own order. */
@@ -90,7 +98,7 @@ export function createOpenAi(cfg: { key: string; url: string; models: string[]; 
       method: 'POST',
       headers: { authorization: `Bearer ${cfg.key}`, 'content-type': 'application/json', ...(cfg.id === 'openrouter' ? { 'x-title': 'TableMate' } : {}) },
       signal: o?.signal ? AbortSignal.any([AbortSignal.timeout(45_000), o.signal]) : AbortSignal.timeout(45_000),
-      body: JSON.stringify({ model: name, stream: true, temperature: 0.6, max_tokens: o?.maxTokens ?? (cfg.id === 'openrouter' ? 900 : 600), messages, ...(/gpt-oss/.test(name) && cfg.id !== 'openrouter' ? { reasoning_effort: 'low' } : {}), ...(cfg.id === 'openrouter' ? { reasoning: { effort: 'low' } } : {}) }),
+      body: JSON.stringify({ model: name, stream: true, temperature: o?.temperature ?? 0.6, max_tokens: o?.maxTokens ?? (cfg.id === 'openrouter' ? 900 : 600), messages, ...(/gpt-oss/.test(name) && cfg.id !== 'openrouter' ? { reasoning_effort: 'low' } : {}), ...(cfg.id === 'openrouter' ? { reasoning: { enabled: false } } : {}) }),
     })
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } | string }
@@ -128,6 +136,7 @@ export function createOpenAi(cfg: { key: string; url: string; models: string[]; 
 
   const model: ChatModel = {
     name: 'cloud',
+    id: cfg.id,
     lean: true,
     label: () => `${cfg.id ?? 'cloud'}: ${lastGood ?? models[0]}`,
     async reply(system, turns, onText, o) {

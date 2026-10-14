@@ -24,7 +24,8 @@ const sim = new Simulator(hub)
 // The assistant's language models, best first (Claude, Gemini, a free cloud AI, Ollama): when one is
 // busy, rate limited or offline the next answers, and the built-in trainer is the last resort.
 const providers = await loadProviders()
-const ranker = createRanker({ file: join(root, 'data/ai-ranking.json') })
+// AI_PRIORITY pins the order; otherwise models are ordered by job (quick answers favour fast models, judging favours careful ones).
+const ranker = createRanker({ file: join(root, 'data/ai-ranking.json'), fixed: !!process.env.AI_PRIORITY })
 const api = createApi(hub, sim, {
   url: process.env.DIFY_API_URL,
   key: process.env.DIFY_API_KEY,
