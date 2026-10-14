@@ -19,7 +19,7 @@ describe('translations', () => {
   })
 
   // Switched on once the last translation batch is merged (the work is in progress).
-  it.skip.each(langs)('%s has no English sentences left', (l) => {
+  it.each(langs)('%s has no English sentences left', (l) => {
     const d = DICTS[l] as Record<string, string>
     const left = Object.keys(en).filter((k) => d[k] === en[k] && /\b[a-z]{3,} [a-z]{3,} [a-z]{3,}/i.test(en[k]) && !KEEP(en[k]))
     expect(left.length, `still English in ${l}: ${left.slice(0, 5).join(', ')}`).toBeLessThanOrEqual(12)
