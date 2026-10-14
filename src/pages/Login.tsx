@@ -74,7 +74,7 @@ export default function Login() {
         <div className="hidden md:block">
           <Mascot running className="w-52" speed="var(--muted-foreground)" />
           <Wordmark className="mt-4 text-4xl" />
-          <p className="mt-2 max-w-sm text-lg text-muted-foreground text-pretty">{TAGLINE}</p>
+          <p className="mt-2 max-w-sm text-lg text-muted-foreground text-pretty">{L(TAGLINE)}</p>
           <p className="mt-8 max-w-sm text-sm text-muted-foreground text-pretty">{tx('ui.login.each_person_signs_in')}</p>
         </div>
 

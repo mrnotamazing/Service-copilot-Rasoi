@@ -33,7 +33,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { en } from '../i18n/en.ts'
-import { LANGUAGES, useT, type Key } from '../i18n/index.ts'
+import { L, LANGUAGES, useT, type Key } from '../i18n/index.ts'
 import { useAlertOnNew } from '../lib/useAlerts.ts'
 import { setPrefs, usePrefs } from '../lib/prefs.ts'
 import { speakTask } from '../lib/speech.ts'
@@ -1238,7 +1238,7 @@ function PhoneSkeleton() {
     <div className="mx-auto flex h-dvh max-w-[440px] flex-col gap-4 p-4" aria-busy="true" aria-label={useT()('srv.loading')}>
       <div className="flex items-center gap-2 text-primary">
         <Mark className="h-6 w-auto pulse-soft" />
-        <span className="tagline text-muted-foreground">{TAGLINE}</span>
+        <span className="tagline text-muted-foreground">{L(TAGLINE)}</span>
       </div>
       <div className="flex items-center gap-3">
         <Skeleton className="size-11 rounded-full" />

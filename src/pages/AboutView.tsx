@@ -63,7 +63,7 @@ export default function AboutView() {
         <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 pb-16 pt-12 lg:grid-cols-[1.1fr_1fr] lg:pt-20">
           <div className="min-w-0">
             <Mascot className="-ml-2 w-[min(320px,70vw)]" speed="var(--foreground)" title={tx('ui.about.tablemate_s_running_chef')} />
-            <p className="tagline mt-4 text-muted-foreground">{TAGLINE}</p>
+            <p className="tagline mt-4 text-muted-foreground">{L(TAGLINE)}</p>
             <h1 className="mt-4 font-display text-[clamp(2.4rem,6vw,4.25rem)] leading-[1.02] tracking-[-0.035em]">{tx('ui.about.six_tables_twelve_standards')}</h1>
             <p className="mt-6 max-w-[38rem] text-pretty text-lg leading-relaxed text-muted-foreground">
               {tx('ui.about.tablemate_is_a_service')}
@@ -359,7 +359,7 @@ export default function AboutView() {
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 md:grid-cols-2">
             <div>
               <Wordmark className="text-3xl" />
-              <p className="tagline mt-2 text-muted-foreground">{TAGLINE}</p>
+              <p className="tagline mt-2 text-muted-foreground">{L(TAGLINE)}</p>
               <h2 className="mt-6 font-display text-xl">{tx('ui.about.an_ob_project_by')}</h2>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{tx('ui.about.drishti_gulati_div_mehta')}</p>
               <Button asChild className="mt-5">

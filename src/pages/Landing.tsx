@@ -120,12 +120,12 @@ interface Move {
   safety?: boolean
 }
 const MOVES = (): Move[] => [
-  { id: 'greet', title: L('Greet Table 4'), why: L('Seated 90 seconds ago. Anniversary dinner, one nut allergy.'), action: 'Greeted' },
+  { id: 'greet', title: L('Greet Table 4'), why: L('Seated 90 seconds ago. Anniversary dinner, one nut allergy.'), action: L('Greeted') },
   { id: 'late', title: L('Tell Table 2 the mains are late'), why: L('The grill is 6 minutes behind. A heads-up now beats an apology later.'), action: L('Told them') },
-  { id: 'bill', title: L('Bring the bill to Table 6'), why: L('Asked for it a minute ago.'), action: 'Brought' },
+  { id: 'bill', title: L('Bring the bill to Table 6'), why: L('Asked for it a minute ago.'), action: L('Brought') },
   { id: 'allergy', title: L('Priya has a nut allergy'), why: L('The satay on Table 3 has peanut sauce. Tell the kitchen before it is plated.'), action: L('Tell the kitchen'), safety: true },
-  { id: 'check', title: L('Check back on Table 1'), why: L('Mains arrived 2 minutes ago.'), action: 'Checked' },
-  { id: 'dessert', title: L('Offer dessert at Table 5'), why: L('Plates cleared, no order yet.'), action: 'Offered' },
+  { id: 'check', title: L('Check back on Table 1'), why: L('Mains arrived 2 minutes ago.'), action: L('Checked') },
+  { id: 'dessert', title: L('Offer dessert at Table 5'), why: L('Plates cleared, no order yet.'), action: L('Offered') },
 ]
 
 function MoveCard({ m, lead, onDone }: { m: Move; lead: boolean; onDone: () => void }) {
@@ -220,7 +220,7 @@ function Hero() {
     <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-14 pt-10 md:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:pb-20 lg:pt-16">
       <div className="min-w-0">
         <Mascot className="-ml-1 w-[min(150px,40vw)]" speed="var(--foreground)" title={tx('ui.about.tablemate_s_running_chef')} />
-        <p className="tagline mt-3 text-muted-foreground">{TAGLINE}</p>
+        <p className="tagline mt-3 text-muted-foreground">{L(TAGLINE)}</p>
         <h1 className="mt-5 text-balance font-display text-[clamp(2.3rem,4.8vw,3.7rem)] leading-[1.05] tracking-[-0.035em]">
           {tx('ui.landing.every_table_on_time')} <span className="text-primary">{tx('ui.landing.no_one_blamed_for')}</span>
         </h1>
@@ -750,7 +750,7 @@ function Footer() {
         <div className="flex items-center gap-2">
           <Mark className="h-5 w-auto text-tomato" />
           <Wordmark className="text-base leading-none text-foreground" />
-          <span className="ml-2">{TAGLINE}</span>
+          <span className="ml-2">{L(TAGLINE)}</span>
         </div>
         <nav aria-label={tx('ui.landing.footer')} className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <Link to="/demo" className="inline-flex min-h-11 min-w-11 items-center justify-center hover:text-foreground">

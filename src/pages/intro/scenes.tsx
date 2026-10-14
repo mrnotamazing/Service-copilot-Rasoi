@@ -62,12 +62,106 @@ const NEEDS: { n: number; need: string; tone: 'primary' | 'kitchen' | 'muted' }[
   { n: 6, need: 'Dessert?', tone: 'primary' },
 ]
 
+/** Seats around each table: how many guests sit down, and when the table fills (ms into the scene). */
+const SEATING = [
+  { seats: 2, at: 1300 },
+  { seats: 4, at: 1900 },
+  { seats: 3, at: 2500 },
+  { seats: 4, at: 3100 },
+  { seats: 2, at: 3600 },
+  { seats: 4, at: 4100 },
+]
+
+/**
+ * "Imagine a Saturday night. The restaurant is full": a small floor that fills up table by table
+ * while the clock runs into service, then gives way to the six tables' needs in the same places.
+ */
+function FullHouse() {
+  const { t, still } = useClock()
+  const prog = useProgress()
+  if (still) return null
+  const fade = 1 - clamp01((t - 6250) / 500)
+  if (fade <= 0) return null
+  // 7:52 pm to 8:04 pm across the opening.
+  const mins = Math.min(12, Math.floor(clamp01((t - 400) / 5600) * 12))
+  const clock = `${mins < 8 ? 7 : 8}:${String(mins < 8 ? 52 + mins : mins - 8).padStart(2, '0')} pm`
+  const full = outExpo(prog(4500, 700))
+  return (
+    <div className="absolute inset-0" style={{ opacity: fade }}>
+      <Reveal at={350} style={{ left: 880, top: 92, width: 660 }}>
+        <div className="flex items-center justify-between">
+          <Pill tone="muted" size={24}>
+            <span className="tabular">Sat · {clock}</span>
+          </Pill>
+          <span style={{ opacity: full, transform: `scale(${0.6 + full * 0.4}) rotate(${(1 - full) * -8}deg)`, transformOrigin: 'right center' }}>
+            <Pill tone="primary" size={24}>Full house</Pill>
+          </span>
+        </div>
+      </Reveal>
+      {SEATING.map((tb, i) => {
+        const col = i % 3
+        const row = Math.floor(i / 3)
+        const cx = 960 + col * 215
+        const cy = 250 + row * 270 + 65
+        const table = outExpo(prog(500 + i * 120, 600))
+        const filled = outExpo(prog(tb.at, 500))
+        return (
+          <div key={i} className="absolute" style={{ left: cx - 110, top: cy - 110, width: 220, height: 220, opacity: table, transform: `scale(${0.85 + table * 0.15})` }}>
+            {Array.from({ length: tb.seats }, (_, s) => {
+              const angle = (s / tb.seats) * Math.PI * 2 - Math.PI / 2 + (i % 2 ? 0.4 : 0)
+              const d = outExpo(prog(tb.at + s * 90, 450))
+              const r = 82 + (1 - d) * 60
+              return (
+                <span
+                  key={s}
+                  className="absolute rounded-full"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    left: 110 + Math.cos(angle) * r - 17,
+                    top: 110 + Math.sin(angle) * r - 17,
+                    opacity: d,
+                    background: s % 2 ? 'var(--tomato)' : 'var(--chocolate)',
+                    boxShadow: '0 6px 14px -8px color-mix(in oklab, var(--chocolate) 60%, transparent)',
+                  }}
+                />
+              )
+            })}
+            <div
+              className="absolute grid place-items-center rounded-full"
+              style={{
+                left: 45,
+                top: 45,
+                width: 130,
+                height: 130,
+                background: 'var(--card)',
+                border: `3px solid ${filled > 0.5 ? 'var(--primary)' : 'var(--border)'}`,
+                boxShadow: `0 16px 30px -20px color-mix(in oklab, var(--chocolate) 50%, transparent), 0 0 0 ${filled * (1 - filled) * 40}px color-mix(in oklab, var(--primary) 18%, transparent)`,
+              }}
+            >
+              <span className="font-display font-semibold" style={{ fontSize: 30, color: 'var(--muted-foreground)', opacity: 1 - filled * 0.4 }}>
+                T{i + 1}
+              </span>
+            </div>
+          </div>
+        )
+      })}
+      <Reveal at={5200} style={{ left: 880, top: 790, width: 660 }}>
+        <div className="flex items-center gap-2 font-medium" style={{ fontSize: 26, color: 'var(--chocolate)' }}>
+          <Sparkles size={24} style={{ color: 'var(--tomato)' }} aria-hidden /> Service has to be just right.
+        </div>
+      </Reveal>
+    </div>
+  )
+}
+
 function Pressure() {
   const { t, still } = useClock()
   return (
     <>
       {/* Each line lands on the words of the voice-over: "a Saturday night", "six tables", "one server". */}
       <Headline lines={['Saturday night.']} x={110} y={285} size={112} start={300} width={820} />
+      <FullHouse />
       <Headline lines={['Six tables.']} x={110} y={285 + 117} size={112} start={6700} width={820} />
       <Headline lines={['One head.']} x={110} y={285 + 234} size={112} start={9700} accent={0} width={820} />
       {NEEDS.map((x, i) => {
@@ -105,7 +199,7 @@ function Slip() {
     <>
       <Headline lines={['When service slips,', 'the server takes', 'the blame.']} x={110} y={265} size={86} start={300} step={550} accent={2} width={760} />
       <Sub at={2300} x={114} y={600} width={640}>
-        Even when the delay was never hers.
+        Even when the delay was never theirs.
       </Sub>
 
       <Reveal at={900} style={{ left: 880, top: 120, width: 600 }}>
@@ -127,7 +221,7 @@ function Slip() {
 
       <div className="absolute" style={{ left: 1180, top: 300, width: 4, height: 80, background: 'repeating-linear-gradient(var(--muted-foreground) 0 8px, transparent 8px 18px)', opacity: a * 0.8 }} />
       <Reveal at={1900} style={{ left: 1210, top: 318, width: 300 }}>
-        <span style={{ fontSize: 24, color: 'var(--muted-foreground)' }}>and no one told her</span>
+        <span style={{ fontSize: 24, color: 'var(--muted-foreground)' }}>and no one told them</span>
       </Reveal>
 
       <Reveal at={2600} style={{ left: 880, top: 390, width: 600 }}>
@@ -152,7 +246,7 @@ function Slip() {
             <div className="font-semibold" style={{ fontSize: 31 }}>
               Aisha gets the blame
             </div>
-            <div style={{ fontSize: 24, color: 'var(--muted-foreground)' }}>For a step she didn’t control</div>
+            <div style={{ fontSize: 24, color: 'var(--muted-foreground)' }}>For a step they didn’t control</div>
           </div>
           <span className="grid place-items-center rounded-full" style={{ width: 54, height: 54, background: 'var(--primary)', color: 'var(--primary-foreground)', transform: `scale(${0.7 + x * 0.3})`, opacity: x }}>
             <X size={30} strokeWidth={3} aria-hidden />
@@ -615,7 +709,7 @@ export interface Scene {
 export const SCENES: Scene[] = [
   { id: 'open', ms: 5300, caption: 'TableMate: the right service, at the right time. The AI copilot for fine-dining servers.', render: () => <Open /> },
   { id: 'pressure', ms: 12900, caption: 'Saturday night. Six tables. One head.', render: () => <Pressure /> },
-  { id: 'slip', ms: 6400, caption: 'When service slips, the server takes the blame, even when the delay was never hers.', render: () => <Slip /> },
+  { id: 'slip', ms: 6400, caption: 'When service slips, the server takes the blame, even when the delay was never theirs.', render: () => <Slip /> },
   { id: 'next3', ms: 9900, caption: 'TableMate shows each server their next three moves, in the order guests need them, each with the reason why. Suggestions, never orders.', render: () => <NextThree /> },
   { id: 'safety', ms: 7650, caption: 'Safe before fast: a nut allergy and a dish with nuts are flagged the moment the order is fired, and the kitchen is told.', render: () => <Safety /> },
   { id: 'fair', ms: 8800, caption: 'Delays go to whoever controlled the step. Every table leaves a receipt, so a kitchen delay is never a server’s.', render: () => <Fair /> },
