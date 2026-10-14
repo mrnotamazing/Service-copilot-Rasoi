@@ -44,6 +44,21 @@ describe('cloud AI (OpenAI-compatible)', () => {
     expect(JSON.parse((f.mock.calls.at(-1) as unknown as [string, RequestInit])[1].body as string).model).toBe('openai/gpt-oss-120b')
   })
 
+  it('uses OpenRouter with the chosen free model, never browsing its (paid) model list', async () => {
+    const env = { GROQ_API_KEY: 'g', OPENROUTER_API_KEY: 'o', AI_CLOUD: 'openrouter', OPENROUTER_MODEL: 'nvidia/nemotron-3.5-lightning:free' } as NodeJS.ProcessEnv
+    const cfg = fromEnv(env)!
+    expect(cfg).toMatchObject({ id: 'openrouter', key: 'o', discover: false })
+    expect(cfg.models[0]).toBe('nvidia/nemotron-3.5-lightning:free')
+    expect(cfg.models.every((m) => m.endsWith(':free'))).toBe(true)
+    const f = vi.fn(async () => sse('ok'))
+    const { model } = createOpenAi({ ...cfg, fetchImpl: f as unknown as typeof fetch })
+    await model.reply(sys, turns)
+    expect(f.mock.calls.every((c) => !String(c[0]).endsWith('/models'))).toBe(true)
+    const body = JSON.parse((f.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body.model).toBe('nvidia/nemotron-3.5-lightning:free')
+    expect(body.reasoning).toEqual({ effort: 'low' })
+  })
+
   it('picks the preset from the environment', () => {
     expect(fromEnv({})).toBeNull()
     expect(fromEnv({ GROQ_API_KEY: 'g' } as NodeJS.ProcessEnv)).toMatchObject({ id: 'groq', url: 'https://api.groq.com/openai/v1' })

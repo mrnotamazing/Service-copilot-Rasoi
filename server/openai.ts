@@ -9,21 +9,31 @@ export interface Preset {
   id: string
   url: string
   models: string[]
+  /** Ask the service which models it has and use the best. Off where the list is huge and includes paid models. */
+  discover?: boolean
 }
 
 export const PRESETS: Record<string, Preset> = {
   groq: { id: 'groq', url: 'https://api.groq.com/openai/v1', models: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'] },
   cerebras: { id: 'cerebras', url: 'https://api.cerebras.ai/v1', models: ['llama-3.3-70b', 'llama3.1-8b'] },
-  openrouter: { id: 'openrouter', url: 'https://openrouter.ai/api/v1', models: ['meta-llama/llama-3.3-70b-instruct:free', 'google/gemma-3-27b-it:free'] },
+  openrouter: { id: 'openrouter', url: 'https://openrouter.ai/api/v1', models: ['nvidia/nemotron-3.5-lightning:free', 'meta-llama/llama-3.3-70b-instruct:free', 'google/gemma-3-27b-it:free'], discover: false },
 }
 
-/** Which preset the environment asks for, with its key: GROQ_API_KEY, CEREBRAS_API_KEY or OPENROUTER_API_KEY, or a custom URL. */
-export function fromEnv(env: NodeJS.ProcessEnv): { key: string; url: string; models: string[]; id: string } | null {
+/**
+ * Which service to use, from the environment: GROQ_API_KEY, CEREBRAS_API_KEY or OPENROUTER_API_KEY (the first one
+ * set wins; AI_CLOUD=openrouter picks another), or a custom OPENAI_COMPAT_URL + OPENAI_COMPAT_KEY. The model comes
+ * from <NAME>_MODEL (for example OPENROUTER_MODEL) or AI_MODEL, and the service's other models follow it.
+ */
+export function fromEnv(env: NodeJS.ProcessEnv): { key: string; url: string; models: string[]; id: string; discover: boolean } | null {
   const custom = env.OPENAI_COMPAT_URL && env.OPENAI_COMPAT_KEY
-  if (custom) return { id: 'custom', key: env.OPENAI_COMPAT_KEY!, url: env.OPENAI_COMPAT_URL!.replace(/\/+$/, ''), models: env.AI_MODEL ? [env.AI_MODEL] : ['default'] }
+  if (custom) return { id: 'custom', key: env.OPENAI_COMPAT_KEY!, url: env.OPENAI_COMPAT_URL!.replace(/\/+$/, ''), models: env.AI_MODEL ? [env.AI_MODEL] : ['default'], discover: false }
+  const wanted = env.AI_CLOUD?.toLowerCase()
   for (const [name, p] of Object.entries(PRESETS)) {
+    if (wanted && wanted !== name) continue
     const key = env[`${name.toUpperCase()}_API_KEY`]
-    if (key) return { id: p.id, key, url: p.url, models: env.AI_MODEL ? [env.AI_MODEL, ...p.models] : p.models }
+    if (!key) continue
+    const own = env[`${name.toUpperCase()}_MODEL`] || (wanted === name || !wanted ? env.AI_MODEL : undefined)
+    return { id: p.id, key, url: p.url, models: own ? [own, ...p.models.filter((m) => m !== own)] : p.models, discover: p.discover !== false }
   }
   return null
 }
@@ -53,13 +63,14 @@ class HttpError extends Error {
   }
 }
 
-export function createOpenAi(cfg: { key: string; url: string; models: string[]; id?: string; fetchImpl?: typeof fetch }) {
+export function createOpenAi(cfg: { key: string; url: string; models: string[]; id?: string; discover?: boolean; fetchImpl?: typeof fetch }) {
   const doFetch = cfg.fetchImpl ?? fetch
   const rested = new Map<string, number>()
   let lastGood: string | null = null
   let models = cfg.models
   // Ask the service which models it has now; keep the built-in list if it can't say.
   const discovered = (async () => {
+    if (cfg.discover === false) return
     try {
       const res = await doFetch(`${cfg.url}/models`, { headers: { authorization: `Bearer ${cfg.key}` }, signal: AbortSignal.timeout(6000) })
       const data = (await res.json()) as { data?: { id: string }[] }
@@ -77,9 +88,9 @@ export function createOpenAi(cfg: { key: string; url: string; models: string[]; 
     ]
     const res = await doFetch(`${cfg.url}/chat/completions`, {
       method: 'POST',
-      headers: { authorization: `Bearer ${cfg.key}`, 'content-type': 'application/json' },
+      headers: { authorization: `Bearer ${cfg.key}`, 'content-type': 'application/json', ...(cfg.id === 'openrouter' ? { 'x-title': 'TableMate' } : {}) },
       signal: o?.signal ? AbortSignal.any([AbortSignal.timeout(45_000), o.signal]) : AbortSignal.timeout(45_000),
-      body: JSON.stringify({ model: name, stream: true, temperature: 0.6, max_tokens: o?.maxTokens ?? 600, messages, ...(/gpt-oss/.test(name) ? { reasoning_effort: 'low' } : {}) }),
+      body: JSON.stringify({ model: name, stream: true, temperature: 0.6, max_tokens: o?.maxTokens ?? (cfg.id === 'openrouter' ? 900 : 600), messages, ...(/gpt-oss/.test(name) && cfg.id !== 'openrouter' ? { reasoning_effort: 'low' } : {}), ...(cfg.id === 'openrouter' ? { reasoning: { effort: 'low' } } : {}) }),
     })
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: { message?: string } | string }
