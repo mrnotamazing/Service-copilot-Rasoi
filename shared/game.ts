@@ -11,6 +11,7 @@
 //
 // Pure and deterministic: fed the same events, it produces the same game.
 
+import { crewEvent, initialCrew, type CrewState } from './crew.ts'
 import type { CopilotEvent } from './events.ts'
 import type { EngineState } from './engine.ts'
 import type { RestaurantConfig, VisitRecord } from './types.ts'
@@ -56,6 +57,8 @@ export interface Kudos {
 }
 
 export interface GameState {
+  /** The kitchen's and the manager's team game (see crew.ts). */
+  crew: CrewState
   players: Record<string, PlayerState>
   awards: Award[] // most recent last, capped
   kudos: Kudos[]
@@ -152,7 +155,7 @@ export function initialGame(config: RestaurantConfig): GameState {
   const players: Record<string, PlayerState> = {}
   // Managers train too: they earn practice XP, though they have no service tasks.
   for (const s of config.staff) if (s.role === 'server' || s.role === 'manager') players[s.id] = blankPlayer(s.id)
-  return { players, awards: [], kudos: [], teamSmooth: 0, seq: 0 }
+  return { players, awards: [], kudos: [], teamSmooth: 0, seq: 0, crew: initialCrew() }
 }
 
 function blankPlayer(staffId: string): PlayerState {
@@ -177,6 +180,7 @@ const GRADE_WORD: Record<Grade, string> = { swift: 'Swift', on_time: 'On time', 
  */
 export function beforeEvent(game: GameState, ev: CopilotEvent, state: EngineState, config: RestaurantConfig): void {
   const sop = config.sop
+  crewEvent(game.crew, ev, state, config)
   if (ev.type === 'kudos.sent') {
     const { from, to, reason } = ev.payload
     // Anyone on the team can be thanked (the kitchen too); XP goes to people who play the game.

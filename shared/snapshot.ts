@@ -2,6 +2,7 @@ import type { FloorInsight } from './floorInsights.ts'
 import type { FeedItem } from './narrate.ts'
 import type { Forecast, LearningPlan, ShiftIntel } from './intel.ts'
 import type { Analytics } from './engine.ts'
+import type { CrewView } from './crew.ts'
 import type { PlayerView, teamView } from './game.ts'
 import type { DishQuestion, Instruction, Note, RestaurantConfig, StaffStats, TableState, Task, TaskText, Upcoming, VisitRecord } from './types.ts'
 
@@ -50,6 +51,8 @@ export interface Snapshot {
   sim: SimStatus
   /** Where AI answers come from: a connected Dify app, or the built-in writer. */
   ai: { provider: 'claude' | 'gemini' | 'cloud' | 'ollama' | 'dify' | 'built-in'; model?: string }
+  /** kitchen and manager: this screen's own team game (a streak and support moments, never rankings). */
+  crew?: CrewView
   /** Shared with everyone: the team goal and kudos. Never individual scores. */
   team: ReturnType<typeof teamView>
   /** server role: own top tasks and private stats */

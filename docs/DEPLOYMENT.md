@@ -25,6 +25,24 @@ Data (events and setup) is kept in `data/`; mount it as a volume so it survives 
 Keys live only on the server. The browser asks `/api/tts` and `/api/ai`; it never sees a key.
 Voice requests are capped at 600 characters, 30 a minute per caller, and repeated text is served from a cache.
 
+## Hosting with every feature working
+
+| Feature | What it needs | Works on |
+| --- | --- | --- |
+| Live floor (real-time cards, kitchen relay, manager) | A server that keeps connections open and saves data | Railway, Render, Fly.io, a VPS, Google Cloud Run, Azure Container Apps (use the Dockerfile) |
+| Cloud AI (Groq, Gemini, Claude) | Keys in the server's environment | Same server; keys never reach the browser |
+| Natural voice (ElevenLabs) | `ELEVENLABS_API_KEY` on the server | Same server |
+| Local AI (Ollama) | A machine running Ollama next to the server | A VPS or an on-site mini PC; not Vercel, not most small PaaS plans |
+| Sign-in, game, practice | Nothing extra | Anywhere |
+| Vibration | HTTPS page opened on an Android phone (Chrome); iPhone gets a tap on touch only; iPads have no motor | Any host with HTTPS |
+| Install on the home screen | HTTPS and the included manifest | Any host with HTTPS |
+
+Recommended: **one container on Railway or Render** (the Dockerfile builds the app and the server together, one URL, HTTPS included, a small volume for `data/`). Add `GROQ_API_KEY` (or Gemini/Claude) and, if you want it, `ELEVENLABS_API_KEY`. Everything works from that one address, including the live connection.
+
+Vercel: good for the front-end only. Put the front-end on Vercel and the server on Railway, and proxy `/api` to the server with a rewrite in `vercel.json`. Vercel cannot proxy the live connection (WebSocket), so use the server's own address for that, or host everything on the server and skip Vercel. The self-contained demo build (`npm run build:demo`) runs on Vercel or any static host, with simulated data and the built-in answers.
+
+For real vibration on iPhone (including alerts that arrive on their own) and push notifications, wrap the app with Capacitor (Haptics and Push plugins) and publish it through TestFlight or the App Store.
+
 ## Sign-in (demo)
 
 `/login`: choose Server (then who), Kitchen or Manager and enter the shared demo password (set in `src/lib/auth.ts`, `DEMO_PASSWORD`). Each person only opens their own screen: servers their own app, the kitchen the pass, the manager the floor and the servers overview. Sessions are per browser tab, so closing the tab signs out, and one laptop can show several roles in several tabs. "Wrap up my shift" ends in "Finish my shift and sign out". This is a presentation gate, not security: before a real roll-out, check passwords on the server with one account per person.

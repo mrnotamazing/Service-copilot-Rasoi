@@ -1,3 +1,4 @@
+import { CrewCard } from '../components/CrewCard.tsx'
 import { Plug, ChefHat, History, Frown, HandHelping, Receipt as ReceiptIcon, ShieldAlert, Smile, HeartHandshake, Lightbulb, Loader2, ShieldCheck, Sparkles, Users } from 'lucide-react'
 import type { Owner, Segment, VisitRecord } from '../../shared/types.ts'
 import { AiAnswerBox } from '../components/AiAnswer.tsx'
@@ -84,6 +85,7 @@ export default function ManagerView() {
         <NeedsYou snap={snap} />
         <FloorMoves snap={snap} managerId={managerId} />
         <Pulse snap={snap} />
+        {snap.crew && <CrewCard crew={snap.crew} muted={snap.sim.autoManager} />}
         <ConnectedSystems snap={snap} />
         <TeamCard snap={snap} meId={managerId} />
         {snap.intel && snap.forecast && (

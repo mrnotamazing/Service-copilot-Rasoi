@@ -1,3 +1,4 @@
+import { CrewCard } from '../components/CrewCard.tsx'
 import { MessageCircleQuestion, BellRing, Bot, Check, Flame, HandPlatter, HeartPulse, Send, ShieldAlert, Timer, UtensilsCrossed } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { useAlertOnNew } from '../lib/useAlerts.ts'
@@ -130,6 +131,7 @@ export default function KitchenView() {
         </div>
 
         <div className="min-w-0 space-y-4">
+          {snap.crew && <CrewCard crew={snap.crew} muted={snap.sim.autoKitchen} />}
           <Questions snap={snap} />
           <AllDay tickets={tickets.line} station={station} />
           <TeamCard snap={snap} meId={snap.config.staff.find((s) => s.role === 'kitchen')?.id ?? 'k_pass'} compact />

@@ -6,6 +6,7 @@ import { predictReady, upcomingFor } from '../shared/predict.ts'
 import { floorInsights, handoverNotes } from '../shared/floorInsights.ts'
 import { crunchAhead, forecast, learningPlan, shiftIntel, whyFirst } from '../shared/intel.ts'
 import { cleanProfile } from '../shared/profile.ts'
+import { crewView } from '../shared/crew.ts'
 import { playerView, teamView } from '../shared/game.ts'
 import type { IncomingEvent } from '../shared/events.ts'
 import type { IntegrationStatus, Role, Snapshot } from '../shared/snapshot.ts'
@@ -80,8 +81,8 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
       }
     }
     if (role === 'manager')
-      return { ...base, analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), insights: floorInsights(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40), instructions: hub.state.instructions.slice(-30).reverse(), questions: hub.state.questions.slice(-30).reverse() }
-    return { ...base, openTasks, instructions: hub.state.instructions.slice(-30).reverse(), questions: hub.state.questions.slice(-30).reverse() }
+      return { ...base, crew: crewView(hub.game.crew, 'floor'), analytics: analytics(hub.state, hub.config), intel: shiftIntel(hub.state, hub.config), forecast: forecast(hub.state, hub.config, now, tasks), insights: floorInsights(hub.state, hub.config, now, tasks), integrations: integrations(), openTasks, feed: hub.feed.slice(-40), instructions: hub.state.instructions.slice(-30).reverse(), questions: hub.state.questions.slice(-30).reverse() }
+    return { ...base, crew: crewView(hub.game.crew, 'kitchen'), openTasks, instructions: hub.state.instructions.slice(-30).reverse(), questions: hub.state.questions.slice(-30).reverse() }
   }
 
   const routes: Record<string, (body: ApiBody) => unknown> = {
