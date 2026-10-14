@@ -21,6 +21,8 @@ export function profileFor(req: AiRequest): Profile {
   if (req.kind === 'incident' || req.kind === 'shift_summary') return { tier: 'standard', temperature: 0.4 }
   // The pass needs this in seconds and grounded in the tickets: fastest good model, steady wording.
   if (req.kind === 'kitchen_triage') return { tier: 'quick', temperature: 0.3 }
+  // Suggestions at the table: the guest is waiting, so fast; a little warmth in the wording.
+  if (req.kind === 'menu_suggest') return { tier: 'quick', temperature: 0.5 }
   if (req.kind === 'chat') {
     const manager = (req.staffId ?? '').startsWith('m_')
     return manager ? { tier: 'standard', temperature: 0.5 } : { tier: 'quick', temperature: 0.5 }

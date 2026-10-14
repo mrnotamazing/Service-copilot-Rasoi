@@ -2004,6 +2004,20 @@ export const en = {
   "ui.lit.the_kitchen_can_13": "The kitchen can",
   "ui.lit.nothing_more_noted_yet_ask_14": "Nothing more noted yet. Ask the kitchen from the Kitchen tab.",
   "ui.lit.menu_for_table_17": "Menu for {table}",
+  "ui.lit.suggest_the_dish": "Suggest the {dish}",
+  "ui.lit.suggested": "Suggested",
+  "ui.lit.something_spicy": "Something spicy",
+  "ui.lit.something_light": "Something light",
+  "ui.lit.vegetarian": "Vegetarian",
+  "ui.lit.a_dessert": "A dessert",
+  "ui.lit.ideas_for_this_table": "Ideas for this table",
+  "ui.lit.ideas_for_table": "Ideas for {table}",
+  "ui.lit.ideas_for_the_guests": "Ideas for the guests",
+  "ui.lit.start_over": "Start over",
+  "ui.lit.anything_else_they_mentioned": "Anything else they mentioned?",
+  "ui.lit.what_do_they_feel_like": "What do they feel like? e.g. something spicy",
+  "ui.lit.what_the_guests_would_like": "What the guests would like",
+  "ui.lit.send": "Send",
   // --- end merged ---
 } as const
 

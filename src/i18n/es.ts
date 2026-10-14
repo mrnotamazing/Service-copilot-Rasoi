@@ -1982,6 +1982,20 @@ export const es: Record<Key, string> = {
   "ui.lit.the_kitchen_can_13": "La cocina puede",
   "ui.lit.nothing_more_noted_yet_ask_14": "Aún no hay más notas. Pregunta a la cocina desde la pestaña Cocina.",
   "ui.lit.menu_for_table_17": "Menú para {table}",
+  "ui.lit.suggest_the_dish": "Sugerir {dish}",
+  "ui.lit.suggested": "Sugerido",
+  "ui.lit.something_spicy": "Algo picante",
+  "ui.lit.something_light": "Algo ligero",
+  "ui.lit.vegetarian": "Vegetariano",
+  "ui.lit.a_dessert": "Un postre",
+  "ui.lit.ideas_for_this_table": "Ideas para esta mesa",
+  "ui.lit.ideas_for_table": "Ideas para {table}",
+  "ui.lit.ideas_for_the_guests": "Ideas para los clientes",
+  "ui.lit.start_over": "Empezar de nuevo",
+  "ui.lit.anything_else_they_mentioned": "¿Mencionaron algo más?",
+  "ui.lit.what_do_they_feel_like": "¿Qué les apetece? p. ej. algo picante",
+  "ui.lit.what_the_guests_would_like": "Lo que quieren los clientes",
+  "ui.lit.send": "Enviar",
   // --- end merged ---
 
 }

@@ -2,6 +2,8 @@
 // Dify app (DIFY_API_URL + DIFY_API_KEY), or a built-in writer and trainer so the copilot always
 // works. The copilot builds the facts; the model only phrases them and holds the conversation.
 
+import { guestWith, readWishes, suggestFallback } from '../shared/suggest.ts'
+import type { MenuItem } from '../shared/types.ts'
 import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
 import { floorInsights } from '../shared/floorInsights.ts'
 import { dishesNamed } from '../shared/dishNames.ts'
@@ -20,7 +22,7 @@ import { profileFor, type Tier } from './tasks.ts'
 import type { Hub } from './hub.ts'
 import { parseWhatIf, runWhatIf, whatIfText } from './whatif.ts'
 
-export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat' | 'complaint' | 'incident' | 'kitchen_triage'
+export type AiKind = 'guest_script' | 'briefing' | 'shift_summary' | 'ask_sop' | 'coach' | 'practice' | 'chat' | 'complaint' | 'incident' | 'kitchen_triage' | 'menu_suggest'
 
 /** One message in the assistant chat. In practice mode the guest's lines are the assistant's. */
 export type AiProvider = 'claude' | 'gemini' | 'cloud' | 'ollama' | 'dify' | 'built-in'
@@ -77,6 +79,8 @@ export interface AiRequest {
   /** Complaint help: the table. Incident story: the visit. */
   tableId?: string
   visitId?: string
+  /** Menu suggestions: the dish to recommend ("suggest this dish"). */
+  dishId?: string
 }
 
 /** Language names for the prompt; unknown codes fall back to English. */
@@ -119,6 +123,8 @@ export interface AiAnswer {
   lang?: string
   /** A question about a dish: offer to send it to the kitchen (`unsure`: the menu notes didn't answer it). */
   askKitchen?: { menuItemId?: string; question: string; unsure: boolean }
+  /** Menu suggestions: the dishes the answer recommends (menu item ids). */
+  dishes?: string[]
 }
 
 export interface DifyOptions {
@@ -209,6 +215,38 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             `Use the restaurant's own priorities below to weigh the tickets; keep the order given unless the facts clearly say otherwise. Allergy and diet tickets are always confirmed by the chef. ` +
             `Never blame a person or a station. Name tables (like T4), not guests.\n\nThe restaurant's priorities:\n${rules.map((r) => `- ${r}`).join('\n')}\n\nTickets, most urgent first:\n${facts.map((f) => `- ${f}`).join('\n')}`,
           fallback,
+        }
+      }
+      case 'menu_suggest': {
+        // What to offer this table: built from the menu, the table's allergies and diet, tonight's
+        // switched-off dishes and every wish the server has typed. Safety is decided by rules, never by the model.
+        const t = req.tableId ? hub.state.tables[req.tableId] : undefined
+        const off = Object.keys(hub.state.unavailable)
+        const wishes = (req.messages ?? []).filter((m) => m.role === 'user').map((m) => m.text)
+        // Allergies and diets the server mentions while asking count as much as the ones on the table.
+        const party = guestWith(t?.party, readWishes(wishes))
+        const built = suggestFallback(cfg.menu, off, party, wishes, req.dishId, t?.name)
+        const language = AI_LANGUAGES[req.lang ?? 'en'] ?? 'English'
+        const safe = cfg.menu.filter((m) => !off.includes(m.id) && !safetyIssues(m, party).length)
+        const unsafe = cfg.menu.filter((m) => off.includes(m.id) || safetyIssues(m, party).length)
+        const dish = req.dishId ? cfg.menu.find((m) => m.id === req.dishId) : undefined
+        const line = (m: MenuItem) => `- ${m.name} (${m.course}; spice ${m.spice ?? 0}/3; contains ${(m.contains ?? []).join(', ') || 'nothing listed'}): ${m.description ?? ''}${m.adjust ? ` Kitchen can: ${m.adjust}` : ''}`
+        const ordered = t?.lines.map((l) => l.name).join(', ')
+        const tableFacts = t
+          ? [`Table ${t.name}, party of ${party.size}`, party.allergies.length ? `allergies: ${party.allergies.join(', ')}` : 'no allergies noted', party.needs?.length ? `needs: ${party.needs.join(', ')}` : '', party.occasion ? `occasion: ${party.occasion}` : '', ordered ? `already ordered: ${ordered}` : ''].filter(Boolean).join('; ')
+          : 'No table chosen.'
+        const convo = (req.messages ?? []).map((m) => `${m.role === 'user' ? 'SERVER' : 'YOU'}: ${m.text}`).join('\n')
+        const ask = dish
+          ? `The server tapped "Suggest this dish" for the ${dish.name}. ${safetyIssues(dish, party).length || off.includes(dish.id) ? 'It is NOT safe or not available for this table: say so in one sentence and suggest one safe alternative from the list.' : 'Write one or two warm, natural lines the server can say to the guests to recommend it (in quotes), using its description; add one short tip only if it fits what the guests said they like.'}`
+          : `Suggest 2 or 3 dishes from the SAFE list that fit everything the guests want in the conversation (later wishes win). For each: the dish name, a few words on why it fits, and one short line in quotes the server can say. If nothing fits, say so and suggest asking the kitchen.`
+        return {
+          prompt:
+            `You help a fine-dining server choose what to recommend at the table. Reply in ${language}, but keep dish names exactly as written. Be brief: a short bulleted list, no preamble. ` +
+            `Only ever recommend dishes from the SAFE list. Never guess about allergens beyond the tags given.\n\n${tableFacts}\n\nSAFE for this table tonight:\n${safe.map(line).join('\n')}\n\n` +
+            `NOT for this table tonight (allergy, diet or switched off): ${unsafe.map((m) => m.name).join(', ') || 'none'}\n\nConversation so far:\n${convo || '(none)'}\n\n${ask}`,
+          fallback: built.text,
+          extra: { dishes: built.dishes },
+          parse: (answer: string) => ({ text: answer.trim(), dishes: cfg.menu.filter((m) => answer.toLowerCase().includes(m.name.toLowerCase()) && safe.includes(m)).map((m) => m.id) }),
         }
       }
       case 'complaint': {
@@ -669,7 +707,7 @@ export function fromJson(raw: string): string {
 /** No words from the model by then: show the built-in answer instead of keeping someone waiting. */
 const QUICK_FIRST_WORDS_MS = 12_000
 /** Rough answer lengths for the quick buttons (tokens): a line to say is short, a summary longer. */
-const QUICK_TOKENS: Partial<Record<AiKind, number>> = { guest_script: 140, coach: 180, briefing: 240, complaint: 240, ask_sop: 180, incident: 280, shift_summary: 320, kitchen_triage: 200 }
+const QUICK_TOKENS: Partial<Record<AiKind, number>> = { guest_script: 140, coach: 180, briefing: 240, complaint: 240, ask_sop: 180, incident: 280, shift_summary: 320, kitchen_triage: 200, menu_suggest: 320 }
 
 /** The whole system prompt for a quick button: the facts are in the request itself. */
 export function quickSystem(cfg: RestaurantConfig): string {

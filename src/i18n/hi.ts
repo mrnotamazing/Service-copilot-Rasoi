@@ -1982,6 +1982,20 @@ export const hi: Record<Key, string> = {
   "ui.lit.the_kitchen_can_13": "किचन कर सकता है",
   "ui.lit.nothing_more_noted_yet_ask_14": "अभी और कुछ दर्ज नहीं। किचन टैब से किचन से पूछें।",
   "ui.lit.menu_for_table_17": "{table} का मेन्यू",
+  "ui.lit.suggest_the_dish": "{dish} सुझाएँ",
+  "ui.lit.suggested": "सुझाया गया",
+  "ui.lit.something_spicy": "कुछ तीखा",
+  "ui.lit.something_light": "कुछ हल्का",
+  "ui.lit.vegetarian": "शाकाहारी",
+  "ui.lit.a_dessert": "मीठे में कुछ",
+  "ui.lit.ideas_for_this_table": "इस टेबल के लिए सुझाव",
+  "ui.lit.ideas_for_table": "{table} के लिए सुझाव",
+  "ui.lit.ideas_for_the_guests": "मेहमानों के लिए सुझाव",
+  "ui.lit.start_over": "फिर से शुरू करें",
+  "ui.lit.anything_else_they_mentioned": "उन्होंने और क्या कहा?",
+  "ui.lit.what_do_they_feel_like": "उन्हें क्या पसंद है? जैसे कुछ तीखा",
+  "ui.lit.what_the_guests_would_like": "मेहमान क्या चाहते हैं",
+  "ui.lit.send": "भेजें",
   // --- end merged ---
 
 }

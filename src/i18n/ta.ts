@@ -1982,6 +1982,20 @@ export const ta: Record<Key, string> = {
   "ui.lit.the_kitchen_can_13": "சமையலறை செய்யக்கூடியது",
   "ui.lit.nothing_more_noted_yet_ask_14": "இன்னும் வேறு குறிப்பு இல்லை. கிச்சன் டேபில் சமையலறையிடம் கேளுங்கள்.",
   "ui.lit.menu_for_table_17": "{table}-க்கான மெனு",
+  "ui.lit.suggest_the_dish": "{dish} பரிந்துரை",
+  "ui.lit.suggested": "பரிந்துரைக்கப்பட்டது",
+  "ui.lit.something_spicy": "காரமான ஏதாவது",
+  "ui.lit.something_light": "லேசான ஏதாவது",
+  "ui.lit.vegetarian": "சைவம்",
+  "ui.lit.a_dessert": "இனிப்பு ஏதாவது",
+  "ui.lit.ideas_for_this_table": "இந்த டேபிளுக்கான யோசனைகள்",
+  "ui.lit.ideas_for_table": "{table}-க்கான யோசனைகள்",
+  "ui.lit.ideas_for_the_guests": "விருந்தினர்களுக்கான யோசனைகள்",
+  "ui.lit.start_over": "மீண்டும் தொடங்கு",
+  "ui.lit.anything_else_they_mentioned": "வேறு ஏதாவது சொன்னார்களா?",
+  "ui.lit.what_do_they_feel_like": "அவர்களுக்கு என்ன வேண்டும்? உதா. காரமான ஏதாவது",
+  "ui.lit.what_the_guests_would_like": "விருந்தினர்கள் விரும்புவது",
+  "ui.lit.send": "அனுப்பு",
   // --- end merged ---
 
 }

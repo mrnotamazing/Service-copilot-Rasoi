@@ -1982,6 +1982,20 @@ export const bn: Record<Key, string> = {
   "ui.lit.the_kitchen_can_13": "রান্নাঘর করতে পারে",
   "ui.lit.nothing_more_noted_yet_ask_14": "আর কিছু লেখা নেই। কিচেন ট্যাব থেকে রান্নাঘরকে জিজ্ঞেস করুন।",
   "ui.lit.menu_for_table_17": "{table}-এর মেনু",
+  "ui.lit.suggest_the_dish": "{dish} সুপারিশ করুন",
+  "ui.lit.suggested": "সুপারিশ করা",
+  "ui.lit.something_spicy": "ঝাল কিছু",
+  "ui.lit.something_light": "হালকা কিছু",
+  "ui.lit.vegetarian": "নিরামিষ",
+  "ui.lit.a_dessert": "মিষ্টি কিছু",
+  "ui.lit.ideas_for_this_table": "এই টেবিলের জন্য আইডিয়া",
+  "ui.lit.ideas_for_table": "{table}-এর জন্য আইডিয়া",
+  "ui.lit.ideas_for_the_guests": "অতিথিদের জন্য আইডিয়া",
+  "ui.lit.start_over": "নতুন করে শুরু",
+  "ui.lit.anything_else_they_mentioned": "তাঁরা আর কী বললেন?",
+  "ui.lit.what_do_they_feel_like": "তাঁদের কী খেতে ইচ্ছে? যেমন ঝাল কিছু",
+  "ui.lit.what_the_guests_would_like": "অতিথিরা কী চান",
+  "ui.lit.send": "পাঠান",
   // --- end merged ---
 
 }

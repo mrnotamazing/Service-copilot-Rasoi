@@ -3,8 +3,8 @@
 // each dish says whether it suits those guests (from the allergies and diets taken when they sat down),
 // so "what can I offer table 4?" is one tap. Dishes the kitchen has switched off show as off tonight.
 
-import { Ban, BookOpen, ChefHat, CircleCheck, Flame, MessageCircleQuestion, Search, ShieldAlert, Volume2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Ban, BookOpen, ChefHat, CircleCheck, Flame, Loader2, MessageCircleQuestion, Search, Send, ShieldAlert, Sparkles, Trash2, Volume2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { Snapshot } from '../../shared/snapshot.ts'
 import type { Course, MenuItem, TableState } from '../../shared/types.ts'
@@ -15,8 +15,51 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { L, useT } from '../i18n/index.ts'
 import { speak } from '../lib/speech.ts'
+import { post } from '../lib/live.ts'
+import { getPrefs } from '../lib/prefs.ts'
+import type { AiAnswer } from '../lib/ai.ts'
 
 const COURSES: Course[] = ['drink', 'starter', 'main', 'dessert']
+
+interface Msg {
+  role: 'user' | 'assistant'
+  text: string
+  dishes?: string[]
+}
+/** Each table's suggestion thread, kept while the app is open so a later wish builds on the earlier ones. */
+const threads = new Map<string, Msg[]>()
+
+/** The suggestion conversation for one table: wishes in, dishes and lines to say out. */
+function useSuggest(staffId: string, tableId: string | null) {
+  const key = tableId ?? 'all'
+  const [msgs, setMsgs] = useState<Msg[]>(() => threads.get(key) ?? [])
+  const [busy, setBusy] = useState(false)
+  const [shownKey, setShownKey] = useState(key)
+  if (shownKey !== key) {
+    setShownKey(key)
+    setMsgs(threads.get(key) ?? [])
+  }
+  const save = (m: Msg[]) => {
+    threads.set(key, m)
+    setMsgs(m)
+  }
+  async function send(text: string, dishId?: string) {
+    if (!text.trim() || busy) return
+    const next = [...msgs, { role: 'user' as const, text: text.trim() }]
+    save(next)
+    setBusy(true)
+    try {
+      const a = await post<AiAnswer>('/api/ai', { kind: 'menu_suggest', staffId, tableId: tableId ?? undefined, dishId, lang: getPrefs().lang, messages: next.map(({ role, text: x }) => ({ role, text: x })) })
+      save([...next, { role: 'assistant', text: a.text, dishes: a.dishes }])
+    } catch (e) {
+      save([...next, { role: 'assistant', text: e instanceof Error ? e.message : String(e) }])
+    } finally {
+      setBusy(false)
+    }
+  }
+  const latest = [...msgs].reverse().find((m) => m.role === 'assistant')?.dishes ?? []
+  return { msgs, busy, send, clear: () => save([]), suggested: new Set(latest) }
+}
 
 /** Opens the menu sheet (optionally for one table) through the page address, so any card can open it. */
 export function useMenuSheet() {
@@ -54,6 +97,7 @@ export function MenuSheet({ snap, staffId }: { snap: Snapshot; staffId: string }
   const myTables = snap.tables.filter((x) => x.serverId === staffId && x.visitId)
   const table = myTables.find((x) => x.id === menu.tableId) ?? null
   const off = new Set(snap.unavailable)
+  const chat = useSuggest(staffId, table?.id ?? null)
 
   const items = useMemo(() => {
     const needle = q.trim().toLowerCase()
@@ -62,9 +106,9 @@ export function MenuSheet({ snap, staffId }: { snap: Snapshot; staffId: string }
       .filter((m) => !needle || `${m.name} ${m.description ?? ''} ${(m.contains ?? []).join(' ')}`.toLowerCase().includes(needle))
       .map((m) => ({ m, off: off.has(m.id), issues: table ? safetyIssues(m, table.party) : [] }))
       // Available first, then (for a table) what suits them, then by course order.
-      .sort((a, b) => Number(a.off) - Number(b.off) || Number(a.issues.length > 0) - Number(b.issues.length > 0) || COURSES.indexOf(a.m.course) - COURSES.indexOf(b.m.course))
+      .sort((a, b) => Number(chat.suggested.has(b.m.id)) - Number(chat.suggested.has(a.m.id)) || Number(a.off) - Number(b.off) || Number(a.issues.length > 0) - Number(b.issues.length > 0) || COURSES.indexOf(a.m.course) - COURSES.indexOf(b.m.course))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snap.config.menu, snap.unavailable, q, course, table?.id, table?.party])
+  }, [snap.config.menu, snap.unavailable, q, course, table?.id, table?.party, chat.suggested.size, [...chat.suggested].join()])
 
   const suits = table ? items.filter((i) => !i.off && i.issues.length === 0).length : 0
 
@@ -115,9 +159,12 @@ export function MenuSheet({ snap, staffId }: { snap: Snapshot; staffId: string }
         </div>
 
         <ul className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)]">
+          <li className="list-none">
+            <SuggestChat chat={chat} table={table} />
+          </li>
           {items.length === 0 && <li className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">{L('No dishes match.')}</li>}
           {items.map(({ m, off: isOff, issues }) => (
-            <Dish key={m.id} m={m} off={isOff} issues={issues} table={table} />
+            <Dish key={m.id} m={m} off={isOff} issues={issues} table={table} suggested={chat.suggested.has(m.id)} onSuggest={() => void chat.send(L('Suggest the {dish}', { dish: m.name }), m.id)} busy={chat.busy} />
           ))}
         </ul>
       </DrawerContent>
@@ -125,13 +172,13 @@ export function MenuSheet({ snap, staffId }: { snap: Snapshot; staffId: string }
   )
 }
 
-function Dish({ m, off, issues, table }: { m: MenuItem; off: boolean; issues: SafetyIssue[]; table: TableState | null }) {
+function Dish({ m, off, issues, table, suggested, onSuggest, busy }: { m: MenuItem; off: boolean; issues: SafetyIssue[]; table: TableState | null; suggested: boolean; onSuggest: () => void; busy: boolean }) {
   const t = useT()
   const word = useWord()
   const [open, setOpen] = useState(false)
   const clash = issues.length > 0
   return (
-    <li className={cn('rounded-2xl border bg-card p-3.5', off && 'opacity-60', clash && !off && 'border-destructive/40')}>
+    <li className={cn('rounded-2xl border bg-card p-3.5', off && 'opacity-60', clash && !off && 'border-destructive/40', suggested && !off && !clash && 'border-primary/50 ring-1 ring-primary/20')}>
       <div className="flex items-start gap-2">
         <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
           <span className={cn('block font-medium leading-snug', off && 'line-through')} translate="no">
@@ -146,6 +193,11 @@ function Dish({ m, off, issues, table }: { m: MenuItem; off: boolean; issues: Sa
                 ))}
               </span>
             ) : null}
+            {suggested && !off && !clash && (
+              <span className="inline-flex items-center gap-1 font-medium text-primary">
+                <Sparkles className="size-3.5" aria-hidden /> {L('Suggested')}
+              </span>
+            )}
             {off && (
               <span className="inline-flex items-center gap-1 font-medium text-foreground">
                 <Ban className="size-3.5" aria-hidden /> {L('Off tonight')}
@@ -156,6 +208,11 @@ function Dish({ m, off, issues, table }: { m: MenuItem; off: boolean; issues: Sa
         <Button size="icon" variant="ghost" className="size-9 shrink-0" aria-label={L('Say “{name}” aloud', { name: m.name })} onClick={() => speak(m.name)}>
           <Volume2 />
         </Button>
+        {!off && !clash && (
+          <Button size="sm" variant="outline" className="h-9 shrink-0 rounded-full text-primary" disabled={busy} onClick={onSuggest} aria-label={L('Suggest the {dish}', { dish: m.name })}>
+            <Sparkles /> {L('Suggest')}
+          </Button>
+        )}
       </div>
 
       {table && !off && (
@@ -204,6 +261,66 @@ function Dish({ m, off, issues, table }: { m: MenuItem; off: boolean; issues: Sa
         </div>
       )}
     </li>
+  )
+}
+
+function SuggestChat({ chat, table }: { chat: ReturnType<typeof useSuggest>; table: TableState | null }) {
+  const [text, setText] = useState('')
+  const quick = [L('Something spicy'), L('Something light'), L('Vegetarian'), L('A dessert')]
+  // Keep the newest answer in view.
+  const list = useRef<HTMLOListElement>(null)
+  useEffect(() => {
+    list.current?.scrollTo({ top: list.current.scrollHeight, behavior: 'smooth' })
+  }, [chat.msgs.length, chat.busy])
+  return (
+    <section className="rounded-2xl border border-primary/25 bg-accent/40 p-3" aria-label={L('Ideas for this table')}>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold">
+          <Sparkles className="size-4 text-primary" aria-hidden /> {table ? L('Ideas for {table}', { table: table.name }) : L('Ideas for the guests')}
+        </h3>
+        {chat.msgs.length > 0 && (
+          <Button size="sm" variant="ghost" className="h-8 text-muted-foreground" onClick={chat.clear}>
+            <Trash2 /> {L('Start over')}
+          </Button>
+        )}
+      </div>
+      {chat.msgs.length > 0 && (
+        <ol ref={list} className="mt-2 max-h-64 space-y-2 overflow-y-auto" aria-live="polite">
+          {chat.msgs.map((m, i) => (
+            <li key={i} className={cn('max-w-[92%] whitespace-pre-line rounded-2xl px-3 py-2 text-sm', m.role === 'user' ? 'ml-auto rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-background')}>
+              {m.text}
+            </li>
+          ))}
+          {chat.busy && (
+            <li className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden /> {L('Thinking…')}
+            </li>
+          )}
+        </ol>
+      )}
+      {chat.msgs.length === 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {quick.map((x) => (
+            <button key={x} type="button" className="min-h-9 rounded-full border bg-background px-3 text-sm pointer-coarse:min-h-11" onClick={() => void chat.send(x)} disabled={chat.busy}>
+              {x}
+            </button>
+          ))}
+        </div>
+      )}
+      <form
+        className="mt-2 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          void chat.send(text)
+          setText('')
+        }}
+      >
+        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={chat.msgs.length ? L('Anything else they mentioned?') : L('What do they feel like? e.g. something spicy')} aria-label={L('What the guests would like')} className="h-10 bg-background" />
+        <Button type="submit" size="icon" className="size-10 shrink-0" disabled={!text.trim() || chat.busy} aria-label={L('Send')}>
+          <Send />
+        </Button>
+      </form>
+    </section>
   )
 }
 

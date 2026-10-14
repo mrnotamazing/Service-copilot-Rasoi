@@ -287,7 +287,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
     },
   }
 
-  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice', 'chat', 'complaint', 'incident', 'kitchen_triage']
+  const AI_KINDS: AiKind[] = ['guest_script', 'briefing', 'shift_summary', 'ask_sop', 'coach', 'practice', 'chat', 'complaint', 'incident', 'kitchen_triage', 'menu_suggest']
 
   return {
     /** The model asked first, and the whole line-up with how each is doing. */
@@ -316,7 +316,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
             .map((m) => ({ role: m.role, text: m.text.slice(0, 1500), ...(typeof m.score === 'number' && m.score >= 0 && m.score <= 100 ? { score: m.score } : {}) }))
         : undefined
       const mode = body.mode === 'practice' ? 'practice' : body.mode === 'ask' ? 'ask' : undefined
-      const req: AiRequest = { kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true, tableId: str(body.tableId), visitId: str(body.visitId) }
+      const req: AiRequest = { kind, staffId: str(body.staffId), taskId: str(body.taskId), question: str(body.question), lang: str(body.lang), scenario: str(body.scenario), history, messages, mode, finish: body.finish === true, simple: body.simple === true, tableId: str(body.tableId), visitId: str(body.visitId), dishId: str(body.dishId) }
       let answer: Awaited<ReturnType<typeof ai.ask>>
       try {
         answer = await ai.ask(req, onText)
