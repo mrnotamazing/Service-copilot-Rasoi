@@ -460,6 +460,8 @@ export const bn: Record<Key, string> = {
   'practice.xp': "+{n} XP",
   'practice.xpTotal': "{n} XP পেয়েছেন",
   'practice.capped': "আজকের অনুশীলন XP পূর্ণ। অনুশীলন চালিয়ে যান: দক্ষতা তো বাড়েই।",
+  'practice.judgedAi': "AI স্কোর দিয়েছে।",
+  'practice.judgedRubric': "AI স্কোর পাঠায়নি, তাই বিল্ট-ইন রুব্রিক এই উত্তরের স্কোর দিয়েছে।",
   'practice.avg': "গড় {n}/100",
   'practice.idealsTitle': "শেখার জন্য আদর্শ উত্তর",
   'practice.checks': "এখানে একটি ভালো উত্তর কী করে",

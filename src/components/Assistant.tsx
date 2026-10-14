@@ -21,6 +21,7 @@ interface Message extends ChatTurn {
   source?: AiAnswer['source']
   notice?: string
   feedback?: string
+  judgedBy?: 'model' | 'rubric'
   stars?: number
   suggestions?: string[]
   /** A dish question: offer to send it to the kitchen (prominent when the menu notes didn't answer it). */
@@ -160,7 +161,7 @@ function Chat({ staffId, provider, mode, scenario, role, onExit }: { staffId: st
       // In practice, the score, coaching, ideal reply and XP belong under the reply they are about.
       const scored = practice && !finish && a.score !== undefined
       const withCoach = scored
-        ? history.map((m, i) => (i === history.length - 1 && m.role === 'user' ? { ...m, feedback: a.feedback, stars: a.stars, score: a.score, criteria: a.criteria, ideal: a.ideal, xp: a.xp } : m))
+        ? history.map((m, i) => (i === history.length - 1 && m.role === 'user' ? { ...m, feedback: a.feedback, stars: a.stars, score: a.score, judgedBy: a.judgedBy, criteria: a.criteria, ideal: a.ideal, xp: a.xp } : m))
         : history
       const reply: Message = finish
         ? { role: 'assistant', text: a.text, source: a.source, debrief: true, stars: a.stars, score: a.score, xp: a.xp, lang }
@@ -414,6 +415,7 @@ function ScoreCard({ m }: { m: Message }) {
         </ul>
       ) : null}
       {m.xp === 0 && m.score !== undefined && <p className="mt-1.5 text-[11px] text-muted-foreground">{t('practice.capped')}</p>}
+      {m.judgedBy && <p className="mt-1.5 text-[11px] text-muted-foreground">{t(m.judgedBy === 'model' ? 'practice.judgedAi' : 'practice.judgedRubric')}</p>}
       {m.ideal && (
         <div className="mt-2 border-t border-primary/20 pt-2">
           <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="inline-flex min-h-6 items-center gap-1 text-xs font-medium text-primary">

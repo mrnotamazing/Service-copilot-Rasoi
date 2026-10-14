@@ -460,6 +460,8 @@ export const ne: Record<Key, string> = {
   'practice.xp': "+{n} XP",
   'practice.xpTotal': "{n} XP कमाउनुभयो",
   'practice.capped': "आजको अभ्यास XP पुग्यो। अभ्यास जारी राख्नुहोस्: सीप त बढ्छ नै।",
+  'practice.judgedAi': "AI ले अङ्क दियो।",
+  'practice.judgedRubric': "AI ले अङ्क पठाएन, त्यसैले बिल्ट-इन रुब्रिकले यो जवाफको अङ्क दियो।",
   'practice.avg': "औसत {n}/100",
   'practice.idealsTitle': "सिक्नका लागि आदर्श जवाफ",
   'practice.checks': "यहाँ राम्रो जवाफले के गर्छ",

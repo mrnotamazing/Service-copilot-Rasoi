@@ -102,6 +102,8 @@ export interface AiAnswer {
   score?: number
   criteria?: Score['criteria']
   ideal?: string
+  /** Practice: who judged the reply: the AI model, or the built-in rubric (when the model sent no usable score). */
+  judgedBy?: 'model' | 'rubric'
   /** Practice: how the other side took it, their patience (0–4) and, at the end, how it went. */
   mood?: Mood
   patience?: number
@@ -400,6 +402,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             const done = ended || !!state.outcome
             const outcome = state.outcome ?? (done ? (state.patience >= 3 ? 'won' : state.patience <= 1 ? 'lost' : 'ok') : undefined)
             return {
+              judgedBy: coach && Number.isFinite(modelScore) ? ('model' as const) : ('rubric' as const),
               // No usable line (e.g. only coaching came back): the scripted line stands in.
               text: guest || builtIn.text,
               feedback: coach && coach !== '-' ? coach : builtIn.feedback,
@@ -528,6 +531,12 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       if (built.instant) return { text: fallback, source: 'built-in', ...built.extra }
       let notice: string | undefined
       const line = candidates()
+      let partial: { model: ChatModel; answer: string } | undefined
+      const done = (model: ChatModel, answer: string) => {
+        const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name }
+        if (model.checkFacts && built.facts?.length) out.text = `${out.text}\n\nFrom the menu: ${built.facts.join('\n')}`
+        return out
+      }
       for (const [n, model] of line.entries()) {
         // Quick buttons ("What do I say?", briefings, summaries…) carry their facts in the prompt, so they
         // get a short system prompt, a length cap, streaming, and a deadline for the first words.
@@ -544,10 +553,15 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
           const answer = await model.reply(system, built.turns ?? [{ role: 'user', text: built.prompt }], stream, { maxTokens: quick ? (QUICK_TOKENS[req.kind] ?? 240) : undefined, signal: ctrl.signal, json: built.json })
           const bad = unusable(answer)
           if (bad) throw new Error(bad)
-          const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name }
-          if (model.checkFacts && built.facts?.length) out.text = `${out.text}\n\nFrom the menu: ${built.facts.join('\n')}`
+          // A scored practice turn with no score: another model may judge it properly, so ask the next one
+          // and keep this answer (the rubric will score it) in case none does.
+          if (built.json && !/SCORE:\s*\d/i.test(fromJson(answer)) && n < line.length - 1) {
+            partial ??= { model, answer }
+            console.warn(`[ai] ${model.name} sent no score for the practice reply; asking the next model`)
+            continue
+          }
           ranker.ok(model.name, Date.now() - t0)
-          return out
+          return done(model, answer)
         } catch (e) {
           ranker.fail(model.name)
           console.warn(`[ai] ${model.name} couldn't answer (${e instanceof Error ? e.message : e}); ${n < line.length - 1 ? 'asking the next model' : 'no model left'}`.slice(0, 220))
@@ -556,6 +570,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
           clearTimeout(deadline)
         }
       }
+      if (partial) return done(partial.model, partial.answer)
       if (!dify) return { text: fallback, source: 'built-in', notice, ...built.extra }
       try {
         const answer = await callDify(prompt, req)

@@ -328,3 +328,22 @@ describe('AI failover', () => {
     expect(out.text.length).toBeGreaterThan(10)
   })
 })
+
+describe('practice scoring failover', () => {
+  const practiceReq = { kind: 'chat' as const, mode: 'practice' as const, staffId: 's_aisha', scenario: 'allergy', messages: [{ role: 'user' as const, text: 'I will check with the chef and be back with you in two minutes.' }] }
+  it('asks the next model when one sends no score, and says who judged', async () => {
+    const { hub } = hubWithLateTable()
+    const sloppy = { name: 'gemini' as const, reply: vi.fn(async () => 'That is worrying, can you check?') }
+    const careful = { name: 'cloud' as const, reply: vi.fn(async () => 'COACH: ✓ checked with the chef → add a sorry\nSCORE: 82\nIDEAL: I am sorry, I will check now.\nGUEST: Thank you, please do.') }
+    const out = await createAi(hub, { chat: [sloppy, careful] }).ask(practiceReq)
+    expect(out).toMatchObject({ source: 'cloud', score: 82, judgedBy: 'model' })
+  })
+  it('still uses a reply the model wrote when no model scores it, and says the rubric judged', async () => {
+    const { hub } = hubWithLateTable()
+    const sloppy = (n: 'gemini' | 'cloud') => ({ name: n, reply: vi.fn(async () => 'GUEST: That is worrying, please check.') })
+    const out = await createAi(hub, { chat: [sloppy('gemini'), sloppy('cloud')] }).ask(practiceReq)
+    expect(out.judgedBy).toBe('rubric')
+    expect(out.text).toContain('worrying')
+    expect(typeof out.score).toBe('number')
+  })
+})

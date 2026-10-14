@@ -481,6 +481,8 @@ export const en = {
   'practice.xp': "+{n} XP",
   'practice.xpTotal': "{n} XP earned",
   'practice.capped': "Today’s practice XP is maxed out. Keep practising: the skill still counts.",
+  'practice.judgedAi': "Scored by the AI.",
+  'practice.judgedRubric': "The AI sent no score, so the built-in rubric scored this reply.",
   'practice.avg': "Average {n}/100",
   'practice.idealsTitle': "Ideal replies to learn from",
   'practice.checks': "What a great reply does here",

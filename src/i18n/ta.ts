@@ -460,6 +460,8 @@ export const ta: Record<Key, string> = {
   'practice.xp': "+{n} XP",
   'practice.xpTotal': "{n} XP பெற்றீர்கள்",
   'practice.capped': "இன்றைய பயிற்சி XP நிறைந்தது. தொடர்ந்து பயிற்சி செய்யுங்கள்: திறமை வளரும்.",
+  'practice.judgedAi': "AI மதிப்பெண் வழங்கியது.",
+  'practice.judgedRubric': "AI மதிப்பெண் அனுப்பவில்லை, எனவே உள்ளமைந்த அளவுகோல் இந்தப் பதிலை மதிப்பிட்டது.",
   'practice.avg': "சராசரி {n}/100",
   'practice.idealsTitle': "கற்றுக்கொள்ள சிறந்த பதில்கள்",
   'practice.checks': "இங்கே ஒரு சிறந்த பதில் என்ன செய்யும்",

@@ -460,6 +460,8 @@ export const es: Record<Key, string> = {
   'practice.xp': "+{n} XP",
   'practice.xpTotal': "{n} XP ganados",
   'practice.capped': "Ya tienes el máximo de XP de práctica de hoy. Sigue practicando: la habilidad cuenta igual.",
+  'practice.judgedAi': "Puntuado por la IA.",
+  'practice.judgedRubric': "La IA no envió puntuación; esta respuesta se evaluó con la rúbrica integrada.",
   'practice.avg': "Media {n}/100",
   'practice.idealsTitle': "Respuestas ideales para aprender",
   'practice.checks': "Lo que hace aquí una gran respuesta",
