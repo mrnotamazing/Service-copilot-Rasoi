@@ -118,9 +118,9 @@ export default function ManagerView() {
                     <div className="space-y-1.5" tabIndex={0}>
                       <div className="flex items-baseline justify-between gap-2 text-sm">
                         <span>
-                          {s.label} <span className="text-xs text-muted-foreground">({s.owner})</span>
+                          {S(s.label)} <span className="text-xs text-muted-foreground">({S(s.owner)})</span>
                         </span>
-                        <span className="text-xs tabular text-muted-foreground">{s.count ? `${s.avgMin} / ${s.avgTargetMin} min · ${Math.round(s.lapseRate * 100)}% late` : 'no data yet'}</span>
+                        <span className="text-xs tabular text-muted-foreground">{s.count ? L('{a} / {b} min · {p}% late', { a: s.avgMin, b: s.avgTargetMin, p: Math.round(s.lapseRate * 100) }) : L('no data yet')}</span>
                       </div>
                       <div className="relative h-3 rounded-full bg-muted">
                         <div className="h-full origin-left rounded-full transition-transform duration-700" style={{ transform: `scaleX(${s.avgMin / maxMin})`, background: OWNER_COLOR[s.owner] }} />
@@ -161,7 +161,7 @@ export default function ManagerView() {
                       <tbody className="divide-y">
                         {a.stations.map((s) => (
                           <tr key={s.station}>
-                            <td className="py-2 capitalize">{s.station}</td>
+                            <td className="py-2 capitalize">{S(s.station)}</td>
                             <td className="py-2 text-right">{s.tickets}</td>
                             <td className={cn('py-2 text-right', s.lapses > 0 && 'font-medium text-kitchen')}>{s.lapses}</td>
                             <td className="py-2 text-right text-muted-foreground">{s.avgOverMin} {tx('ui.manager.min')}</td>
@@ -236,7 +236,7 @@ export default function ManagerView() {
             <CardDescription>{tx('ui.manager.a_plain_english_read')}</CardDescription>
             <CardAction>
               <Button variant="secondary" disabled={summary.loading} onClick={() => summary.ask('shift_summary')}>
-                {summary.loading ? <Loader2 className="animate-spin" /> : <Sparkles />} {summary.answer ? 'Refresh' : 'Summarise'}
+                {summary.loading ? <Loader2 className="animate-spin" /> : <Sparkles />} {summary.answer ? L('Refresh') : L('Summarise')}
               </Button>
             </CardAction>
           </CardHeader>
@@ -306,7 +306,7 @@ function Receipt({ v, server, onOpen }: { v: VisitRecord; server: string; onOpen
         {v.segments.map((s: Segment, i) => (
           <div
             key={i}
-            title={`${s.label}: ${((s.end - s.start) / 60_000).toFixed(1)} min (standard ${s.targetMin.toFixed(1)})${s.lapse ? ' · past standard' : ''}`}
+            title={L('{label}: {n} min (standard {m})', { label: S(s.label), n: ((s.end - s.start) / 60_000).toFixed(1), m: s.targetMin.toFixed(1) }) + (s.lapse ? ` · ${L('past standard')}` : '')}
             className={cn('absolute top-0 h-full rounded-sm', s.lapse && 'ring-2 ring-warn')}
             style={{ left: `${pos(s.start)}%`, width: `max(4px, ${pos(s.end) - pos(s.start)}%)`, background: OWNER_COLOR[s.owner] }}
           />
@@ -500,7 +500,7 @@ function LiveFloor({ snap, managerId, onReconstruct }: { snap: Snap; managerId: 
                   <span className="block text-[11px] text-muted-foreground">{tx('ui.manager.section')} {section}</span>
                 </span>
                 <span className={cn('rounded-full px-2 py-0.5 text-[11px] tabular', load?.overloaded ? 'bg-warn/15 text-warn' : 'bg-secondary text-muted-foreground')}>
-                  {load?.activeTables ?? 0} {load?.activeTables === 1 ? 'table' : 'tables'} · {open} {tx('ui.manager.to_do')}
+                  {S(`${load?.activeTables ?? 0} ${load?.activeTables === 1 ? 'table' : 'tables'}`)} · {open} {tx('ui.manager.to_do')}
                 </span>
               </div>
               <FloorPlan snap={snap} tables={tables} tasks={[]} picked={picked} onPick={(id) => setPicked(id === picked ? undefined : id)} compact mini />
@@ -563,7 +563,7 @@ function ConnectedSystems({ snap }: { snap: Snap }) {
           <span key={i.id} className="inline-flex items-center gap-1.5 text-muted-foreground">
             <span className={cn('size-2 rounded-full', on ? 'bg-good' : 'bg-muted-foreground/40')} aria-hidden />
             {i.id === 'webhook' ? L('Alerts out') : i.id === 'generic' ? L('POS / booking feed') : i.name}
-            <span className="sr-only">{on ? '(active)' : L('(not active)')}</span>
+            <span className="sr-only">{on ? L('(active)') : L('(not active)')}</span>
           </span>
         )
       })}

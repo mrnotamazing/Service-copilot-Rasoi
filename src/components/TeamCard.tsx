@@ -3,6 +3,7 @@
 // kitchen's screens, until they tap "Got it"), and thank people with kudos (XP for servers, and a
 // line on the team board). Load is shown so notes go to people with room, never as a ranking.
 
+import { S } from '../i18n/sentences.ts'
 import { useT, L } from '../i18n/index.ts'
 import { Check, ChefHat, HeartHandshake, Inbox, LayoutDashboard, Megaphone, MessageSquarePlus, Send, Users } from 'lucide-react'
 import { useState } from 'react'
@@ -111,7 +112,7 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
                 {inbox.slice(0, compact ? 4 : 5).map((n) => (
                   <li key={n.id} className={cn('flex items-start gap-3 rounded-xl border p-3 text-sm', n.seen && 'border-dashed bg-muted/40', !n.seen && n.urgent && 'border-warn/50 bg-warn/10')}>
                     <div className="min-w-0 flex-1">
-                      <p className={cn(n.urgent && 'font-medium text-warn')}>{n.text}</p>
+                      <p className={cn(n.urgent && 'font-medium text-warn')}>{S(n.text)}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {name(n.from)}
                         {n.tableId ? ` · ${snap.tables.find((t) => t.id === n.tableId)?.name ?? n.tableId}` : ''} · {ago(n.at, snap.now)}
@@ -146,10 +147,10 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
                   </div>
                   <div className="truncate text-xs text-muted-foreground tabular">{roleLine(s, snap)}</div>
                 </div>
-                <Button size="sm" variant="ghost" className="h-9 pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setCompose({ mode: 'note', to: [s.id] })} aria-label={`Send ${s.name} a note`}>
+                <Button size="sm" variant="ghost" className="h-9 pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setCompose({ mode: 'note', to: [s.id] })} aria-label={L('Send {name} a note', { name: s.name })}>
                   <MessageSquarePlus /> {!compact && <span className="hidden md:inline">{tx('ui.teamcard.note')}</span>}
                 </Button>
-                <Button size="sm" variant="ghost" className="h-9 pointer-coarse:h-11 pointer-coarse:min-w-11 text-primary" onClick={() => setCompose({ mode: 'kudos', to: [s.id] })} aria-label={`Give ${s.name} kudos`}>
+                <Button size="sm" variant="ghost" className="h-9 pointer-coarse:h-11 pointer-coarse:min-w-11 text-primary" onClick={() => setCompose({ mode: 'kudos', to: [s.id] })} aria-label={L('Give {name} kudos', { name: s.name })}>
                   <HeartHandshake /> {!compact && <span className="hidden md:inline">{tx('ui.teamcard.kudos')}</span>}
                 </Button>
               </li>
@@ -167,7 +168,7 @@ export function TeamCard({ snap, meId, compact }: { snap: Snapshot; meId: string
                 const everyone = servers.length > 1 && servers.every((s) => n.to.includes(s.id)) && n.to.length === servers.length
                 return (
                   <li key={n.id} className="rounded-xl border p-3 text-sm">
-                    <p>{n.text}</p>
+                    <p>{S(n.text)}</p>
                     <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                       <span>
                         {tx('ui.teamcard.to')} {everyone ? 'all servers' : n.to.map(name).join(', ')}

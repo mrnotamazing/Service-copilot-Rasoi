@@ -33,7 +33,7 @@ function stops(snap: Snapshot, me: string): Stop[] {
   const guestTrouble = tables.some((t) => (t.mood?.value === 'unhappy' && !t.recoveredAt) || (t.managerRequestedAt && !(t.managerVisitedAt && t.managerVisitedAt >= t.managerRequestedAt)))
   return [
     {
-      title: `${name}’s phone`,
+      title: L('{name}’s phone', { name }),
       to: `/server/${me}?device=phone`,
       say: L('Each server sees only their next three moves, in the order the guests need them. Suggestions, never orders.'),
       show: [L('“Why this first” above the top card'), L('Tap the main button and the next card slides up'), L('The sparkle button: ask “Is the burrata vegetarian?”')],

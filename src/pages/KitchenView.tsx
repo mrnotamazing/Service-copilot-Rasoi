@@ -115,7 +115,7 @@ export default function KitchenView() {
               onClick={() => setStation(s)}
               className={cn('min-h-9 pointer-coarse:min-h-11 rounded-full border px-3 text-sm capitalize transition-colors', station === s ? 'border-primary bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:text-foreground')}
             >
-              {s === 'all' ? L('All stations') : s}
+              {s === 'all' ? L('All stations') : S(s)}
               {s !== 'all' && stationCount(s) > 0 && <span className="ml-1 tabular">{stationCount(s)}</span>}
             </button>
           ))}
@@ -127,7 +127,7 @@ export default function KitchenView() {
           <section>
             <LaneTitle icon={<Flame className="size-4" />} title={tx('ui.kitchen.on_the_line_2')} n={line.length} />
             {line.length === 0 ? (
-              <BrandEmpty title={station !== 'all' ? L('Nothing cooking on {station}', { station }) : L('Nothing cooking')}>{tx('ui.kitchen.new_tickets_land_here')}</BrandEmpty>
+              <BrandEmpty title={station !== 'all' ? L('Nothing cooking on {station}', { station: S(station) }) : L('Nothing cooking')}>{tx('ui.kitchen.new_tickets_land_here')}</BrandEmpty>
             ) : (
               <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
                 <AnimatePresence mode="popLayout" initial={false}>
@@ -221,7 +221,7 @@ function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now
           <div className="font-display text-3xl leading-none">{k.table.name}</div>
           <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             {server && <Avatar staff={server} className="size-4 text-[9px]" />}
-            {server?.name} · <span className="capitalize">{k.lines[0].course}s</span>
+            {server?.name} · <span>{tx.any(`course.${k.lines[0].course}`)}</span>
           </div>
         </div>
         <div className="text-right">
@@ -266,7 +266,7 @@ function TicketCard({ k, now, late, station, snap, pri, rank }: { k: Ticket; now
             <li key={l.id} className={cn('flex items-baseline gap-2', dim && 'opacity-40', l.status === 'ready' && 'text-muted-foreground line-through')}>
               <span className="w-6 shrink-0 font-display text-lg tabular">{l.qty}×</span>
               <span className="min-w-0 flex-1">{l.name}</span>
-              <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{l.station}</span>
+              <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{S(l.station)}</span>
             </li>
           )
         })}
@@ -409,7 +409,7 @@ function AllDay({ tickets, station }: { tickets: Ticket[]; station: Station | 'a
             <li key={name} className="flex items-baseline gap-2 text-sm">
               <span className="w-7 font-display text-lg tabular">{c.n}</span>
               <span className="flex-1">{name}</span>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{c.station}</span>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{S(c.station)}</span>
             </li>
           ))}
         </ul>
@@ -487,7 +487,7 @@ function EightySix({ snap }: { snap: Snap }) {
               <label htmlFor={`stock-${m.id}`} className={cn('flex min-h-8 flex-1 cursor-pointer items-center', off && 'text-muted-foreground line-through')}>
                 {m.name}
               </label>
-              <Switch id={`stock-${m.id}`} checked={!off} onCheckedChange={(on) => void act('item.stock', { menuItemId: m.id, available: on }, 'kitchen')} aria-label={`${m.name} available`} />
+              <Switch id={`stock-${m.id}`} checked={!off} onCheckedChange={(on) => void act('item.stock', { menuItemId: m.id, available: on }, 'kitchen')} aria-label={L('{name} available', { name: m.name })} />
             </li>
           )
         })}

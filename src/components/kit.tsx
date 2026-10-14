@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { STATUS_LABEL, STATUS_PROGRESS, clock, useWallClock } from '../lib/format.ts'
 import { cn } from '@/lib/utils'
-import { useT, type Key } from '../i18n/index.ts'
+import { L, useT, type Key } from '../i18n/index.ts'
 import { AccessButton } from './AccessPanel.tsx'
 import { skipToMain } from '../lib/scroll.ts'
 import { homeOf, signOut, useSession, type Session } from '../lib/auth.ts'
@@ -29,7 +29,7 @@ export function LiveClock({ ok }: { now?: number; ok: boolean }) {
   const now = useWallClock()
   return (
     <span className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs tabular text-muted-foreground">
-      <span className={cn('size-1.5 rounded-full', ok ? 'live-ring bg-good' : 'bg-warn pulse-soft')} role="img" aria-label={ok ? 'Live' : 'Reconnecting'} />
+      <span className={cn('size-1.5 rounded-full', ok ? 'live-ring bg-good' : 'bg-warn pulse-soft')} role="img" aria-label={ok ? L('Live') : L('Reconnecting')} />
       {clock(now)} {tx('ui.demo.ist')}
     </span>
   )

@@ -46,3 +46,28 @@ describe('server-written sentences', () => {
     expect(missing).toEqual([])
   })
 })
+
+describe('S() in another language', () => {
+  it('translates server sentences and keeps the names and numbers', async () => {
+    const { setPrefs } = await import('../lib/prefs.ts')
+    const { S } = await import('./sentences.ts')
+    const samples = [
+      'Aisha took T1\'s food from the pass',
+      'T16 seated: party of 5 · Ms. Reddy · business dinner',
+      'Kitchen: 3 dishes ready at the pass for T16',
+      'Grill is likely to fall behind. Peak in about 4 min. 5 dishes cooking. New tickets may wait ~6 min extra.',
+      'Hand T17 to Meera',
+      '7 min over standard',
+    ]
+    for (const lang of ['hi', 'ta'] as const) {
+      setPrefs({ lang })
+      for (const s of samples) {
+        const out = S(s)
+        expect(out, `${lang}: ${s}`).not.toBe(s)
+        for (const keep of s.match(/T\d+|\b\d+\b|Aisha|Meera|Ms\. Reddy|Grill/g) ?? []) if (keep !== 'Grill') expect(out, `${lang}: ${s}`).toContain(keep)
+      }
+    }
+    setPrefs({ lang: 'en' })
+    expect(S('Hand T17 to Meera')).toBe('Hand T17 to Meera')
+  })
+})

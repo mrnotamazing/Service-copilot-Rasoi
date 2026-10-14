@@ -137,7 +137,7 @@ export function NextFifteen({ forecast, name }: { forecast: Forecast; name: (id:
                 </div>
                 <div className="mt-0.5 truncate text-xs text-muted-foreground">{name(s.staffId)}</div>
                 <div className="mt-1 text-xs tabular">
-                  {s.active} {s.active === 1 ? 'table' : 'tables'} · {s.jobs} {s.jobs === 1 ? 'job' : 'jobs'}
+                  {S(`${s.active} ${s.active === 1 ? 'table' : 'tables'}`)} · {s.jobs === 1 ? S('1 job') : S(`${s.jobs} jobs`)}
                 </div>
               </li>
             ))}
@@ -184,7 +184,7 @@ export function IncidentSheet({ r, onClose, server }: { r: Reconstruction | null
                     <div className="flex items-baseline justify-between gap-2 text-sm">
                       <span className="font-medium">
                         {S(s.label)}
-                        {s.station && <span className="font-normal text-muted-foreground"> · {s.station}</span>}
+                        {s.station && <span className="font-normal text-muted-foreground"> · {S(s.station)}</span>}
                       </span>
                       <span className="shrink-0 text-xs text-muted-foreground tabular">{clock(s.start)}</span>
                     </div>
@@ -244,7 +244,7 @@ export function IncidentSheet({ r, onClose, server }: { r: Reconstruction | null
 }
 
 const PRESETS = (): { id: string; label: string; w: (sick: string) => WhatIf }[] => [
-  { id: 'busy', label: '30% more guests', w: () => ({ covers: 1.3 }) },
+  { id: 'busy', label: L('30% more guests'), w: () => ({ covers: 1.3 }) },
   { id: 'sick', label: L('A server off sick'), w: (sick) => ({ sickServer: sick }) },
   { id: 'grill', label: L('An extra grill cook'), w: () => ({ extraGrill: true }) },
   { id: 'slow', label: L('Kitchen 20% slower'), w: () => ({ kitchenSpeed: 0.8 }) },

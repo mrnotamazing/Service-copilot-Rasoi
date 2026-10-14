@@ -257,6 +257,9 @@ export const SENTENCES: string[] = [
 
 type Compiled = { template: string; re: RegExp; names: string[] }
 
+/** Placeholders that hold free text (a typed note, a list of dishes, the rest of a line). */
+const FREE = new Set(['x', 'q', 'rest', 'items', 'list', 'text', 'detail'])
+
 const escape = (s: string) => s.replace(/[.*+?^$()|[\]\\]/g, '\\$&')
 let compiled: Compiled[] | null = null
 function compile(): Compiled[] {
@@ -270,7 +273,8 @@ function compile(): Compiled[] {
         const m = /^\{(\w+)\}$/.exec(part)
         if (!m) return escape(part)
         names.push(m[1])
-        return '(.+?)'
+        // A name or number never runs across a sentence, a "·" list or a ";" clause; free text can.
+        return FREE.has(m[1]) ? '(.+?)' : '((?:(?!\\. |; | · ).)+?)'
       })
       .join('')
     return { template, re: new RegExp(`^${source}$`, 's'), names }
@@ -282,6 +286,8 @@ function compile(): Compiled[] {
 }
 
 const cache = new Map<string, string>()
+/** Between two sentences: end punctuation, a space, then a capital, a digit or an opening quote. */
+const SENTENCE_BREAK = /(?<=[.!?])\s+(?=[A-Z0-9“])/
 
 /**
  * A sentence the server wrote in English, in the current language. Pieces that fill the sentence
@@ -311,7 +317,13 @@ function translate(raw: string, depth: number): string {
     // A template with no translation yet returns the English with the pieces put back: fine.
     return out
   }
-  // Several short parts: "Ms. Reddy · nut allergy", "nuts, dairy".
+  // Several sentences: translate each.
+  const sentences = text.split(SENTENCE_BREAK)
+  if (sentences.length > 1) {
+    const done = sentences.map((p) => S(p, depth + 1))
+    if (done.some((d, i) => d !== sentences[i])) return done.join(' ')
+  }
+  // Several short parts in one sentence: "Ms. Reddy · nut allergy", "nuts, dairy".
   for (const sep of [' · ', '; ', ', ']) {
     if (text.includes(sep)) {
       const parts = text.split(sep)
@@ -319,11 +331,11 @@ function translate(raw: string, depth: number): string {
       if (done.some((d, i) => d !== parts[i])) return done.join(sep)
     }
   }
-  // Several sentences: translate each.
-  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z“])/)
-  if (sentences.length > 1) {
-    const done = sentences.map((p) => S(p, depth + 1))
-    if (done.some((d, i) => d !== sentences[i])) return done.join(' ')
+  // A single capitalised word that is known in lower case ("Grill" at the start of a sentence).
+  if (/^[A-Z][a-z]+$/.test(text)) {
+    const low = text.toLowerCase()
+    const t = L(low)
+    if (t !== low) return t
   }
   return L(text) === text ? raw : L(text)
 }
@@ -333,7 +345,8 @@ export function isCovered(raw: string, depth = 0): boolean {
   const text = raw.replace(/'/g, '’')
   if (compile().some((c) => c.re.test(text))) return true
   if (depth > 3) return false
+  const sentences = text.split(SENTENCE_BREAK)
+  if (sentences.length > 1) return sentences.every((p) => isCovered(p, depth + 1))
   for (const sep of [' · ', '; ', ', ']) if (text.includes(sep) && text.split(sep).some((p) => isCovered(p, depth + 1))) return true
-  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z“])/)
-  return sentences.length > 1 && sentences.every((p) => isCovered(p, depth + 1))
+  return false
 }

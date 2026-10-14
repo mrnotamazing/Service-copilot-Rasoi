@@ -52,7 +52,7 @@ export function CrewCard({ crew, muted = false, className }: { crew: CrewView; m
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-lg leading-tight">{L(level.title)}</div>
           <div className="text-xs text-muted-foreground tabular">
-            {crew.xp} {tx('ui.server.xp')}{level.next ? ` · ${level.next - crew.xp} to ${level.nextTitle}` : ' · top rank'}
+            {crew.xp} {tx('ui.server.xp')}{level.next ? ` · ${L('{n} to {title}', { n: level.next - crew.xp, title: L(level.nextTitle ?? '') })}` : ` · ${L('top rank')}`}
           </div>
         </div>
         {kitchen && (
