@@ -9,7 +9,7 @@
 import { useT, L } from '../i18n/index.ts'
 import { AnimatePresence, motion, useAnimationFrame, useReducedMotion } from 'motion/react'
 import { BookOpen, Maximize2, Pause, Play, RotateCcw, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,14 @@ import { clamp01, ClockProvider, Stage } from './intro/kit.tsx'
 import { SCENES } from './intro/scenes.tsx'
 
 const TOTAL = SCENES.reduce((n, s) => n + s.ms, 0)
+/** When each scene starts, in ms from the start of the film. */
+const STARTS = SCENES.map((_, k) => SCENES.slice(0, k).reduce((n, s) => n + s.ms, 0))
+/** Which scene is showing at a moment of the film. */
+const sceneAt = (pos: number) => {
+  let k = 0
+  while (k + 1 < SCENES.length && pos >= STARTS[k + 1]) k++
+  return k
+}
 // The voice-over and music, one track timed to the whole film. The single-file demo embeds it as window.__TM_VOICE.
 const VOICE = (typeof window !== 'undefined' && (window as unknown as { __TM_VOICE?: string }).__TM_VOICE) || `${import.meta.env.BASE_URL}TableMate-voiceover.mp3`
 
@@ -50,9 +58,13 @@ export default function Intro() {
   const [params] = useSearchParams()
   const first = Math.max(0, Math.min(SCENES.length - 1, Number(params.get('scene') ?? 0) || 0))
   const bare = params.get('bare') === '1'
-  const [i, setI] = useState(first)
-  const [t, setT] = useState(() => Math.max(0, Number(params.get('t') ?? 0) || 0))
+  // One clock for the whole film (ms from the start); the scene and its own time are worked out from it.
+  const [pos, setPos] = useState(() => STARTS[first] + Math.max(0, Number(params.get('t') ?? 0) || 0))
+  const i = Math.min(sceneAt(pos), SCENES.length - 1)
+  const t = pos - STARTS[i]
   const [playing, setPlaying] = useState(params.get('play') !== '0')
+  /** Where the film was, and when, the last time the clock was set: without sound, time runs on from there. */
+  const anchor = useRef({ pos: 0, wall: 0 })
   const stage = useRef<HTMLDivElement>(null)
   const audio = useRef<HTMLAudioElement | null>(null)
   const [muted, setMuted] = useState(false)
@@ -62,20 +74,24 @@ export default function Intro() {
   const device = useReducedMotion()
   const still = usePrefs().reduceMotion || !!device
 
-  // The clock: while playing, time moves on every frame; at a scene's end the next one begins.
-  useAnimationFrame((_, delta) => {
-    if (playing) setT((x) => x + Math.min(delta, 100))
-  })
-  useEffect(() => {
-    if (t < scene.ms) return
-    if (i < SCENES.length - 1) {
-      setI(i + 1)
-      setT(0)
-    } else {
+  // The clock. With sound on, the voice-over is the clock and the picture follows it, so the two can
+  // never drift apart (a slow frame no longer pulls the sound back). Without sound, real time moves it.
+  const restart = useCallback((at: number) => {
+    anchor.current = { pos: at, wall: performance.now() }
+  }, [])
+  useAnimationFrame(() => {
+    if (!playing) return
+    const a = audio.current
+    const fromSound = a && !muted && !blocked && !a.paused && !a.ended && a.readyState >= 2
+    const next = fromSound ? a.currentTime * 1000 : anchor.current.pos + (performance.now() - anchor.current.wall)
+    if (fromSound) anchor.current = { pos: next, wall: performance.now() }
+    if (next >= TOTAL) {
       setPlaying(false)
-      setT(scene.ms)
+      setPos(TOTAL)
+      return
     }
-  }, [t, i, scene.ms])
+    setPos(next)
+  })
 
   // For rendering the film frame by frame: jump to any scene and moment, paused.
   useEffect(() => {
@@ -84,8 +100,7 @@ export default function Intro() {
     w.__tm = {
       seek: (n, ms) => {
         setPlaying(false)
-        setI(n)
-        setT(Math.min(ms, SCENES[n].ms - 1))
+        setPos(STARTS[n] + Math.min(ms, SCENES[n].ms - 1))
       },
       scenes: SCENES.map((x) => x.ms),
     }
@@ -94,11 +109,18 @@ export default function Intro() {
     }
   }, [bare])
 
-  const go = useCallback((n: number) => {
-    setI(Math.max(0, Math.min(SCENES.length - 1, n)))
-    setT(0)
-  }, [])
-  const ended = !playing && i === SCENES.length - 1 && t >= scene.ms
+  const go = useCallback(
+    (n: number) => {
+      const at = STARTS[Math.max(0, Math.min(SCENES.length - 1, n))]
+      setPos(at)
+      restart(at)
+      // Jumping is the one time the sound is moved.
+      const a = audio.current
+      if (a) a.currentTime = at / 1000
+    },
+    [restart],
+  )
+  const ended = !playing && pos >= TOTAL
   const toggle = useCallback(() => {
     if (ended) {
       go(0)
@@ -120,23 +142,26 @@ export default function Intro() {
     return () => window.removeEventListener('keydown', on)
   }, [go, i, toggle])
 
-  const elapsed = SCENES.slice(0, i).reduce((n, s) => n + s.ms, 0) + Math.min(t, scene.ms)
+  const elapsed = Math.min(pos, TOTAL)
+  const posRef = useRef(pos)
+  posRef.current = pos
 
-  // Sound follows the clock: it plays and pauses with the film, and jumps when a scene is skipped.
+  // Play, pause or mute: the sound starts from where the picture is, and the clock carries on from there.
   useEffect(() => {
+    restart(posRef.current)
     const a = audio.current
     if (!a || bare) return
     if (!playing || muted) {
       a.pause()
       return
     }
-    const want = elapsed / 1000
-    if (Math.abs(a.currentTime - want) > 0.45) a.currentTime = Math.min(want, Math.max(0, (a.duration || want) - 0.05))
-    if (a.paused) {
-      a.play().then(() => setBlocked(false), () => setBlocked(true))
-    }
-  }, [playing, muted, bare, Math.floor(elapsed / 250)]) // eslint-disable-line react-hooks/exhaustive-deps
-  const ctx = useMemo(() => ({ t, still, elapsed }), [t, still, elapsed])
+    a.currentTime = posRef.current / 1000
+    a.play().then(
+      () => setBlocked(false),
+      () => setBlocked(true),
+    )
+  }, [playing, muted, bare, restart])
+
 
   return (
     <div className={cn('min-h-dvh bg-background', bare && 'bg-black')}>
@@ -158,16 +183,15 @@ export default function Intro() {
         {/* The film is always light and on brand, whichever theme the app is in. */}
         <div ref={stage} className={cn('film @container relative aspect-video w-full overflow-hidden', !bare && 'sm:rounded-3xl')} role="region" aria-label={tx('ui.intro.tablemate_introduction')} style={{ background: 'var(--cream)', color: 'var(--chocolate)' }}>
           {!bare && <audio ref={audio} src={VOICE} preload="auto" />}
-          <ClockProvider value={ctx}>
-            <Stage>
-              <ServiceLine elapsed={elapsed} scene={i} />
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={scene.id} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: [0.215, 0.61, 0.355, 1] }}>
-                  {scene.render()}
-                </motion.div>
-              </AnimatePresence>
-            </Stage>
-          </ClockProvider>
+          <Stage>
+            <ServiceLine elapsed={elapsed} scene={i} />
+            {/* Each scene carries its own clock: while one fades out it holds its last frame, and the next one starts at its own beginning. */}
+            <AnimatePresence initial={false}>
+              <motion.div key={scene.id} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.35, ease: [0.215, 0.61, 0.355, 1] }}>
+                <ClockProvider value={{ t: Math.min(t, scene.ms), still, elapsed }}>{scene.render()}</ClockProvider>
+              </motion.div>
+            </AnimatePresence>
+          </Stage>
           <p className="sr-only" aria-live="polite" key={scene.id}>
             {scene.caption}
           </p>
