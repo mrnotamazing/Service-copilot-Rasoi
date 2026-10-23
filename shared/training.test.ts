@@ -50,17 +50,17 @@ describe('practice for everyone', () => {
 
   it('coaches managers on listening, privacy, support and follow-up', () => {
     const good = scoreReply('m_feedback', 'Can we have a quick word in private? Tell me what happened at T4 tonight; I noticed the bill took 10 minutes. Let’s check in next shift.')
-    expect(good.stars).toBe(3)
+    expect(good.stars).toBe(5)
     const harsh = scoreReply('m_feedback', 'You always mess this up, it’s your fault.')
     expect(harsh.stars).toBe(1)
     expect(harsh.tips[0]).toMatch(/not the person/)
     const support = scoreReply('m_harassed', 'Are you okay? It’s not your fault. I’ll take T6 myself and we’ll check in after service.')
-    expect(support.stars).toBe(3)
-    expect(scoreReply('m_allergy', 'Call 112 now and get the ambulance; I’ll help him use his EpiPen.').stars).toBe(3)
+    expect(support.stars).toBeGreaterThanOrEqual(4)
+    expect(scoreReply('m_allergy', 'Call 112 now and get the ambulance; I’ll help him use his EpiPen.').stars).toBe(5)
   })
 
   it('coaches inclusive service without judging', () => {
-    expect(scoreReply('fasting', 'Of course. Is there anything else you avoid? I’ll check with the chef what they can make for you.').stars).toBe(3)
+    expect(scoreReply('fasting', 'Of course. Is there anything else you avoid? I’ll check with the chef what they can make for you.').stars).toBeGreaterThanOrEqual(4)
     const judging = scoreReply('fasting', 'Why don’t you just eat a little, it’s fine.')
     expect(judging.stars).toBe(1)
     expect(judging.tips[0]).toMatch(/Never question/)

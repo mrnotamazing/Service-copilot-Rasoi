@@ -10,7 +10,7 @@ import { dishesNamed } from '../shared/dishNames.ts'
 import { answerAboutDish, dishLine, SPICE_WORDS } from '../shared/menuAnswer.ts'
 import { analytics, segmentsFor } from '../shared/engine.ts'
 import { practiceText } from '../shared/practiceText/index.ts'
-import { MAX_REPLIES, moodFor, type Mood, type Outcome, patienceAfter, PATIENCE_MAX, practiceDebrief, practiceStep, scenarioById, scenarioOpening, type Score, scoreReply, starsFor } from '../shared/practice.ts'
+import { coachFor, MAX_REPLIES, moodFor, type Mood, type Outcome, patienceAfter, PATIENCE_MAX, practiceDebrief, practiceStep, scenarioById, scenarioOpening, type Score, scoreReply, starsFor } from '../shared/practice.ts'
 import { forecast, liveVisit as liveVisitOf, reconstructVisit, shiftIntel } from '../shared/intel.ts'
 import { predictReady } from '../shared/predict.ts'
 import { menuForNeed, safetyIssues } from '../shared/safety.ts'
@@ -316,7 +316,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
     const history = req.history ?? []
     const replies = history.filter((h) => h.role === 'server').map((h) => h.text)
     const step = practiceStep(sc.id, replies, req.lang)
-    const builtFeedback = step.scored ? coachLines(step.scored) : undefined
+    const builtFeedback = step.scored ? coachLines(step.scored, req.lang) : undefined
     return {
       prompt:
         `Role-play to train a fine-dining server. You play a guest in this situation: "${scenarioOpening(sc.id)}". ` +
@@ -375,12 +375,12 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             `- Mode: PRACTICE. You play a ${other} in this situation (their opening line, to say in ${language}): "${scenarioOpening(sc!.id)}"`,
             `- Play them like a real person, not a pushover: react to exactly what ${asker} said. One polite sentence doesn't fix things. If they're vague, push for specifics (what exactly, how long). If they apologise, act and give a time, soften a little but raise a real follow-up worry. Excuses, blame, guesses about safety or judging you make you more upset. Natural spoken ${language}, 1-2 short sentences, real emotion, no stage directions, never abusive or cartoonish.`,
             `- Judge only what the reply actually says about THIS situation. A reply that is off-topic, ignores or denies the concern ("is that even real?", "you're overreacting"), is rude, dismissive, or makes no sense scores 0-20, and the ${other} reacts the way a real person would: confused, irritated or more upset. They never thank, praise or cheer up after such a reply, and never answer as if it were helpful.`,
-            `- The ${other}'s patience right now: ${patienceBefore}/${PATIENCE_MAX} (0 = gives up and leaves or asks for the manager, ${PATIENCE_MAX} = won over). A strong reply (score 75+) raises it by 1, a weak one (under 45) lowers it by 1, and two strong replies in total win them over. If it reaches ${PATIENCE_MAX}, close warmly and add [END]; if it reaches 0, leave or ask for the manager and add [END]. After ${MAX_REPLIES} replies, wrap up either way with [END].`,
+            `- The ${other}'s patience right now: ${patienceBefore}/${PATIENCE_MAX} (0 = gives up and leaves or asks for the manager, ${PATIENCE_MAX} = won over). A good reply (score 70+) raises it by 1, a poor one (under 35) lowers it by 1, and two strong replies in total win them over. If it reaches ${PATIENCE_MAX}, close warmly and add [END]; if it reaches 0, leave or ask for the manager and add [END]. After ${MAX_REPLIES} replies, wrap up either way with [END].`,
             req.finish
-              ? `- ${manager ? 'The manager' : 'The server'} asked to finish. Step out of character and give a short debrief in ${language}: two things they did well, one thing to practise, and a final line "STARS: n" (1-3).`
+              ? `- ${manager ? 'The manager' : 'The server'} asked to finish. Step out of character and give a short, warm debrief in ${language}: start by thanking them and naming two things they did well, then one thing to try next time phrased as an encouraging suggestion (never a criticism), and a final line "STARS: n" (1-5, be generous: a sincere effort is at least 3).`
               : opening
                 ? `- Start the role-play: say the opening line in ${language}, in character. Format exactly:\nCOACH: -\nGUEST: <the ${other}'s opening line>`
-                : `${calibration(sc!.id)}\n- Judge ${asker}'s last reply like a strict, fair trainer, on what it actually says, not on keywords. A great reply owns the problem, says sorry sincerely, fixes the actual problem with a concrete next step and a time, and stays calm and truthful. Score under 30, even if it says sorry: excuses or made-up reasons, blaming the chef, kitchen or a colleague, jokes or sarcasm, rudeness, anything untrue or odd, guesses about allergens, or ignoring what the ${other} actually complained about. Say plainly in COACH what was wrong. Then score it against the practice rubric and answer as the ${other}. Write COACH, IDEAL and GUEST in ${language}; keep the labels in English. Format exactly:\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <what an excellent ${manager ? 'manager' : 'server'} would have said instead, 1-2 sentences>\nGUEST: <the ${other}'s next line, in character>`,
+                : `${calibration(sc!.id)}\n- Judge ${asker}'s last reply like a kind, encouraging trainer: they are practising, nobody is expected to be perfect, and the goal is that they want to try again. Judge what the reply means, not exact wording; spoken, imperfect, short-but-caring replies deserve credit. A reply that is polite, takes the concern seriously and offers some next step scores 65-85 even if it misses a detail; a great one 90+. Keep low scores (under 30) only for replies that are rude, blame the chef, kitchen or a colleague, guess about allergens, make things up, mock the guest, or ignore what they actually said. COACH always starts with ✓ and genuine, specific praise for something they did, then → one gentle, practical tip phrased as "Next time, try…" with an example. Never use harsh words like wrong, bad, poor or failed; be honest but warm. Then score it against the practice rubric and answer as the ${other}. Write COACH, IDEAL and GUEST in ${language}; keep the labels in English. Format exactly:\nCOACH: ✓ <specific praise> → <one gentle tip: Next time, try…>\nSCORE: <0-100>\nIDEAL: <what an excellent ${manager ? 'manager' : 'server'} would have said instead, 1-2 sentences>\nGUEST: <the ${other}'s next line, in character>`,
           ]
         : [manager ? '- Mode: ASK. Answer as their operations coach and peer.' : '- Mode: ASK. Answer as their expert trainer and colleague.']),
       ...(forNeed ? ['- Checked from the menu’s ingredient tags for this question (use exactly this; do not add dishes):', ...forNeed.split('\n').map((l) => `  ${l}`)] : []),
@@ -414,10 +414,10 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
         live,
         reminder: practice
           ? req.finish
-            ? `Step out of character, in ${language}: two things I did well, one thing to practise, then a last line "STARS: n" (1-3).`
+            ? `Step out of character, in ${language}: thank me, name two things I did well, then one encouraging thing to try next time, then a last line "STARS: n" (1-5, generous for a sincere effort).`
             : opening
               ? `Say the ${other}'s opening line in ${language}. Format exactly:\nCOACH: -\nGUEST: <line>`
-              : `Reply in exactly this format, nothing else (text in ${language}, labels in English):\nCOACH: ✓ <what worked> → <one improvement>\nSCORE: <0-100>\nIDEAL: <a better reply I could have given>\nGUEST: <the ${other}’s next line, in character>`
+              : `Reply in exactly this format, nothing else (text in ${language}, labels in English):\nCOACH: ✓ <specific praise> → <one gentle tip: Next time, try…>\nSCORE: <0-100>\nIDEAL: <a better reply I could have given>\nGUEST: <the ${other}’s next line, in character>`
           : `You are TableMate, my ${manager ? 'management coach' : 'trainer'}${req.simple ? '; use simple everyday words' : ''}. Answer my last message directly in 2-5 short sentences or bullets, no headings, no thinking out loud. Use ${language} unless I wrote in another language.`,
       },
       turns: apiTurns,
@@ -464,8 +464,14 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
             const judged = Number.isFinite(modelScore) ? (opts?.local ? Math.round((modelScore + own.score) / 2) : modelScore) : own.score
             // A model can be too kind: where the rubric finds nothing of value (off-topic, dismissive, rude, nonsense),
             // the model's score may rise only a little above the rubric's.
-            const kind = own.score < 15 ? Math.min(judged, own.score + 30) : judged
+            const kind = own.score <= 20 ? Math.min(judged, own.score + 10) : judged
             const score = Math.max(0, Math.min(own.penalty ? 40 : 100, kind))
+            // Encouragement always comes first: a coaching note that opens with criticism gets a word of credit in front.
+            const warm = (raw: string) => {
+              // Praise and tip on their own lines, so each gets its own mark in the app.
+              const c = raw.replace(/\s*→\s*/g, '\n→ ').trim()
+              return /^\s*✓/.test(c) ? c : `✓ ${practiceText(req.lang).debrief.effort}\n${c.startsWith('→') ? c : `→ ${c}`}`
+            }
             const state = patienceAfter([...past, { score, penalty: own.penalty }])
             const done = ended || !!state.outcome
             const outcome = state.outcome ?? (done ? (state.patience >= 3 ? 'won' : state.patience <= 1 ? 'lost' : 'ok') : undefined)
@@ -473,7 +479,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
               judgedBy: coach && Number.isFinite(modelScore) ? ('model' as const) : ('rubric' as const),
               // No usable line (e.g. only coaching came back): the scripted line stands in.
               text: guest || builtIn.text,
-              feedback: coach && coach !== '-' ? coach : builtIn.feedback,
+              feedback: coach && coach !== '-' ? warm(coach) : builtIn.feedback,
               score,
               stars: starsFor(score),
               criteria: undefined,
@@ -666,8 +672,8 @@ export function unusable(answer: string): string | null {
 const PRACTICE_JSON = {
   type: 'OBJECT',
   properties: {
-    coach: { type: 'STRING', description: '"✓ what worked → the one most important fix", in the app language. If nothing worked, say plainly what was wrong.' },
-    score: { type: 'INTEGER', description: '0-100, judged strictly on what the reply says' },
+    coach: { type: 'STRING', description: '"✓ specific praise for something they did → one gentle tip: Next time, try…", in the app language. Always start with praise; never harsh.' },
+    score: { type: 'INTEGER', description: '0-100, judged kindly and fairly on what the reply means (a sincere, partly right reply is 55-85)' },
     ideal: { type: 'STRING', description: 'What an excellent reply would have said instead, 1-2 sentences' },
     guest: { type: 'STRING', description: 'The other person’s next line, in character, 1-2 sentences' },
     ended: { type: 'BOOLEAN', description: 'True when the conversation is over (won over, or they give up)' },
@@ -687,7 +693,7 @@ export function cleanDebrief(raw: string): string {
     .replace(/^\s*#+\s*/gm, '')
     .replace(/^\s*\*\s+/gm, '• ')
     // The stars line is read by the app, not shown (after the markdown is gone, so "**STARS: 3**" is caught too).
-    .replace(/^\s*STARS:\s*[1-3]\s*(?:\/\s*3)?\s*$/gim, '')
+    .replace(/^\s*STARS:\s*[1-5]\s*(?:\/\s*[35])?\s*$/gim, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
@@ -755,7 +761,7 @@ const PRODUCT_FACTS = (manager: boolean) => [
   manager
     ? '- Managers see the floor, tables, sections, load, language needs and delays, never a ranking of people. They can hand a table to a colleague who speaks the guests’ language, run a what-if (for example an extra grill cook), and read the shift summary. Never produce a leaderboard or compare individuals.'
     : '- A server’s personal stats (XP, level, streak, badges) are private to their own screen; managers never see a ranking and there is no leaderboard. The team goal is shared.',
-  '- Practice room: private role-plays of hard moments, each reply scored 0-100 with a short coaching note and an ideal reply; the other side’s patience rises or falls with the replies; XP is earned with a daily cap. It is for learning, not assessment.',
+  '- Practice room: private role-plays of hard moments, each reply rated out of 5 stars (scored kindly: a sincere effort earns credit) with a short note that starts with praise and an ideal reply; the other side’s patience rises or falls with the replies; XP is earned with a daily cap. It is for learning, not assessment.',
   '- Everyone: six languages (English, Hindi, Nepali, Bengali, Tamil, Spanish), read aloud, large text, colour-safe palettes, flash alerts that need no sound, reduced motion, and a simple-words mode.',
 ]
 
@@ -967,7 +973,7 @@ export function calibration(scenarioId: string): string {
   if (!sc || !tx) return ''
   return [
     `- What this situation needs (each one missing costs points): ${sc.musts.map((c) => en.checks[c.id].tip).join(' ')}`,
-    `- Calibration: "${tx.ideal[0]}" scores about 95. A sincere reply that does most of the above but stays vague on one point scores 55-70. "Sorry about that" alone scores about 25. An excuse, blame, a joke, a safety guess or a made-up reason scores 0-20, however polite.`,
+    `- Calibration (be generous; staff are learning): "${tx.ideal[0]}" scores about 95. A sincere reply that does most of the above but stays vague on one point scores 70-85. A caring reply that gets only part of it right scores 55-70. "Sorry about that" alone scores about 40. An excuse, blame, a joke, a safety guess or a made-up reason scores 0-25, however polite.`,
   ].join('\n')
 }
 
@@ -1055,9 +1061,9 @@ function sopFallback(q: string, cfg: RestaurantConfig): string {
 }
 
 /** Built-in role-play: scripted guest lines and rubric coaching, with a debrief on finish. */
-/** Coaching lines for a scored reply: what worked (✓) and up to two things to try (→). */
-function coachLines(sc: Score): string {
-  return [...sc.good.map((g) => `✓ ${g}`), ...sc.tips.slice(0, 2).map((t) => `→ ${t}`)].join('\n')
+/** Coaching lines for a scored reply: encouragement first (✓), then one gentle thing to try (→). */
+function coachLines(sc: Score, lang?: string): string {
+  return coachFor(sc, lang)
 }
 
 type PracticeAnswer = Partial<AiAnswer> & { text: string }
@@ -1081,7 +1087,7 @@ function practiceBuiltIn(scenarioId: string, replies: ChatTurn[], lang: string |
   )
   return {
     text: step.text,
-    feedback: step.scored ? coachLines(step.scored) : undefined,
+    feedback: step.scored ? coachLines(step.scored, lang) : undefined,
     score: step.scored?.score,
     stars: step.scored?.stars,
     criteria: step.scored?.criteria,

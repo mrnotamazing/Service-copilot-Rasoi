@@ -26,11 +26,12 @@ describe('scoring out of 100', () => {
   it('scores by the must-dos, with stars from the score', () => {
     const great = scoreReply('cold_food', 'I’m so sorry. Let me replace it right away; it’ll be with you in 10 minutes.')
     expect(great.score).toBe(100)
-    expect(great.stars).toBe(3)
+    expect(great.stars).toBe(5)
     expect(great.criteria.every((c) => c.met)).toBe(true)
     const half = scoreReply('cold_food', 'I’m so sorry about that.')
-    expect(half.score).toBe(33)
-    expect(half.stars).toBe(1)
+    // Lenient: a sincere apology alone already earns a fair score (3 of 5), with tips for the rest.
+    expect(half.score).toBe(60)
+    expect(half.stars).toBe(3)
     expect(half.criteria.filter((c) => !c.met)).toHaveLength(2)
   })
 
@@ -69,8 +70,8 @@ describe('a realistic other side', () => {
     expect(two).toMatchObject({ done: true, outcome: 'won', text: PRACTICE_TEXT.en.scenarios.cold_food.resolved })
   })
 
-  it('pushes for specifics after a vague reply and walks out after blame', () => {
-    expect(practiceStep('cold_food', [vague]).text).toBe(PRACTICE_TEXT.en.push.guest)
+  it('softens after a sincere but vague reply, and walks out after blame', () => {
+    expect(practiceStep('cold_food', [vague]).text).toBe(PRACTICE_TEXT.en.scenarios.cold_food.calm)
     const blamed = practiceStep('cold_food', [bad])
     expect(blamed).toMatchObject({ mood: 'worse', done: true, outcome: 'lost', text: PRACTICE_TEXT.en.scenarios.cold_food.walkout })
   })
@@ -87,13 +88,13 @@ describe('a realistic other side', () => {
   it('speaks the practising person’s language, and plays staff in staff situations', () => {
     expect(practiceStep('cold_food', [], 'ta').text).toBe(PRACTICE_TEXT.ta.scenarios.cold_food.opening)
     expect(practiceStep('m_conflict', ['Okay.'], 'es').text).toBe(PRACTICE_TEXT.es.scenarios.m_conflict.upset)
-    expect(practiceStep('m_conflict', ['Let’s talk after service and check in tomorrow.'], 'es').text).toBe(PRACTICE_TEXT.es.push.staff)
+    expect(practiceStep('m_conflict', ['Let’s talk after service and check in tomorrow.'], 'es').text).toBe(PRACTICE_TEXT.es.scenarios.m_conflict.calm)
     expect(practiceStep('m_conflict', ['Okay, fine, thanks.', 'Okay, fine, thanks.'], 'es')).toMatchObject({ done: true, outcome: 'lost' })
   })
 
   it('debriefs with an average, the outcome and the ideal replies', () => {
     const d = practiceDebrief('cold_food', [good, good])
-    expect(d).toMatchObject({ score: 100, stars: 3, outcome: 'won' })
+    expect(d).toMatchObject({ score: 100, stars: 5, outcome: 'won' })
     expect(d.text).toMatch(/won them over/)
     expect(d.ideals).toHaveLength(2)
   })
@@ -101,12 +102,12 @@ describe('a realistic other side', () => {
 
 describe('practice XP', () => {
   it('pays nothing below the minimum score, and more the better the reply', () => {
-    expect(practiceXp(64)).toBe(0)
+    expect(practiceXp(49)).toBe(0)
     expect(practiceXp(40, true, 'lost')).toBe(0)
-    expect(practiceXp(65)).toBe(3)
-    expect(practiceXp(73)).toBe(6)
+    expect(practiceXp(50)).toBe(3)
+    expect(practiceXp(65)).toBe(7)
     expect(practiceXp(100)).toBe(15)
-    expect(practiceXp(90, true, 'won')).toBe(43)
+    expect(practiceXp(90, true, 'won')).toBe(45)
     expect(practiceXp(100, true, 'won')).toBe(50)
     expect(practiceXp(70, false, undefined, 80)).toBe(0)
   })
@@ -151,7 +152,7 @@ describe('practice with a language model', () => {
       kind: 'chat', mode: 'practice', scenario: 'cold_food', staffId: 's_aisha', lang: 'hi',
       messages: [{ role: 'assistant', text: 'x' }, { role: 'user', text: 'मुझे खेद है, मैं इसे बदलवा दूँ।' }],
     })
-    expect(a).toMatchObject({ source: 'claude', score: 82, stars: 3, mood: 'better', patience: 3, done: false, ideal: 'मुझे खेद है, 10 मिनट में नया आएगा।', text: 'ठीक है, पर कितनी देर लगेगी?' })
+    expect(a).toMatchObject({ source: 'claude', score: 82, stars: 4, mood: 'better', patience: 3, done: false, ideal: 'मुझे खेद है, 10 मिनट में नया आएगा।', text: 'ठीक है, पर कितनी देर लगेगी?' })
     expect(a.feedback).toMatch(/माफ़ी/)
     expect(seen.live).toMatch(/patience right now: 2\/4/)
     expect(seen.live).toMatch(/Hindi/)

@@ -270,7 +270,7 @@ export function createApi(hub: Hub, sim: Simulator, dify: DifyOptions = {}) {
         // Practice threshold (50 to 95) and the restaurant's own level names: 2 to 8 steps, starting at 0 XP, rising.
         const g = body.game as { practiceMinScore?: unknown; levels?: unknown }
         const next: NonNullable<RestaurantConfig['game']> = { ...hub.config.game }
-        if (typeof g.practiceMinScore === 'number' && g.practiceMinScore >= 50 && g.practiceMinScore <= 95) next.practiceMinScore = Math.round(g.practiceMinScore)
+        if (typeof g.practiceMinScore === 'number' && g.practiceMinScore >= 30 && g.practiceMinScore <= 90) next.practiceMinScore = Math.round(g.practiceMinScore)
         if (g.levels === null) delete next.levels
         else if (Array.isArray(g.levels) && g.levels.length >= 2 && g.levels.length <= 8) {
           const lv = g.levels.map((l: { xp?: unknown; title?: unknown }) => ({ xp: Number(l?.xp), title: String(l?.title ?? '').trim().slice(0, 24) }))

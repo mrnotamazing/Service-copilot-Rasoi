@@ -226,8 +226,11 @@ export const en: PracticeText = {
     practise: 'To practise',
     keep: 'Keep doing exactly this.',
     won: 'You won them over.',
-    lost: 'They left unhappy. Try again using the ideal replies.',
+    lost: 'They left unhappy this time, which happens in practice. The ideal replies below show one way through.',
     ok: 'It ended, but they weren’t fully won over.',
+    cheer: 'Thanks for practising: every rehearsal makes the real moment easier.',
+    effort: 'You stayed with it and answered the guest. That’s the hardest part.',
+    next: 'Next time, try this:',
     noReplies: 'Reply at least once, then I can give you feedback.',
   },
 }

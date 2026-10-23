@@ -114,7 +114,7 @@ describe('coach and practice', () => {
       scenario: 'cold_food',
       history: [{ role: 'guest', text: open.text }, { role: 'server', text: 'I’m so sorry, I completely understand. Let me replace it right away, it will be with you in 5 minutes.' }],
     })
-    expect(good.stars).toBe(3)
+    expect(good.stars).toBe(5)
     expect(good.feedback).toMatch(/✓ You apologised/)
     expect(good.done).toBe(false)
     const blame = await ai.ask({ kind: 'practice', scenario: 'cold_food', history: [{ role: 'server', text: 'Sorry, that is the kitchen’s fault, not mine.' }] })

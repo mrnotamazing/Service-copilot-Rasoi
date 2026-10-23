@@ -15,7 +15,9 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { L, useT } from '../i18n/index.ts'
 import { speak } from '../lib/speech.ts'
-import { post } from '../lib/live.ts'
+import { act, post } from '../lib/live.ts'
+import { toast } from 'sonner'
+import { SPOKEN } from '../../shared/profile.ts'
 import { getPrefs } from '../lib/prefs.ts'
 import type { AiAnswer } from '../lib/ai.ts'
 
@@ -90,7 +92,6 @@ export function MenuButton({ className, label = true }: { className?: string; la
 
 export function MenuSheet({ snap, staffId }: { snap: Snapshot; staffId: string }) {
   const t = useT()
-  const word = useWord()
   const menu = useMenuSheet()
   const [q, setQ] = useState('')
   const [course, setCourse] = useState<Course | 'all'>('all')
@@ -138,12 +139,7 @@ export function MenuSheet({ snap, staffId }: { snap: Snapshot; staffId: string }
               </Chip>
             ))}
           </div>
-          {table && needsOf(table).length > 0 && (
-            <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-              <ShieldAlert className="size-3.5 text-destructive" aria-hidden />
-              {needsOf(table).map((n) => (n.k.startsWith('need.') ? need(n.raw) : word(n.k, n.raw))).join(' · ')}
-            </p>
-          )}
+          {table && <GuestPanel table={table} staffId={staffId} />}
 
           {/* Course */}
           <div className="flex gap-1.5 overflow-x-auto" role="radiogroup" aria-label={L('Course')}>
@@ -324,6 +320,111 @@ function SuggestChat({ chat, table }: { chat: ReturnType<typeof useSuggest>; tab
   )
 }
 
+const ALLERGENS = ['nuts', 'dairy', 'gluten', 'egg', 'shellfish', 'fish', 'soy', 'sesame']
+const DIETS = ['vegetarian', 'vegan', 'jain', 'halal', 'no_beef', 'no_pork']
+
+/**
+ * Everything known about the table, in one place: who they are, the occasion, the language, access
+ * needs, and their allergies and diet. The server can add what the guests mention at the table; the
+ * safety check and the suggestions use it at once, and a new allergy goes to the kitchen card again.
+ */
+function GuestPanel({ table, staffId }: { table: TableState; staffId: string }) {
+  const t = useT()
+  const word = useWord()
+  const p = table.party
+  const [editing, setEditing] = useState(false)
+  const [allergies, setAllergies] = useState<string[]>([])
+  const [diets, setDiets] = useState<string[]>([])
+  if (!p) return null
+  const lang = p.language && p.language !== 'en' ? SPOKEN.find((x) => x.id === p.language)?.native ?? p.language : null
+  const access = (p.needs ?? []).filter((n) => !DIETS.includes(n) && n !== 'fasting')
+  const facts = [
+    L('party of {n}', { n: p.size }),
+    p.guestName,
+    p.vip ? L('regular') : '',
+    p.occasion ? L(p.occasion) : '',
+    lang ? t('party.speaks', { lang }) : '',
+    ...access.map((n) => word(`need.${n}`, n.replace(/_/g, ' '))),
+  ].filter(Boolean)
+  const open = () => {
+    setAllergies(p.allergies)
+    setDiets((p.needs ?? []).filter((n) => DIETS.includes(n)))
+    setEditing(true)
+  }
+  const toggle = (list: string[], set: (x: string[]) => void, v: string) => set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
+  async function save() {
+    try {
+      await act('party.updated', { tableId: table.id, allergies, needs: [...(p!.needs ?? []).filter((n) => !DIETS.includes(n)), ...diets], from: staffId })
+      toast.success(L('Updated. The safety check and suggestions use it now.'))
+      setEditing(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e))
+    }
+  }
+  const noted = needsOf(table)
+  return (
+    <section className="rounded-2xl border bg-card p-3 text-sm" aria-label={L('Guests at {table}', { table: table.name })}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="font-medium">{L('Guests at {table}', { table: table.name })}</div>
+          <div className="text-xs text-muted-foreground">{facts.join(' · ')}</div>
+        </div>
+        {!editing && (
+          <Button size="sm" variant="outline" className="h-8 shrink-0 rounded-full" onClick={open}>
+            {L('Update')}
+          </Button>
+        )}
+      </div>
+      {!editing && (
+        <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+          <ShieldAlert className={cn('size-3.5', noted.length ? 'text-destructive' : 'text-muted-foreground')} aria-hidden />
+          {noted.length ? (
+            noted.map((n) => (
+              <span key={n.k} className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-destructive">
+                {n.k.startsWith('need.') ? need(n.raw) : word(n.k, n.raw)}
+              </span>
+            ))
+          ) : (
+            <span className="text-muted-foreground">{L('No allergies or diet noted. Ask before you suggest.')}</span>
+          )}
+        </p>
+      )}
+      {editing && (
+        <div className="mt-2 space-y-2">
+          <div>
+            <div className="mb-1 text-xs font-medium text-muted-foreground">{L('Allergies')}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {ALLERGENS.map((a) => (
+                <Chip key={a} on={allergies.includes(a)} onClick={() => toggle(allergies, setAllergies, a)}>
+                  {word(`tag.${a}`, a)}
+                </Chip>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="mb-1 text-xs font-medium text-muted-foreground">{L('Diet')}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {DIETS.map((d) => (
+                <Chip key={d} on={diets.includes(d)} onClick={() => toggle(diets, setDiets, d)}>
+                  {need(d)}
+                </Chip>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" className="rounded-full" onClick={() => void save()}>
+              {L('Save')}
+            </Button>
+            <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setEditing(false)}>
+              {L('Cancel')}
+            </Button>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -349,7 +450,7 @@ function useWord() {
 
 /** A diet in a word or two, for chips and reasons. */
 function need(n: string): string {
-  const words: Record<string, string> = { jain: L('Jain'), halal: L('halal'), vegan: L('vegan'), no_beef: L('no beef'), no_pork: L('no pork'), fasting: L('fasting') }
+  const words: Record<string, string> = { vegetarian: L('vegetarian'), jain: L('Jain'), halal: L('halal'), vegan: L('vegan'), no_beef: L('no beef'), no_pork: L('no pork'), fasting: L('fasting') }
   return words[n] ?? n.replace(/_/g, ' ')
 }
 
@@ -357,6 +458,6 @@ function need(n: string): string {
 function needsOf(x: TableState): { k: string; raw: string }[] {
   const p = x.party
   if (!p) return []
-  return [...p.allergies.map((a) => ({ k: `tag.${a}`, raw: a })), ...(p.needs ?? []).filter((n) => ['jain', 'halal', 'vegan', 'no_beef', 'no_pork', 'fasting'].includes(n)).map((n) => ({ k: `need.${n}`, raw: n }))]
+  return [...p.allergies.map((a) => ({ k: `tag.${a}`, raw: a })), ...(p.needs ?? []).filter((n) => ['vegetarian', 'jain', 'halal', 'vegan', 'no_beef', 'no_pork', 'fasting'].includes(n)).map((n) => ({ k: `need.${n}`, raw: n }))]
 }
 

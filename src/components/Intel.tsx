@@ -1,6 +1,7 @@
 // The server's side of the reasoning layer: why the top card comes first, help with an upset
 // guest built from the table's real situation, and a private learning journey.
 
+import { ratingOf } from '../../shared/practice.ts'
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Compass, Drama, GraduationCap, LifeBuoy, Loader2, Lock, RotateCcw, Sparkles } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
@@ -106,13 +107,14 @@ export function LearningJourney({ plan, staffId, provider }: { plan?: LearningPl
                 {s.latest !== null && (
                   <div className="mt-1 flex items-center gap-2">
                     {/* First score as a faint marker, latest as the bar: progress at a glance. */}
-                    <div className="relative h-2 flex-1 rounded-full bg-muted" role="img" aria-label={`${s.first} → ${s.latest} / 100`}>
+                    <div className="relative h-2 flex-1 rounded-full bg-muted" role="img" aria-label={`${ratingOf(s.first ?? s.latest)} → ${ratingOf(s.latest)} / 5`}>
                       <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${s.latest}%` }} transition={{ duration: 0.6 }} />
                       {s.first !== null && s.first !== s.latest && <span className="absolute -top-0.5 h-3 w-0.5 rounded bg-foreground/60" style={{ left: `${s.first}%` }} aria-hidden />}
                     </div>
                     <span className="w-16 shrink-0 text-right text-xs tabular">
-                      {s.first !== s.latest && <span className="text-muted-foreground">{s.first}→</span>}
-                      <b className="font-semibold">{s.latest}</b>
+                      {s.first !== null && ratingOf(s.first) !== ratingOf(s.latest) && <span className="text-muted-foreground">{ratingOf(s.first)}→</span>}
+                      <b className="font-semibold">{ratingOf(s.latest)}</b>
+                      <span className="text-muted-foreground">/5</span>
                     </span>
                     {trend && (
                       <span className={cn('inline-flex w-24 shrink-0 items-center gap-0.5 text-xs', trend.tone)}>

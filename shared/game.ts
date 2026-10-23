@@ -147,7 +147,7 @@ export const QUESTS: QuestDef[] = [
 export const PRACTICE_DAILY_XP = 150
 
 /** A practice reply earns XP only from this score up (the restaurant can change it in Setup). */
-export const PRACTICE_MIN_SCORE = 65
+export const PRACTICE_MIN_SCORE = 50
 
 /**
  * XP for a practice turn. Nothing below the minimum score, so a poor reply never pays. From the minimum

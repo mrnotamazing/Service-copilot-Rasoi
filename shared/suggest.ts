@@ -86,6 +86,9 @@ export function pickDishes(menu: MenuItem[], unavailable: string[], party: Party
       if (spice <= 1) (score += 2), why.push('mild')
       else continue
     }
+    // What the table already told us: little ones at the table keep it mild, a celebration earns a dessert.
+    if (!wishes.spice && guest.needs?.includes('highchair') && spice >= 2) score -= 2
+    if (party?.occasion && !wishes.course && item.course === 'dessert') (score += 1), why.push(`for the ${party.occasion}`)
     if (wishes.light) {
       if (item.course === 'starter' || item.course === 'dessert') score += 1
       if ((item.contains ?? []).includes('meat')) score -= 1

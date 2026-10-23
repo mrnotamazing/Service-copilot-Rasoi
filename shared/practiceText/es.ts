@@ -187,8 +187,11 @@ export const es: PracticeText = {
     practise: 'Para practicar',
     keep: 'Sigue haciéndolo exactamente así.',
     won: 'Te lo has ganado.',
-    lost: 'Se fue descontento. Vuelve a intentarlo con las respuestas ideales.',
+    lost: 'Esta vez se fueron descontentos, y en la práctica pasa. Las respuestas ideales de abajo muestran un camino.',
     ok: 'Terminó, pero no quedó del todo convencido.',
+    cheer: 'Gracias por practicar: cada ensayo hace más fácil el momento real.',
+    effort: 'Te mantuviste y le respondiste al cliente. Esa es la parte más difícil.',
+    next: 'La próxima vez, prueba esto:',
     noReplies: 'Responde al menos una vez y luego te doy feedback.',
   },
 }

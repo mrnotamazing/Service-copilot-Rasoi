@@ -55,3 +55,23 @@ describe('suggesting dishes', () => {
     expect(a.dishes).not.toContain('m_galouti')
   })
 })
+
+describe('updating what the guests need', () => {
+  it('a new allergy reaches the safety check, the kitchen card and the suggestions at once', async () => {
+    const { applyEvent, initialState, deriveTasks } = await import('./engine.ts')
+    const s = initialState(DEMO_CONFIG)
+    const ev = (type: string, payload: unknown, at: number) => ({ id: `e${at}`, type, payload, at, source: 'app' }) as never
+    applyEvent(s, ev('table.seated', { tableId: 'T1', partySize: 2 }, 1000), DEMO_CONFIG)
+    applyEvent(s, ev('party.updated', { tableId: 'T1', allergies: ['Nuts'], needs: ['vegetarian'] }, 2000), DEMO_CONFIG)
+    expect(s.tables.T1.party).toMatchObject({ allergies: ['nuts'], needs: ['vegetarian'] })
+    const picks = suggestFallback(menu, [], s.tables.T1.party, ['something spicy'])
+    for (const id of picks.dishes) {
+      const item = menu.find((m) => m.id === id)!
+      expect(item.contains ?? []).not.toContain('nuts')
+      expect(item.contains ?? []).not.toContain('meat')
+    }
+    // Once they order, the allergy card asks to tell the kitchen.
+    applyEvent(s, ev('order.fired', { tableId: 'T1', ticketId: 'k1', lines: [{ menuItemId: 'm_burrata', qty: 1 }] }, 3000), DEMO_CONFIG)
+    expect(deriveTasks(s, DEMO_CONFIG, 4000).some((t) => t.tableId === 'T1' && t.kind === 'allergy')).toBe(true)
+  })
+})

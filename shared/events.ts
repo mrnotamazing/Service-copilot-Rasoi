@@ -24,6 +24,8 @@ export interface FiredLine {
 export type CopilotEvent =
   // From the POS / table management
   | Base<'table.seated', { tableId: string; partySize: number; guestName?: string; allergies?: string[]; needs?: string[]; occasion?: string; vip?: boolean; language?: string; firstVisit?: boolean }>
+  /** The server learnt something new about the guests (an allergy, a diet): the safety checks use it at once. */
+  | Base<'party.updated', { tableId: string; allergies?: string[]; needs?: string[]; from?: string }>
   | Base<'order.fired', { tableId: string; ticketId: string; lines: FiredLine[] }>
   | Base<'item.ready', { lineIds?: string[]; ticketId?: string }>
   | Base<'item.stock', { menuItemId: string; available: boolean }>
@@ -68,7 +70,7 @@ export type IncomingEvent = {
 }[EventType]
 
 export const EVENT_TYPES: EventType[] = [
-  'table.seated', 'order.fired', 'item.ready', 'item.stock', 'bill.requested', 'bill.settled',
+  'table.seated', 'party.updated', 'order.fired', 'item.ready', 'item.stock', 'bill.requested', 'bill.settled',
   'table.reset', 'table.assigned', 'server.greeted', 'item.served', 'guest.informed',
   'server.checkback', 'course.cleared', 'bill.presented', 'guest.farewelled', 'allergy.confirmed',
   'task.snoozed', 'note.sent', 'note.acked', 'kudos.sent', 'safety.resolved', 'guest.recovered', 'manager.visited',

@@ -161,8 +161,8 @@ export function scenarioById(id: string | undefined): Scenario | undefined {
 export interface Score {
   /** 0–100. */
   score: number
-  /** 1–3, from the score. */
-  stars: 1 | 2 | 3
+  /** 1–5, from the score (what staff see: a rating out of 5). */
+  stars: number
   /** Each thing a great reply does here, and whether this one did it. */
   criteria: { id: string; met: boolean; label: string }[]
   good: string[]
@@ -171,8 +171,13 @@ export interface Score {
   penalty: boolean
 }
 
-export function starsFor(score: number): 1 | 2 | 3 {
-  return score >= 80 ? 3 : score >= 50 ? 2 : 1
+/** The score as staff see it: a rating out of 5, in half steps (0–100 inside, so the rules stay precise). */
+export function ratingOf(score: number): number {
+  return Math.max(0.5, Math.round((Math.max(0, Math.min(100, score)) / 20) * 2) / 2)
+}
+
+export function starsFor(score: number): number {
+  return Math.max(1, Math.min(5, Math.round(score / 20)))
 }
 
 /**
@@ -185,19 +190,21 @@ export function scoreReply(scenarioId: string, reply: string, lang?: string): Sc
   const tx = practiceText(lang).checks
   const manager = sc.for === 'manager'
   const hits = sc.musts.map((c) => met(c, reply))
-  let score = Math.round((100 * hits.filter(Boolean).length) / sc.musts.length)
+  const share = hits.filter(Boolean).length / sc.musts.length
   const good = sc.musts.filter((_, i) => hits[i]).map((c) => tx[c.id].good)
   const tips = sc.musts.filter((_, i) => !hits[i]).map((c) => tx[c.id].tip)
-  if (!manager && !sc.musts.includes(EMPATHY) && met(EMPATHY, reply)) {
-    score = Math.min(100, score + 10)
-    good.push(tx.empathy.good)
-  }
+  const caring = !manager && !sc.musts.includes(EMPATHY) && met(EMPATHY, reply)
+  if (caring) good.push(tx.empathy.good)
+  // Lenient on purpose: staff are practising, not performing. A sincere reply that gets part of it
+  // right already earns a fair score (half the must-dos ≈ 3.5 of 5); only a reply that misses the
+  // point, blames, judges or guesses about safety scores low.
+  let score = share > 0 || caring ? Math.round(40 + 60 * share + (caring ? 12 : 0)) : 20
   const bads = (manager ? [NO_BLAME, NO_SHAME] : [NO_BLAME, NO_GUESS, NO_JUDGE]).filter((b) => met(b, reply))
   for (const b of bads) tips.unshift(tx[b.id].tip)
   score -= 45 * bads.length
   const words = reply.trim().split(/\s+/).filter(Boolean).length
   if (words < 4 && reply.trim().length < 25) {
-    score -= 15
+    score -= 10
     tips.push(tx.short.tip)
   }
   score = Math.max(0, Math.min(100, score))
@@ -225,8 +232,8 @@ export type Outcome = 'won' | 'lost' | 'ok'
 
 /** How one reply moves the other person: strong replies calm them, poor ones wind them up. */
 export function moodFor(score: number, penalty = false): Mood {
-  if (penalty || score < 45) return 'worse'
-  return score >= 75 ? 'better' : 'same'
+  if (penalty || score < 35) return 'worse'
+  return score >= 70 ? 'better' : 'same'
 }
 
 const STEP: Record<Mood, number> = { better: 1, same: 0, worse: -1 }
@@ -295,7 +302,7 @@ export function practiceStep(scenarioId: string, replies: string[], lang?: strin
 }
 
 /** A short debrief in the requested language: what worked, what to practise, how it ended. */
-export function practiceDebrief(scenarioId: string, replies: string[], lang?: string, scores?: number[]): { text: string; score: number; stars: 1 | 2 | 3; outcome: Outcome; ideals: string[] } {
+export function practiceDebrief(scenarioId: string, replies: string[], lang?: string, scores?: number[]): { text: string; score: number; stars: number; outcome: Outcome; ideals: string[] } {
   const sc = scenarioById(scenarioId) ?? SCENARIOS[0]
   const tx = practiceText(lang)
   const scored = replies.map((r) => scoreReply(sc.id, r, lang))
@@ -309,14 +316,24 @@ export function practiceDebrief(scenarioId: string, replies: string[], lang?: st
   const never = sc.musts.find((c) => !managed.has(c.id))
   const slip = scored.find((s) => s.penalty)?.tips[0]
   const tip = slip ?? (never ? tx.checks[never.id].tip : undefined)
+  // Encouragement first, then how it went, then one thing to try: practice should leave people keen to go again.
   const text = [
+    tx.debrief.cheer,
+    `${tx.debrief.worked}: ${good.length ? good.join(' ') : tx.debrief.effort}`,
     tx.debrief[outcome],
-    good.length ? `${tx.debrief.worked}: ${good.join(' ')}` : '',
-    `${tx.debrief.practise}: ${tip ?? tx.debrief.keep}`,
+    `${tx.debrief.next} ${tip ?? tx.debrief.keep}`,
   ]
     .filter(Boolean)
     .join('\n')
   return { text, score: avg, stars: starsFor(avg), outcome, ideals: (tx.scenarios[sc.id] ?? practiceText('en').scenarios[sc.id]).ideal }
+}
+
+/** Coaching for one reply, kindest first: what worked (✓), or credit for having a go, then one thing to try (→). */
+export function coachFor(sc: Score, lang?: string): string {
+  const tx = practiceText(lang).debrief
+  const praise = sc.good.length ? sc.good.slice(0, 2) : [tx.effort]
+  const tip = sc.tips[0]
+  return [...praise.map((g) => `✓ ${g}`), tip ? `→ ${tip}` : ''].filter(Boolean).join('\n')
 }
 
 /** The opening line in English: what the scenario is, for prompts. */

@@ -281,13 +281,13 @@ function LevelsEditor({ snap }: { snap: Snapshot }) {
           <div className="grid gap-1">
             <div className="flex items-baseline justify-between text-sm">
               <label htmlFor="practice-min">{L('Lowest practice score that earns XP')}</label>
-              <span className="tabular text-xs text-muted-foreground">{min} / 100</span>
+              <span className="tabular text-xs text-muted-foreground">{min / 20}★ / 5</span>
             </div>
             <Slider
               id="practice-min"
-              min={50}
-              max={95}
-              step={5}
+              min={30}
+              max={90}
+              step={10}
               value={[min]}
               onValueChange={([v]) => {
                 setMin(v)

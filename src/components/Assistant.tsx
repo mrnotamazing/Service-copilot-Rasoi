@@ -2,7 +2,8 @@ import { BookOpenText, ChefHat, ChevronLeft, CircleCheck, Drama, Flag, Lightbulb
 import { motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import type { AiAnswer, ChatTurn } from '../../server/ai.ts'
-import { SCENARIOS, scenariosFor } from '../../shared/practice.ts'
+import { ratingOf, SCENARIOS, scenariosFor } from '../../shared/practice.ts'
+import { MoodFace } from './MoodFace.tsx'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -352,6 +353,7 @@ function Bubble({ m, practice, other, all }: { m: Message; practice: boolean; ot
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={cn('flex flex-col', mine ? 'items-end' : 'items-start')}>
       {practice && (
         <span className="mb-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          {!mine && m.patience !== undefined && <MoodFace level={m.patience} className="size-5" />}
           {mine ? t('practice.you') : t(other)}
           {!mine && m.mood && <MoodChip mood={m.mood} />}
         </span>
@@ -378,8 +380,8 @@ function ScoreCard({ m }: { m: Message }) {
     <div className="mt-1.5 w-full max-w-[92%] rounded-xl border border-primary/30 bg-accent/60 px-3 py-2 text-sm">
       {m.score !== undefined && (
         <div className="mb-1.5 flex items-center gap-2">
-          {m.stars ? <Stars n={m.stars} /> : null}
-          <span className="font-display text-base tabular">{t('practice.score', { n: m.score })}</span>
+          <Stars n={ratingOf(m.score)} />
+          <span className="font-display text-base tabular">{t('practice.score', { n: ratingOf(m.score) })}</span>
           <ScoreBar score={m.score} />
           {m.xp ? (
             <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-primary-foreground tabular">{t('practice.xp', { n: m.xp })}</span>
@@ -415,7 +417,7 @@ function ScoreCard({ m }: { m: Message }) {
             })}
         </ul>
       ) : null}
-      {m.xp === 0 && m.score !== undefined && <p className="mt-1.5 text-[11px] text-muted-foreground">{m.score < (m.xpMin ?? 65) ? t('practice.noXp', { n: m.xpMin ?? 65 }) : t('practice.capped')}</p>}
+      {m.xp === 0 && m.score !== undefined && <p className="mt-1.5 text-[11px] text-muted-foreground">{m.score < (m.xpMin ?? 50) ? t('practice.noXp', { n: (m.xpMin ?? 50) / 20 }) : t('practice.capped')}</p>}
       {m.judgedBy && <p className="mt-1.5 text-[11px] text-muted-foreground">{t(m.judgedBy === 'model' ? 'practice.judgedAi' : 'practice.judgedRubric')}</p>}
       {m.ideal && (
         <div className="mt-2 border-t border-primary/20 pt-2">
@@ -447,8 +449,8 @@ function Debrief({ m, all }: { m: Message; all: Message[] }) {
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl border border-primary/30 bg-accent/60 p-4">
       <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="text-sm font-semibold">{t('chat.debrief')}</span>
-        {m.stars ? <Stars n={m.stars} /> : null}
-        {m.score !== undefined && <span className="text-sm tabular text-muted-foreground">{t('practice.avg', { n: m.score })}</span>}
+        {m.score !== undefined ? <Stars n={ratingOf(m.score)} /> : m.stars ? <Stars n={m.stars} /> : null}
+        {m.score !== undefined && <span className="text-sm tabular text-muted-foreground">{t('practice.avg', { n: ratingOf(m.score) })}</span>}
         {xp > 0 && <span className="ml-auto rounded-full bg-primary px-2.5 py-0.5 text-xs font-semibold text-primary-foreground tabular">{t('practice.xpTotal', { n: xp })}</span>}
       </div>
       <Lines text={m.text} lang={m.lang} />
@@ -473,6 +475,7 @@ function PatienceMeter({ messages, other }: { messages: Message[]; other: Key })
   const p = last?.patience ?? 2
   return (
     <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl bg-muted/70 px-3 py-1.5 text-xs">
+      <MoodFace level={p} className="size-7" label={`${t('practice.feel')}: ${p}/4`} />
       <span className="text-muted-foreground">
         {t('practice.feel')} <span className="sr-only">({t(other)})</span>
       </span>
@@ -525,10 +528,20 @@ function Lines({ text, lang }: { text: string; lang?: string }) {
 function Stars({ n, className }: { n: number; className?: string }) {
   const t = useT()
   return (
-    <div className={cn('flex gap-0.5', className)} aria-label={t('practice.stars', { n })}>
-      {[1, 2, 3].map((k) => (
-        <Star key={k} className={cn('size-4', k <= n ? 'fill-primary text-primary' : 'text-border')} />
-      ))}
+    <div className={cn('flex gap-0.5', className)} role="img" aria-label={t('practice.stars', { n })}>
+      {[1, 2, 3, 4, 5].map((k) => {
+        const fill = Math.max(0, Math.min(1, n - (k - 1)))
+        return (
+          <span key={k} className="relative inline-block size-4">
+            <Star className="absolute inset-0 size-4 text-border" aria-hidden />
+            {fill > 0 && (
+              <span className="absolute inset-0 overflow-hidden" style={{ width: `${fill * 100}%` }}>
+                <Star className="size-4 fill-primary text-primary" aria-hidden />
+              </span>
+            )}
+          </span>
+        )
+      })}
     </div>
   )
 }

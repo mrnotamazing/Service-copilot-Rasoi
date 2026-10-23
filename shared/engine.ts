@@ -110,6 +110,19 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], needs: p.needs ?? [], occasion: p.occasion, vip: p.vip, language: p.language, firstVisit: p.firstVisit }
       break
     }
+    case 'party.updated': {
+      const t = table(ev.payload.tableId)
+      if (!t?.party) break
+      const clean = (xs: unknown) => (Array.isArray(xs) ? [...new Set(xs.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length < 30).map((x) => x.toLowerCase()))] : undefined)
+      const allergies = clean(ev.payload.allergies)
+      const needs = clean(ev.payload.needs)
+      if (allergies) t.party.allergies = allergies
+      if (needs) t.party.needs = needs
+      // A new allergy means the kitchen must hear about it again.
+      if (allergies?.length) t.allergyConfirmedAt = undefined
+      touch(t, at)
+      break
+    }
     case 'table.assigned': {
       const t = table(ev.payload.tableId)
       if (!t || !ev.payload.serverId || t.serverId === ev.payload.serverId) break
@@ -272,7 +285,7 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       t.allergyConfirmedAt = at
       touch(t, at)
       state.notes.push({
-        id: `allergy_${t.visitId}`,
+        id: `allergy_${t.visitId}_${at}`,
         at,
         direction: 'to_kitchen',
         tableId: t.id,

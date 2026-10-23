@@ -1,6 +1,7 @@
 // What's happening on the floor, in plain words, for the demo control page's live feed.
 // Pure: reads an event, the state just before it (to find the table and its server) and the config.
 
+import { ratingOf } from './practice.ts'
 import type { CopilotEvent } from './events.ts'
 import type { EngineState } from './engine.ts'
 import type { RestaurantConfig } from './types.ts'
@@ -44,6 +45,11 @@ export function narrate(ev: CopilotEvent, state: EngineState, config: Restaurant
       const p = ev.payload
       const extras = [p.guestName, p.vip ? 'regular' : '', p.occasion, ...(p.allergies ?? []).map((a) => `${a === 'nuts' ? 'nut' : a} allergy`), ...(p.needs ?? []).map((n) => NEED_WORDS[n] ?? n)].filter(Boolean)
       return item('guest', `${tname(p.tableId)} seated: party of ${p.partySize}${extras.length ? ` · ${extras.join(' · ')}` : ''}`)
+    }
+    case 'party.updated': {
+      const p = ev.payload
+      const what = [...(p.allergies ?? []).map((a) => `${a === 'nuts' ? 'nut' : a} allergy`), ...(p.needs ?? []).map((n) => NEED_WORDS[n] ?? n)]
+      return item('guest', `${tname(p.tableId)} needs updated${what.length ? `: ${what.join(' · ')}` : ': none noted'}`)
     }
     case 'order.fired': {
       const lines = ev.payload.lines.map((l) => `${l.qty}× ${dish(l.menuItemId)}`)
@@ -115,7 +121,7 @@ export function narrate(ev: CopilotEvent, state: EngineState, config: Restaurant
     case 'kudos.sent':
       return item('staff', `${staff(ev.payload.from)} sent kudos to ${staff(ev.payload.to)}`)
     case 'practice.scored':
-      return item('training', `${staff(ev.payload.staffId)} practised a tough moment: ${Math.round(ev.payload.score)}/100${ev.payload.final ? ' (finished)' : ''}`)
+      return item('training', `${staff(ev.payload.staffId)} practised a tough moment: ${ratingOf(ev.payload.score)}/5${ev.payload.final ? ' (finished)' : ''}`)
     default:
       return null
   }

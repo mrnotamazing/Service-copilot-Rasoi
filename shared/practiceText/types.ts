@@ -34,5 +34,11 @@ export interface PracticeText {
     lost: string
     ok: string
     noReplies: string
+    /** Opens every debrief: thanks for practising. */
+    cheer: string
+    /** Praise for having a go, when nothing else stood out. */
+    effort: string
+    /** Introduces the one thing to try next time. */
+    next: string
   }
 }
