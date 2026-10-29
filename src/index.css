@@ -1,35 +1,309 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/outfit";
+@import "@fontsource/atkinson-hyperlegible/400.css";
+@import "@fontsource/atkinson-hyperlegible/700.css";
 
-@theme {
-  --color-bg: #14110f;
-  --color-surface: #1e1916;
-  --color-raised: #28211d;
-  --color-line: #3a302a;
-  --color-ink: #f4ede5;
-  --color-muted: #a89a8c;
-  --color-faint: #6f645a;
-  --color-saffron: #e8a33d;
-  --color-good: #5fb38a;
-  --color-warn: #e39b4d;
-  --color-kitchen: #d4a24c;
-  --color-info: #7aa7d9;
-  --color-floor-mark: #3f86d9;
-  --color-kitchen-mark: #b87a14;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
+@custom-variant dark (&:is(.dark *));
+
+/* TableMate brand. Tomato acts, chocolate speaks, cream carries the page.
+   Light: cream paper and chocolate ink. Dark: the chocolate panel from the app-icon sheet.
+   Sage and amber are reserved for state; tomato/ochre mark floor vs kitchen in charts. */
+:root {
+  --radius: 1rem;
+  --tomato: #d34f2f;
+  --chocolate: #34251d;
+  --cream: #fbf8f0;
+  --background: #fbf8f0;
+  --foreground: #34251d;
+  --card: #fffdf8;
+  --card-foreground: #34251d;
+  --popover: #fffdf8;
+  --popover-foreground: #34251d;
+  --primary: #b83f26; /* brand tomato, deepened a touch so button text passes 4.5:1 */
+  --primary-foreground: #fffaf2;
+  --secondary: #f3ece0;
+  --secondary-foreground: #34251d;
+  --muted: #f3ece0;
+  --muted-foreground: #7a6658;
+  --accent: #fbe6dc;
+  --accent-foreground: #8f2f17;
+  --destructive: #b42318;
+  --border: #e9dfcf;
+  --input: #e2d6c3;
+  --ring: #b83f26;
+  --good: #23744e;
+  --warn: #86560b;
+  --kitchen: #8a590c;
+  --floor-mark: #d34f2f;
+  --kitchen-mark: #a8690c;
+  --chart-1: #d34f2f;
+  --chart-2: #a8690c;
+  --chart-3: #2f8a5f;
+  --chart-4: #8a5cc2;
+  --chart-5: #7a6658;
+  --sidebar: #f6f0e5;
+  --sidebar-foreground: #34251d;
+  --sidebar-primary: #b83f26;
+  --sidebar-primary-foreground: #fffaf2;
+  --sidebar-accent: #fbe6dc;
+  --sidebar-accent-foreground: #8f2f17;
+  --sidebar-border: #e9dfcf;
+  --sidebar-ring: #b83f26;
+  --hero: #34251d;
+  --hero-foreground: #fbf3e8;
+  --primary-2: #ec7a3a;
 }
 
-:root { color-scheme: dark; }
-html, body, #root { min-height: 100%; }
-body {
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
+.dark {
+  /* True dark: near-black surfaces (easy on the eyes in a dim dining room, kind to OLED batteries),
+     raised in small steps, with the brand tomato kept for actions and a whisper of warmth in the greys. */
+  color-scheme: dark;
+  --background: #0b0a09;
+  --foreground: #f3eee8;
+  --card: #141211;
+  --card-foreground: #f3eee8;
+  --popover: #1a1816;
+  --popover-foreground: #f3eee8;
+  --primary: #e5603e;
+  --primary-foreground: #0b0a09;
+  --secondary: #1e1b19;
+  --secondary-foreground: #f3eee8;
+  --muted: #1a1816;
+  --muted-foreground: #a69d95;
+  --accent: #2a1711;
+  --accent-foreground: #ffcfbd;
+  --destructive: #f0715c;
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.13);
+  --ring: #e5603e;
+  --good: #5fbf8f;
+  --warn: #e7a94a;
+  --kitchen: #d8a24c;
+  --floor-mark: #e5603e;
+  --kitchen-mark: #b87a14;
+  --chart-1: #e5603e;
+  --chart-2: #b87a14;
+  --sidebar: #080706;
+  --sidebar-foreground: #f3eee8;
+  --sidebar-accent: #221512;
+  --sidebar-accent-foreground: #ffcfbd;
+  --sidebar-border: rgb(255 255 255 / 0.06);
+  --hero: #181513;
+  --hero-foreground: #f3eee8;
+  --primary-2: #f39158;
 }
 
-@keyframes card-in { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
-.card-in { animation: card-in .28s ease-out both; }
-@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+/* The introduction film is always light, even when the app is dark: the same light tokens, scoped. */
+.film {
+  color-scheme: light;
+  --background: #fbf8f0;
+  --foreground: #34251d;
+  --card: #fffdf8;
+  --card-foreground: #34251d;
+  --primary: #b83f26;
+  --primary-foreground: #fffaf2;
+  --muted: #f3ece0;
+  --muted-foreground: #7a6658;
+  --accent: #fbe6dc;
+  --accent-foreground: #8f2f17;
+  --destructive: #b42318;
+  --border: #e9dfcf;
+  --good: #23744e;
+  --warn: #86560b;
+  --kitchen: #8a590c;
+  --kitchen-mark: #a8690c;
+  --floor-mark: #d34f2f;
+}
+
+/* Brand details: text selection in tomato, and a quiet scrollbar on pages that scroll. */
+::selection { background: color-mix(in oklab, var(--tomato) 30%, transparent); color: inherit; }
+
+@theme inline {
+  --font-sans: "Outfit Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-tomato: var(--tomato);
+  --color-chocolate: var(--chocolate);
+  --color-cream: var(--cream);
+  --color-hero: var(--hero);
+  --color-primary-2: var(--primary-2);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-kitchen: var(--kitchen);
+  --color-floor-mark: var(--floor-mark);
+  --color-kitchen-mark: var(--kitchen-mark);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+    letter-spacing: -0.02em;
+  }
+  .font-display {
+    font-weight: 600;
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
 .pulse-soft { animation: pulse-soft 1.8s ease-in-out infinite; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* Subtle motion. Everything here stops for the device's reduce-motion setting and the in-app switch. */
+@keyframes rise-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.rise-in { animation: rise-in .34s cubic-bezier(.2, .7, .2, 1) both; }
+/* Children arrive one after another, 45ms apart. */
+.rise-stagger > * { animation: rise-in .38s cubic-bezier(.2, .7, .2, 1) both; }
+.rise-stagger > :nth-child(2) { animation-delay: 45ms; }
+.rise-stagger > :nth-child(3) { animation-delay: 90ms; }
+.rise-stagger > :nth-child(4) { animation-delay: 135ms; }
+.rise-stagger > :nth-child(5) { animation-delay: 180ms; }
+.rise-stagger > :nth-child(6) { animation-delay: 225ms; }
+.rise-stagger > :nth-child(n + 7) { animation-delay: 270ms; }
+/* A number that just changed settles into place. */
+@keyframes tick { from { opacity: .35; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.tick { display: inline-block; animation: tick .32s ease-out both; }
+/* Clickable cards rise a touch under the pointer. */
+.lift { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease, background-color .18s ease; }
+@media (hover: hover) {
+  .lift:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -14px color-mix(in oklab, var(--foreground) 45%, transparent); }
+}
+/* The live dot breathes slowly. */
+@keyframes live-ring { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--good) 50%, transparent); } 70%, 100% { box-shadow: 0 0 0 5px transparent; } }
+.live-ring { animation: live-ring 2.6s ease-out infinite; }
+
+/* The running chef: speed lines streak and the figure bobs, a quiet "on its way". */
+@keyframes mascot-streak { 0% { transform: translateX(14px); opacity: .25; } 60% { opacity: 1; } 100% { transform: translateX(-10px); opacity: .25; } }
+@keyframes mascot-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.mascot-run .mascot-speed { animation: mascot-streak .9s ease-in-out infinite; }
+.mascot-run .mascot-figure { animation: mascot-bob .45s ease-in-out infinite; }
+
+/* Installed to the home screen: no rubber-band page bounce. */
+@media (display-mode: standalone) {
+  html, body { overscroll-behavior: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-soft, .mascot-run .mascot-speed, .mascot-run .mascot-figure, .rise-in, .rise-stagger > *, .tick, .live-ring { animation: none; }
+  .lift:hover { transform: none; }
+}
+
+/* Brand tagline: the one place letter-spaced capitals are used, as on the brand sheet. */
+.tagline { text-transform: uppercase; letter-spacing: 0.28em; font-size: 0.72rem; font-weight: 500; }
+/* Spaced capitals suit Latin type only: Indic scripts join their letters, so keep them together and a touch larger. */
+:is(:lang(hi), :lang(ne), :lang(bn), :lang(ta)) .tagline { letter-spacing: 0.02em; font-size: 0.85rem; }
+
+/* ---- Comfort & access (set from the settings panel via data attributes on <html>) ---- */
+
+/* Text size: everything is in rem, so the whole interface, tap targets included, scales. */
+html[data-text="large"] { font-size: 18px; }
+html[data-text="xlarge"] { font-size: 20px; }
+
+/* High-legibility font: Atkinson Hyperlegible, designed with the Braille Institute for low vision. */
+html[data-font="readable"] body,
+html[data-font="readable"] body * {
+  font-family: "Atkinson Hyperlegible", ui-sans-serif, system-ui, sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+/* High contrast: darker ink, stronger borders and focus, no faded text. */
+html[data-contrast="high"]:not(.dark) {
+  --foreground: #1a110c;
+  --muted-foreground: #3d2c22;
+  --border: #8a7464;
+  --input: #6f5a4b;
+  --primary: #a8351d;
+  --ring: #1a110c;
+  --card: #ffffff;
+  --background: #fffdf8;
+}
+html[data-contrast="high"].dark {
+  --foreground: #ffffff;
+  --muted-foreground: #f1e2d6;
+  --border: rgb(255 240 225 / 0.45);
+  --input: rgb(255 240 225 / 0.55);
+  --primary: #ff8a66;
+  --primary-foreground: #1a110c;
+  --ring: #ffffff;
+  --card: #121110;
+  --background: #000000;
+}
+html[data-contrast="high"] :focus-visible { outline: 3px solid var(--ring) !important; outline-offset: 2px; }
+
+/* Reduce motion chosen in the app, on top of the device setting. */
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+html[data-motion="reduce"] .lift:hover { transform: none; }
+
+/* Visual alert for Deaf and hard-of-hearing staff: the screen edge flashes on a new card. */
+/* Hard to miss from across the room: a thick edge, a glow inward and a light wash, pulsing three times. */
+@keyframes edge-flash {
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent; background-color: transparent; }
+  25% { box-shadow: inset 0 0 0 14px var(--primary), inset 0 0 90px 30px color-mix(in oklab, var(--primary) 55%, transparent); background-color: color-mix(in oklab, var(--primary) 12%, transparent); }
+}
+.edge-flash { animation: edge-flash 0.6s ease-out 3; }
+/* It's an alert, not decoration: with motion reduced it shows as a steady edge and wash for a moment instead. */
+html[data-motion="reduce"] .edge-flash { animation: none !important; box-shadow: inset 0 0 0 14px var(--primary), inset 0 0 90px 30px color-mix(in oklab, var(--primary) 45%, transparent); background-color: color-mix(in oklab, var(--primary) 10%, transparent); }
+@media (prefers-reduced-motion: reduce) { .edge-flash { animation: none; box-shadow: inset 0 0 0 14px var(--primary), inset 0 0 90px 30px color-mix(in oklab, var(--primary) 45%, transparent); background-color: color-mix(in oklab, var(--primary) 10%, transparent); } }
+
+/* In the dark theme, raised panels get a hairline edge so near-black layers stay distinct. */
+.dark .bg-hero { box-shadow: inset 0 0 0 1px var(--border); }

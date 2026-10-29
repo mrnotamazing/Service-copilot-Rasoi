@@ -11,6 +11,9 @@ import { createApi } from './api.ts'
 import { fileStore } from './fileStore.ts'
 import { Hub } from './hub.ts'
 import { Simulator } from './simulator.ts'
+import { loadProviders } from './providers.ts'
+import { createRanker } from './ranker.ts'
+import { createTts, TtsError } from './tts.ts'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const PORT = Number(process.env.COPILOT_PORT ?? 4000)
@@ -18,8 +21,21 @@ const INGEST_KEY = process.env.COPILOT_INGEST_KEY // required for POS webhooks w
 
 const hub = new Hub(fileStore(join(root, 'data/events.ndjson'), join(root, 'data/config.json')))
 const sim = new Simulator(hub)
-const api = createApi(hub, sim)
+// The assistant's language models, best first (Claude, Gemini, a free cloud AI, Ollama): when one is
+// busy, rate limited or offline the next answers, and the built-in trainer is the last resort.
+const providers = await loadProviders()
+// AI_PRIORITY pins the order; otherwise models are ordered by job (quick answers favour fast models, judging favours careful ones).
+const ranker = createRanker({ file: join(root, 'data/ai-ranking.json'), fixed: !!process.env.AI_PRIORITY })
+const api = createApi(hub, sim, {
+  url: process.env.DIFY_API_URL,
+  key: process.env.DIFY_API_KEY,
+  chat: providers.map((p) => p.model),
+  ranker,
+  chatErrorReason: (e, m) => providers.find((p) => p.model === m)?.reason(e) ?? (e instanceof Error ? e.message : String(e)),
+})
 const snapshot = api.snapshot
+// Natural read-aloud voice (ElevenLabs). Without a key the app uses the device's own voice.
+const tts = process.env.ELEVENLABS_API_KEY ? createTts({ key: process.env.ELEVENLABS_API_KEY, voiceId: process.env.ELEVENLABS_VOICE_ID, model: process.env.ELEVENLABS_MODEL }) : null
 
 // ---------------------------------------------------------------------------
 // Live updates over WebSocket (throttled, plus a 1s heartbeat so timers move).
@@ -66,8 +82,15 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   }
 }
 
+const SECURITY_HEADERS = {
+  'x-content-type-options': 'nosniff',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'x-frame-options': 'SAMEORIGIN',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+}
+
 function send(res: ServerResponse, status: number, body: unknown) {
-  res.writeHead(status, { 'content-type': 'application/json' })
+  res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store', ...SECURITY_HEADERS })
   res.end(JSON.stringify(body))
 }
 
@@ -81,7 +104,8 @@ function ingestAll(events: IncomingEvent[]) {
 
 type Handler = (req: IncomingMessage, body: Record<string, unknown>, url: URL) => unknown
 const routes: Record<string, Handler> = {
-  'GET /api/health': () => ({ ok: true, events: hub.events.length }),
+  'GET /api/health': () => ({ ok: true, events: hub.events.length, ai: api.provider, lineup: api.lineup, voice: tts ? 'elevenlabs' : 'device' }),
+  'GET /api/tts/status': () => ({ enabled: !!tts }),
   'GET /api/snapshot': (_r, _b, url) => snapshot((url.searchParams.get('role') as Role) ?? 'manager', url.searchParams.get('staffId') ?? undefined),
   'GET /api/events/export': () => hub.events,
 
@@ -109,9 +133,38 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       }
       const body = req.method === 'POST' ? await readJson(req) : {}
       if (req.method === 'POST' && (typeof body !== 'object' || body === null || Array.isArray(body))) throw new AdapterError('Expected a JSON object')
+      // The same, streamed: one JSON line per update ({ text }), then { answer } or { error }.
+      if (req.method === 'POST' && url.pathname === '/api/ai/stream') {
+        res.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-store', 'x-accel-buffering': 'no' })
+        try {
+          const answer = await api.ask(body as Record<string, unknown>, (text) => res.write(`${JSON.stringify({ text })}\n`))
+          res.end(`${JSON.stringify({ answer })}\n`)
+        } catch (e) {
+          res.end(`${JSON.stringify({ error: e instanceof Error ? e.message : String(e) })}\n`)
+        }
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/api/tts') {
+        if (!tts) return send(res, 503, { error: 'Voice is not set up' })
+        try {
+          const caller = String(req.headers['x-forwarded-for'] ?? req.socket.remoteAddress ?? 'anon').split(',')[0].trim()
+          const audio = await tts.synth(String((body as Record<string, unknown>).text ?? ''), caller)
+          res.writeHead(200, { 'content-type': 'audio/mpeg', 'content-length': audio.length, 'cache-control': 'private, max-age=86400', ...SECURITY_HEADERS })
+          return void res.end(audio)
+        } catch (e) {
+          return send(res, e instanceof TtsError ? e.status : 502, { error: e instanceof Error ? e.message : 'The voice service failed' })
+        }
+      }
+      if (req.method === 'POST' && url.pathname === '/api/ai') {
+        try {
+          return send(res, 200, await api.ask(body as Record<string, unknown>))
+        } catch (e) {
+          return send(res, 400, { error: e instanceof Error ? e.message : String(e) })
+        }
+      }
       if (req.method === 'POST') {
         const handled = api.post(url.pathname, body as Record<string, unknown>)
-        if (handled) return send(res, 200, handled.result)
+        if (handled) return send(res, 200, await handled.result)
       }
       const handler = routes[`${req.method} ${url.pathname}`]
       if (!handler) return send(res, 404, { error: 'Not found' })
@@ -124,7 +177,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
 }
 
-const MIME: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' }
+const MIME: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.mp3': 'audio/mpeg', '.mp4': 'video/mp4', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml' }
 function serveStatic(pathname: string, res: ServerResponse) {
   const dist = join(root, 'dist')
   let file = normalize(join(dist, pathname))
@@ -133,7 +186,9 @@ function serveStatic(pathname: string, res: ServerResponse) {
     res.writeHead(404, { 'content-type': 'text/plain' })
     return res.end('Web app not built. Run `npm run dev` (development) or `npm run build` first.')
   }
-  res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream' })
+  // Hashed build assets never change; the page itself must always be fresh.
+  const immutable = /[\\/]assets[\\/]/.test(file)
+  res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream', 'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache', ...SECURITY_HEADERS })
   createReadStream(file).pipe(res)
 }
 
@@ -148,4 +203,7 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => clients.delete(client))
 })
 
-server.listen(PORT, () => console.log(`Service Copilot API on http://localhost:${PORT}`))
+server.listen(PORT, async () => {
+  const lines = await Promise.all(providers.map(async (p) => `${await p.describe()}`))
+  console.log(`Service Copilot API on http://localhost:${PORT} · AI: ${lines.length ? lines.join(' → ') + ' → built-in' : 'built-in (add GROQ_API_KEY for free, fast AI; or GEMINI_API_KEY; or start Ollama; or ANTHROPIC_API_KEY for Claude)'}`)
+})

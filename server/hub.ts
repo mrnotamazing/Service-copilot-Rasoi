@@ -4,6 +4,8 @@
 import { DEMO_CONFIG } from '../shared/config.ts'
 import { applyEvent, deriveTasks, initialState, type EngineState } from '../shared/engine.ts'
 import { EVENT_TYPES, newId, type CopilotEvent, type IncomingEvent } from '../shared/events.ts'
+import { afterEvent, beforeEvent, initialGame, type GameState } from '../shared/game.ts'
+import { narrate, type FeedItem } from '../shared/narrate.ts'
 import type { RestaurantConfig, Task } from '../shared/types.ts'
 import { Clock } from './clock.ts'
 
@@ -27,24 +29,45 @@ export const memoryStore = (): HubStore => ({
 export class Hub {
   config: RestaurantConfig
   state: EngineState
+  game: GameState
   events: CopilotEvent[] = []
+  /** What's been happening, in plain words (newest last), for the demo control page. */
+  feed: FeedItem[] = []
   readonly clock = new Clock()
   private listeners = new Set<() => void>()
+  private eventListeners = new Set<(ev: CopilotEvent, said: FeedItem | null) => void>()
   private sourceStats = new Map<string, { count: number; last: number }>()
 
   constructor(private store: HubStore) {
     const saved = store.loadConfig()
-    this.config = saved ? { ...DEMO_CONFIG, ...saved } : structuredClone(DEMO_CONFIG)
+    this.config = saved ? withDefaults({ ...DEMO_CONFIG, ...saved }) : structuredClone(DEMO_CONFIG)
     this.state = initialState(this.config)
+    this.game = initialGame(this.config)
     for (const ev of store.loadEvents()) this.ingestStored(ev)
+    // A saved service resumes where it stopped: if the app was off for a while, that gap isn't
+    // counted against open tables (otherwise every card would read hours late after a restart).
     const last = this.events.at(-1)
-    if (last) this.clock.set(Math.max(last.at, Date.now()))
+    if (last) this.clock.set(Date.now() - last.at > 10 * 60_000 ? last.at : Math.max(last.at, Date.now()))
   }
 
   private ingestStored(ev: CopilotEvent) {
     this.events.push(ev)
-    applyEvent(this.state, ev, this.config)
+    this.apply(ev)
     this.track(ev)
+  }
+
+  /** Engine and game advance together; the game reads timings from the state before the event. */
+  private apply(ev: CopilotEvent) {
+    // Narrate before the event changes the state, so the table and its server are still known.
+    const said = narrate(ev, this.state, this.config)
+    if (said) {
+      this.feed.push(said)
+      if (this.feed.length > 80) this.feed.splice(0, this.feed.length - 80)
+    }
+    const closed = this.state.visits.length
+    beforeEvent(this.game, ev, this.state, this.config)
+    applyEvent(this.state, ev, this.config)
+    afterEvent(this.game, this.state.visits.slice(closed), this.config)
   }
 
   private track(ev: CopilotEvent) {
@@ -71,9 +94,12 @@ export class Hub {
       payload: input.payload,
     } as CopilotEvent
     this.events.push(ev)
-    applyEvent(this.state, ev, this.config)
+    this.apply(ev)
     this.track(ev)
     this.store.append(ev)
+    // The plain-words line for this event, if it has one (the feed item shares the event's id).
+    const said = this.feed.at(-1)?.id === ev.id ? this.feed.at(-1)! : null
+    for (const fn of this.eventListeners) fn(ev, said)
     this.emit()
     return ev
   }
@@ -85,8 +111,10 @@ export class Hub {
   /** Clears the service (new shift / new simulation). */
   reset() {
     this.events = []
+    this.feed = []
     this.sourceStats.clear()
     this.state = initialState(this.config)
+    this.game = initialGame(this.config)
     this.store.clear()
     this.emit()
   }
@@ -96,8 +124,15 @@ export class Hub {
     this.store.saveConfig(this.config)
     // Rebuild from the log so SOP changes re-score history consistently.
     this.state = initialState(this.config)
-    for (const ev of this.events) applyEvent(this.state, ev, this.config)
+    this.game = initialGame(this.config)
+    for (const ev of this.events) this.apply(ev)
     this.emit()
+  }
+
+  /** Called for each new event as it arrives (not for events replayed from storage). */
+  onEvent(fn: (ev: CopilotEvent, said: FeedItem | null) => void) {
+    this.eventListeners.add(fn)
+    return () => this.eventListeners.delete(fn)
   }
 
   onChange(fn: () => void) {
@@ -107,5 +142,40 @@ export class Hub {
 
   emit() {
     for (const fn of this.listeners) fn()
+  }
+}
+
+/**
+ * Configs saved by an older version miss newer fields. Fill them from the built-in menu by id
+ * (e.g. ingredient tags for the safety check) without touching anything the restaurant set.
+ */
+export function withDefaults(config: RestaurantConfig): RestaurantConfig {
+  // Still the demo restaurant (every original demo table is there): bring in servers, tables and
+  // sections added to the demo since it was saved, without changing anything already set.
+  const ORIGINAL = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10']
+  if (ORIGINAL.every((id) => config.tables.some((t) => t.id === id))) {
+    const sections = { ...config.sections }
+    const staff = [...config.staff]
+    const tables = [...config.tables]
+    for (const [sec, id] of Object.entries(DEMO_CONFIG.sections)) {
+      if (sec in sections) continue
+      sections[sec] = id
+      if (!staff.some((s) => s.id === id)) staff.splice(staff.filter((s) => s.role === 'server').length, 0, DEMO_CONFIG.staff.find((s) => s.id === id)!)
+      for (const t of DEMO_CONFIG.tables) if (t.section === sec && !tables.some((x) => x.id === t.id)) tables.push(t)
+    }
+    config = { ...config, sections, staff, tables }
+  }
+  return {
+    ...config,
+    tables: config.tables.map((t) => {
+      const base = DEMO_CONFIG.tables.find((d) => d.id === t.id)
+      return t.pos || !base?.pos ? t : { ...t, pos: base.pos }
+    }),
+    menu: config.menu.map((m) => {
+      const base = DEMO_CONFIG.menu.find((d) => d.id === m.id)
+      if (!base) return m
+      // Fill fields added since the menu was saved (ingredient tags, spice, descriptions), never overwrite.
+      return { ...m, contains: m.contains ?? base.contains, spice: m.spice ?? base.spice, description: m.description ?? base.description, adjust: m.adjust ?? base.adjust }
+    }),
   }
 }

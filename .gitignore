@@ -3,3 +3,8 @@ dist
 data/*.ndjson
 data/config.json
 dist-demo
+.env
+
+# Generated film audio and frames
+film-cache/
+data/ai-ranking.json

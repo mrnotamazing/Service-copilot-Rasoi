@@ -1,0 +1,13 @@
+services:
+  tablemate:
+    build: .
+    ports:
+      - "4000:4000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - tablemate-data:/app/data
+    restart: unless-stopped
+volumes:
+  tablemate-data:

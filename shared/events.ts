@@ -23,19 +23,24 @@ export interface FiredLine {
 
 export type CopilotEvent =
   // From the POS / table management
-  | Base<'table.seated', { tableId: string; partySize: number; guestName?: string; allergies?: string[]; occasion?: string; vip?: boolean }>
+  | Base<'table.seated', { tableId: string; partySize: number; guestName?: string; allergies?: string[]; needs?: string[]; occasion?: string; vip?: boolean; language?: string; firstVisit?: boolean }>
+  /** The server learnt something new about the guests (an allergy, a diet): the safety checks use it at once. */
+  | Base<'party.updated', { tableId: string; allergies?: string[]; needs?: string[]; from?: string }>
   | Base<'order.fired', { tableId: string; ticketId: string; lines: FiredLine[] }>
   | Base<'item.ready', { lineIds?: string[]; ticketId?: string }>
   | Base<'item.stock', { menuItemId: string; available: boolean }>
   | Base<'bill.requested', { tableId: string }>
   | Base<'bill.settled', { tableId: string }>
   | Base<'table.reset', { tableId: string }>
-  | Base<'table.assigned', { tableId: string; serverId: string }>
+  | Base<'table.assigned', { tableId: string; serverId: string; reason?: string }>
   // From the server's copilot (the server's own taps)
   | Base<'server.greeted', { tableId: string }>
   | Base<'item.served', { lineIds: string[] }>
   | Base<'guest.informed', { lineIds: string[]; reason: 'delay' | 'unavailable' }>
-  | Base<'server.checkback', { tableId: string; course: string }>
+  | Base<'server.checkback', { tableId: string; course: string; mood?: 'happy' | 'ok' | 'unhappy' }>
+  | Base<'safety.resolved', { tableId: string; lineIds: string[]; resolution: 'kitchen' | 'guest_ok' }>
+  | Base<'guest.recovered', { tableId: string; how: 'fixed' | 'manager' }>
+  | Base<'manager.visited', { tableId: string }>
   | Base<'course.cleared', { tableId: string; course: string }>
   | Base<'bill.presented', { tableId: string }>
   | Base<'guest.farewelled', { tableId: string }>
@@ -44,6 +49,17 @@ export type CopilotEvent =
   // Two-way notes between floor and kitchen
   | Base<'note.sent', { noteId: string; direction: 'to_kitchen' | 'to_floor'; tableId?: string; text: string; from: string }>
   | Base<'note.acked', { noteId: string }>
+  // The manager to one or more servers: a note to act on, acknowledged by each server
+  | Base<'manager.instruction', { instructionId: string; from: string; to: string[]; text: string; tableId?: string }>
+  | Base<'instruction.acked', { instructionId: string; staffId: string }>
+  // A guest's question about a dish that the menu couldn't answer: asked of the kitchen, answered, seen
+  | Base<'dish.question', { questionId: string; from: string; text: string; menuItemId?: string; tableId?: string }>
+  | Base<'dish.answered', { questionId: string; answer: string; by: string }>
+  | Base<'dish.answer_seen', { questionId: string }>
+  // Peer recognition between staff (feeds the team layer of the game)
+  | Base<'kudos.sent', { from: string; to: string; reason: string }>
+  // Training: a scored practice reply, or the end of a practice (feeds XP, never the floor)
+  | Base<'practice.scored', { staffId: string; scenario: string; score: number; final?: boolean; outcome?: 'won' | 'lost' | 'ok' }>
 
 export type EventType = CopilotEvent['type']
 export type PayloadOf<T extends EventType> = Extract<CopilotEvent, { type: T }>['payload']
@@ -54,10 +70,11 @@ export type IncomingEvent = {
 }[EventType]
 
 export const EVENT_TYPES: EventType[] = [
-  'table.seated', 'order.fired', 'item.ready', 'item.stock', 'bill.requested', 'bill.settled',
+  'table.seated', 'party.updated', 'order.fired', 'item.ready', 'item.stock', 'bill.requested', 'bill.settled',
   'table.reset', 'table.assigned', 'server.greeted', 'item.served', 'guest.informed',
   'server.checkback', 'course.cleared', 'bill.presented', 'guest.farewelled', 'allergy.confirmed',
-  'task.snoozed', 'note.sent', 'note.acked',
+  'task.snoozed', 'note.sent', 'note.acked', 'kudos.sent', 'safety.resolved', 'guest.recovered', 'manager.visited',
+  'practice.scored', 'manager.instruction', 'instruction.acked', 'dish.question', 'dish.answered', 'dish.answer_seen',
 ]
 
 let counter = 0

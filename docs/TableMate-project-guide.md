@@ -1,0 +1,656 @@
+# TableMate: project guide
+
+**The right service. At the right time.**
+
+TableMate is an employee-centric AI copilot for fine-dining floor staff. It reads what the restaurant's point-of-sale (POS) system already knows, applies the restaurant's own service standards, and shows each server their next three moves. Around that core it adds a kitchen relay, a fair way of attributing delays, private motivation, inclusive design, and an AI trainer that coaches servers and managers in their own language.
+
+> OB project, Working Group B3: *An AI-Based Intervention to Help Serving Staff Execute Service Standards in Real Time*.
+
+This guide covers the problem, the objective, the solution, every feature and how it works, why it is employee-centric, how each person uses it, what is still missing, and ideas for taking it further.
+
+---
+
+## Contents
+
+1. [The problem](#1-the-problem)
+2. [The objective](#2-the-objective)
+3. [The solution in one page](#3-the-solution-in-one-page)
+4. [How it works under the hood](#4-how-it-works-under-the-hood)
+5. [Every feature, screen by screen](#5-every-feature-screen-by-screen)
+6. [Where AI is used, and where it deliberately isn't](#6-where-ai-is-used-and-where-it-deliberately-isnt)
+7. [Why it is employee-centric](#7-why-it-is-employee-centric)
+8. [How each person uses it](#8-how-each-person-uses-it)
+9. [Presenting the project](#9-presenting-the-project)
+10. [How to evaluate it (the study)](#10-how-to-evaluate-it-the-study)
+11. [Current limitations](#11-current-limitations)
+12. [Roadmap: more AI that could help](#12-roadmap-more-ai-that-could-help)
+13. [Checklist to complete the project](#13-checklist-to-complete-the-project)
+14. [Running it](#14-running-it)
+15. [Glossary](#15-glossary)
+
+---
+
+## 1. The problem
+
+Restaurants digitised the order. They didn't digitise the server's job.
+
+**Everything lives in one head.** A server looking after six tables is tracking, at the same time: who hasn't been greeted, who is ready to order, which dishes are at the pass, who needs a check-in, which course is finished, who wants the bill, which table needs resetting, and which guest has an allergy. Each standard is simple ("greet within 2 minutes"). Together, during a rush, they overload working memory, and steps get missed.
+
+**Information stops at the pass.** The POS knows when a dish is late or has run out. The server usually finds out when the guest asks. News between kitchen and floor still travels by shouting across the pass.
+
+**Blame lands on the floor.** Guests and managers see the server, so a slow grill reads as slow service. Service failures cost return visits (Chung & Hoffman, 1998), and the person who carries the blame often isn't the person who controlled the delay.
+
+**Training is thin and uneven.** New staff learn by shadowing during real service, where mistakes happen in front of guests. Tough moments (a complaint, a rude guest, an allergy question, a harassing customer) are rarely rehearsed. Staff who are still learning the language, or who think differently, get the least support.
+
+**Typical "digital" fixes make it worse.** Monitoring dashboards and leaderboards increase surveillance, stress and perceived unfairness. They measure people rather than helping them.
+
+---
+
+## 2. The objective
+
+Help serving staff deliver the restaurant's service standards in real time, **without** surveillance, extra data entry or blame, and make them better at their job over time.
+
+Concretely, TableMate aims to:
+
+| Goal | What it means | How we'd know |
+|---|---|---|
+| Reduce cognitive load | The app holds the state of every table; the server sees only the next 3 moves | Lower NASA-TLX scores |
+| Fewer missed standards | Greetings, check-ins, bills and resets happen on time | Fewer SOP lapses per shift |
+| Fair attribution | Kitchen delays are never counted against servers | Higher justice perceptions (Colquitt) |
+| Motivation without control | Autonomy, competence and relatedness, not rankings | Higher BPNS-W, lower perceived monitoring |
+| Safer service | Allergy and diet clashes caught before food goes out | Safety catches; zero missed allergies |
+| Better skills | Practice tough moments and get coached, in your own language | Practice scores improve; confidence |
+| Inclusion | Works for every staff member and every guest | Usable in 6 languages, accessibility settings used |
+
+---
+
+## 3. The solution in one page
+
+TableMate sits on top of the POS the restaurant already uses. It needs no new hardware and no data entry.
+
+1. **The POS reports what happens**: a table is seated, an order (KOT) is fired, food is ready, a dish runs out, a bill is printed or paid.
+2. **The restaurant's own standards turn events into tasks**, each with a time limit ("greet within 2 minutes").
+3. **Tasks are ranked** by guest impact × urgency, plus a nudge for tables left alone longest, and **each server sees only their top three**.
+4. **Cards close themselves** when the POS shows the step happened. The server rarely taps "done", and can always push a card to "Later". Cards are worded as help, never orders.
+
+Around this core:
+
+- **A kitchen relay**: the kitchen screen shows tickets with timers; notes travel both ways in a tap.
+- **Fairness**: every visit is split into steps, and each delay is attributed to whoever controlled that step (floor or kitchen).
+- **Safety**: a rule-based check flags any dish that clashes with a guest's allergy or diet the moment it's ordered.
+- **Private motivation**: XP, ranks, streaks, badges and quests only the server sees; a cooperative team goal and kudos instead of a leaderboard.
+- **An AI trainer and coach (Ask TableMate)** for servers and managers: answers questions about service, the menu and tonight's tables, and runs realistic role-plays that score each reply and show an ideal one, in six languages.
+- **Inclusive by design**: six languages, read-aloud with correct dish pronunciation, accessibility settings, "simple words", respectful wording, and guest needs turned into what to do.
+- **A team that shares the floor**: the manager is offered handovers when guests would be more at ease with a server who speaks their language, or a server is over the table limit; both servers get a note, and the table goes back after the visit.
+- **Menu knowledge on tap**: guests' questions ("How spicy is it?", "Can it be made without onion?") are answered from the menu notes, or sent to the kitchen once and saved for next time.
+- **Demo & setup**: a simulator that runs a full dinner service, with a **presenter mode** that sets up a story on every screen, staged moments and a hands-free showcase mode, plus the menu, the restaurant's standards, AI and POS settings.
+
+### Assist, Predict, Explain, Learn (and Decide)
+
+TableMate is more than a task list: it is an AI service copilot that works at four levels, plus sharing and planning tools for managers. Each level uses the same event data, and each keeps the same rules: suggestions, never orders; process, never people.
+
+| Level | What it does | Where you see it |
+|---|---|---|
+| **Assist** | The next best action, with the reasons it comes first; help with an upset guest built from what is really happening at that table | Server Home ("Why this first"); a table's detail ("Guest upset? Get help") |
+| **Predict** | Warnings before things go wrong: dishes likely to be late, a busy patch about to hit a server, a kitchen station about to fall behind, a section about to be swamped | Server "Coming up"; manager "Next 15 minutes" |
+| **Explain** | What happened at any table, step by step, and why tonight is going the way it is (floor vs kitchen, the bottleneck, when it bunched up) | Manager "Why is this happening?" and "What happened" on any receipt or live table |
+| **Learn** | A private learning journey: practice scores over time, practice suggested from your real shift, one habit to focus on | Server Profile ("My learning journey"), visible only to you |
+| **Share** | Suggested handovers by language and load, a teammate asked to stop by, a nudge to the kitchen about a waiting guest question; one tap does it and both servers are told | Manager "Share the floor" and "Hand to…" on any table |
+| **Decide** | Run tonight in a sandbox with one thing changed (more guests, a server off sick, an extra grill cook, a slower kitchen) and compare | Manager "What if…?" and the manager chat ("What if Aisha is off sick?") |
+
+The product loop: **events → state → prediction → action → outcome → explanation → learning**. A seated table becomes a card; tonight's timings forecast what is coming; the card closes when the POS shows it happened; every step is attributed; and what went wrong becomes the next practice.
+
+---
+
+## 4. How it works under the hood
+
+### The event pipeline
+
+```
+POS / kitchen event ──► canonical event ──► engine state ──► SOP rules ──► task cards ──► ranked ──► top 3 per server
+                                                                 ▲
+                        a later event closes the card automatically (no manual ticking)
+```
+
+Every source (a real POS, the kitchen screen, a server's tap, the simulator) produces the same canonical events (`shared/events.ts`). The engine (`shared/engine.ts`) is pure and deterministic: fed the same events, it produces the same state, the same tasks and the same game. Events are stored in an append-only log (`data/events.ndjson`), so a whole service can be replayed or exported for research.
+
+### Where each card comes from
+
+| Trigger | Card | Closes when |
+|---|---|---|
+| Table seated | Welcome T4 (party size, guest name, occasion, allergy, needs) | Server taps Greeted, or the POS shows an order |
+| Greeted, no order yet | T4 may be ready to order | Order fired |
+| Order fired for a table with an allergy | Flag the allergy to the kitchen (one tap sends it) | Confirmed |
+| A dish clashes with an allergy or diet | Safety check: tell the kitchen or confirm with the guest | Resolved |
+| Dish 86'd after being ordered | Risotto is off: tell T6 (with alternatives) | Guest told |
+| Ticket past its forecast + tolerance | T4 mains running 6 min late: give a heads-up | Told / food ready |
+| Food ready at the pass | Pick up T4 mains | Served |
+| Course served + N min | Check in on T4 (one-tap mood) | Checked in |
+| Guests not happy at check-in | Recovery: suggested line or call the manager | Won back / manager visited |
+| Course finished | Clear and fire mains / offer dessert / coffee | Cleared |
+| Bill printed | Present T7's bill | Presented / paid |
+| Bill settled | Say goodbye to T7 | Done |
+| Paid and left | Reset T2 (checklist) | Table available |
+| Kitchen note | "Grill backed up" | Got it |
+| Manager or kitchen note to a server | "Saffron brûlée is tonight's special" (or a handover: "T5 is yours for this visit") | Got it |
+| The kitchen answered a guest's question | "Burrata: made in-house every morning" | Seen |
+
+**Priority** = guest impact × urgency against the standard's deadline (it keeps rising once overdue), plus a small boost for tables left longest without attention and for regulars. Related jobs ride on one card: food for two tables at the pass, a second job at the same table, or the table next door.
+
+### Architecture
+
+| Part | Technology | Where |
+|---|---|---|
+| Engine, events, safety, game, practice | TypeScript, pure functions, unit-tested | `shared/` |
+| API, WebSocket live updates, event log, simulator, POS adapters, AI | Node.js | `server/` |
+| App (server, kitchen, manager, demo & setup, how it works) | React 19, Vite, Tailwind CSS v4, shadcn/ui, Motion | `src/` |
+| AI providers | Claude (Anthropic SDK), Google Gemini, Ollama (local), Dify, built-in | `server/ai.ts`, `server/claude.ts`, `server/gemini.ts`, `server/ollama.ts` |
+| Floor suggestions, handovers | Rules on load and languages | `shared/floorInsights.ts`, `/api/floor/move` |
+| Presenter mode | The simulator, warmed up and kept on story | `server/simulator.ts` (`prepare`, `keepStory`) |
+| Shareable demo | The same engine running in the browser | `dist-demo/` |
+
+**Privacy by design**: live snapshots are cut per role on the server. A server's personal stats physically never reach the manager's screen.
+
+---
+
+## 5. Every feature, screen by screen
+
+### 5.1 Getting around: one menu, four sections
+
+- **The same menu on every screen**, in the same order: **Servers**, **Manager**, **Kitchen**, **Demo & setup**, with **How it works** and **Settings** (gear, plus the current language, e.g. "EN") on the right. The highlight slides to the section you open. On a phone the sections fold into a **Menu** button, and the bar shows which section you're in.
+- **The start page** (the logo) shows the four sections as cards, then the brand promise, *The right service. At the right time.*, in three parts: **Quick** (the next three moves), **Correct** (every dish checked against allergies, menu answers from the kitchen, never a guess) and **Together** (tables shared by language and load). The running chef dashes along the line when it comes into view and runs back whenever the pointer moves over it.
+- **The brand in quiet moments**: the running chef appears while a screen loads and in empty states ("All caught up", "Nothing cooking", "All calm"), each saying what happens next.
+- **Servers** lists tonight's servers with how many tables and open tasks each has. Tap a name to open their app; inside it, tap the name at the top to **switch server** without leaving the screen you're on.
+- **First launch** shows a short onboarding for servers.
+
+### 5.2 The server app (phone or tablet)
+
+Phones get bottom tabs; tablets and laptops get a side rail with cards, the floor plan, guests and the kitchen thread side by side. The kitchen thread can be **hidden** (a slim strip, or one line on an iPad, with an unread count) to give the cards and floor plan the room; it **opens by itself** whenever the kitchen shares something (a note, an answer to a guest's question, or a note from the kitchen's Team card, all of which now show in the chat), and the choice is remembered on the device. On a phone, the same news pops up as **From the kitchen** over whatever tab is open, with **Open the kitchen chat**. On a laptop, **phone view** shows a real phone's proportions (a 390×844 screen) and scales the whole phone to fit the window.
+
+**Home tab**
+- **Next up**: the top three cards, ranked. Swipe right for done, left for Later, or use the buttons. Cards close themselves when the POS shows the step happened.
+- **Why this first**: up to three short reasons the top card leads ("Allergy or diet safety comes first", "4 min past the standard", "No one has been to this table for 9 min", "2 more jobs on the same trip", "Your other 3 can wait a few minutes"). A suggestion explained is easier to trust, and easier to overrule.
+- **One trip, several jobs**: combined cards when jobs are next to each other.
+- **Coming up**: what's about to need you (food nearly ready, a course about to finish, a bill about to be asked for). When three or more land within a few minutes it warns of a **busy patch** first ("Busy patch in about 4 min: 3 things land together. Do the quick jobs now").
+- **"What do I say?"** on guest-facing cards (greeting, delay, dish unavailable, goodbye) writes a gracious line to say at the table.
+- **Brief me**: a rundown of your section (allergies, regulars, occasions, anything the kitchen is behind on).
+- **My section**: a top-down floor plan (see below).
+- **Team goal**: the floor's shared target for tables served fully to standard.
+
+**Tables tab**
+- **Floor plan**: the section drawn as a room (kitchen pass at the top, entrance at the bottom), each table to size with chairs, its open-task count, flags for allergies, needs and occasions, visit progress traced around the edge, and the last mood. Tables handed over from another section for this visit are listed under the room (**Handed to you for this visit**, with who they came from), not drawn over this room's tables.
+- **Tap a table** for **Now** (every open task with its buttons), **Coming up**, **the order** (forecast ready times and safety flags) and **Done so far** (a timeline of the visit).
+- **Guest upset? Get help**: on any seated table. TableMate reads the table's real situation (how long they've waited, which course is late and its likely ready time, what ran out, allergies, the last check-in, whether the manager has been asked) and gives a line to say plus two to four steps. With no AI connected, a built-in composer works out the likely cause from the same facts.
+- **Guest list** with each party's needs, written as what to do ("hard of hearing: face them, speak clearly, offer to write"), and the language they prefer ("prefers বাংলা").
+
+**Kitchen tab**
+- The two-way thread with the pass: notes from the kitchen ("grill backed up", "risotto is off") and quick notes to it.
+
+**Profile tab**
+- **Rank, XP and level ring**: Commis → Server → Senior server → Captain → Head of floor → Maître d’.
+- **Streak and shields**: tables served fully to standard build a streak; every third earns a shield that absorbs one slip.
+- **Combo** for consecutive on-time actions, **badges** (several reachable on the first shift) and **tonight's quests**.
+- **Kudos** to and from teammates.
+- **Practice tough moments** (see 5.6).
+- **My learning journey** (private): practice grouped into skills (putting things right, delays and changes, allergy safety, inclusive service) with first and latest scores and a trend; **practice suggested from your real shift** ("2 of your tables waited on the kitchen tonight" → practise *Long wait*), opening straight into that role-play; and **your focus this shift**, one floor habit from your own steps that most often ran past standard (kitchen delays never count against you).
+- **Private coach**: one tip drawn from your own shift, visible only to you.
+- **Wrap up my shift**: a private debrief showing where your time went step by step against the standard, your strongest step, the one to work on, safety catches, tables won back and a coaching tip.
+- **Profile editor**: photo (cropped and shrunk on the device), illustrated avatar and colour, display name, pronouns, languages spoken.
+
+**In the header**
+- **Ask TableMate** (the sparkle button): the AI trainer (see 5.6).
+- **Settings** (the button in the header, with the current language): language, theme, reading, voice, alerts and animation; see 5.8.
+
+### 5.3 Safety, timing and guest care (inside the cards)
+
+- **Allergy and diet safety check**: each dish lists what it contains. Any dish that clashes with a guest's allergy (nuts, dairy, gluten, egg, fish, shellfish) or diet (vegetarian, vegan, Jain, halal, no beef, no pork) becomes the top card the moment it's ordered, and the kitchen ticket shows the flag. This is deliberately rule-based, never an AI guess.
+- **Honest kitchen times**: ready times are forecast from tonight's real prep times plus each station's queue, so late dishes are flagged before they're late, with "ready in about N min" for the guest.
+- **Guest mood and recovery**: check-ins are one tap (happy / okay / not happy). "Not happy" opens a recovery card with a suggested line or a manager call.
+- **Guests' preferred language** from the booking or POS shows on the greeting card and table, and lets the manager hand the table to a server who speaks it (5.5).
+- **Guest needs from the booking**: wheelchair, hearing, vision, high chair, quiet table (sensory needs), assistance animal, Jain, halal, vegan, no beef, no pork and fasting. They appear on the greeting card, the guest list and the briefing as what to do, and diet needs feed the safety check.
+
+### 5.4 The kitchen pass screen
+
+- **Counts strip**: dishes on the line, running late, waiting at the pass and guest questions waiting; numbers settle into place as they change; a **station filter** (grill, hot, cold, pastry, bar).
+- **Empty line**: the running chef and "Nothing cooking: new tickets land here the second they're fired".
+- **On the line**: tickets with table, server, course, elapsed time against the forecast, a progress bar, allergy and diet clashes, and a large **Ready** button.
+- **At the pass**: food waiting, how long it has waited, and a **Nudge** that tells the server.
+- **Guest questions**: when a server asks something the menu notes can't answer ("Is the risotto good for kids?"), it appears here at once, highlighted, with the dish and the table. One tap answers (Yes, No, Mild, Can be made mild, Chef will come to the table…) or type a line; **Save to the dish's notes** (on by default) means the next server who asks gets the answer instantly. The answer reaches the server as a card.
+- **Team**: the same card as the manager's. Notes from servers and the manager arrive under **For you** (allergy notes highlighted) with **Got it**, and servers see "Seen" in their kitchen chat. The kitchen can send notes to the manager or any server (e.g. "Need a runner at the pass") and see who has read them, and give kudos to anyone. **Quick update to the floor** still sends one-tap updates ("Mains in 5 min") to the whole floor or one table's server.
+- **All-day counts** per dish, **notes from the floor** (allergy notes highlighted), **quick notes to the floor**, and the **86 board** to switch dishes off (servers with that dish on order are told straight away).
+
+### 5.5 The manager console
+
+- **Needs you now**: guests asking for the manager (with a Visited button), unresolved allergy or diet clashes, food running late, bills waiting past the standard, and unhappy tables. "All calm" when there's nothing.
+- **Share the floor**: suggested handovers and nudges, each with a reason and a one-tap button (`shared/floorInsights.ts`). Guests who prefer a language their server doesn't list are offered to a teammate who speaks it, if they haven't ordered yet (afterwards, the teammate is asked to stop by at the next check-back instead); a server over the table limit hands their just-seated table to the teammate with most room; a guest's dish question the kitchen hasn't answered in 3 minutes gets a "nudge the kitchen" button. When no one on shift speaks the language, it says so and suggests the assistant. Built from load and language only, never from performance, and the manager decides.
+- **Hand to…**: open any table on the live floor and pick another server. During a visit it's a handover for that party only: the cards move to the new server, both servers get a note ("T1 is yours for this visit: the guests prefer Nepali. Aisha will introduce you"), and the table goes back to its section after the visit. On a free table it's a lasting change. Guests' preferred language comes from the booking or POS (`language` on `table.seated`) and shows on the greeting card ("prefers বাংলা").
+- **Pulse**: guests seated, tables served, served to standard, late steps (floor vs kitchen) and happy check-ins.
+- **Live floor**: every section as a floor plan with its server and load (tables and open tasks). A handed-over table stays in its own section's room, marked "with Meera". Load, never performance.
+- **Where time goes**: average time per step against the standard, coloured by who controls it (floor or kitchen).
+- **Kitchen stations**: tickets, how many past standard and by how much.
+- **Suggestions**: e.g. a section over its table limit.
+- **Guest mood and safety tonight**, **team goal and recognition** (kudos), **shift summary** (AI, in plain English) and **delay receipts** (each recent visit as a bar of steps, coloured by owner).
+- **Team** (the same card is on the kitchen screen): **For you** lists notes sent to you, with **Got it** so the sender knows you've seen them. Every person on the team is listed: servers with their section and load, the kitchen with what's on the line. **Note** sends a short note to one person, several, or all servers (with quick ideas and an optional table); on a server's phone it becomes a card until they tap **Got it**, and the sender sees "Seen by 2 of 3". **Kudos** thanks anyone for something specific, the kitchen included: it shows on the team board, and servers also get XP and a celebration.
+- **Why is this happening?**: three lights (guests, kitchen, floor), lost time split between kitchen and floor, the biggest bottleneck (a stage or a station), the 15-minute window when it bunched up and how many tickets fired around then, and what would help.
+- **Next 15 minutes**: each station's forecast (dishes cooking, courses about to be ordered, likely extra wait, tonight's record) and each section's load (cards open plus food landing; a handed-over table counts for whoever has it), with a rebalancing idea by section ("Ask section A to run section B's food from the pass, and seat the next party in section C").
+- **What happened**: open any delay receipt, or a live table, for a step-by-step reconstruction: each step against its standard and who controlled it, the biggest delay, time lost by kitchen vs floor, what would have helped, and "Tell me the story" for an AI narrative.
+- **What if…?**: runs 2½ hours of service three times in a sandbox, as it is and with one change, with the same guests both ways (seeded), and compares guests seated, food wait, kitchen and floor steps past standard, the most tables one server had, and parties who gave up waiting, with recommendations. Live service is never touched.
+- **Ask TableMate** for managers (see 5.6). It also answers "Why is service slow tonight?", "What happens in the next 15 minutes?", "What if we add a second grill cook?" (from a simulation) and "Should I move any tables?" (from the Share the floor suggestions).
+- **No individual rankings, anywhere.** Personal scores stay on each server's own phone.
+
+### 5.6 Ask TableMate: the AI trainer and coach
+
+Opened with the sparkle button (servers) or **Ask TableMate** on the manager console. Two tabs: **Ask** and **Practice**.
+
+**Ask**
+- A chat that knows the restaurant's service standards, the menu (what each dish contains), diet and faith rules, and **55 training notes** written the way a senior trainer would explain them:
+  - **For servers**: quick and correct (read the order back, seat numbers, check food against the ticket at the pass), answering menu questions without guessing, when a dish runs out, handing a table over warmly, the first two minutes, being slammed, kitchen delays, complaints (LAST), when to bring the manager, allergies, Jain, vegan and halal, recommending without pushing, describing a dish, drinks and pairings, explaining Indian food to first-timers, occasions and regulars, owning a mistake, teamwork and handovers, guests who've had too much, looking after yourself, phone bookings, check-backs, the bill, the goodbye, table reset.
+  - **For managers**: pre-shift briefings, guests asking for the manager, comps and recovery, giving feedback (situation, behaviour, impact), recognising good work, rushes and short shifts, supporting staff after a hard guest, team conflict, allergic reactions and emergencies (call 112 first), welcoming new staff, keeping the team inclusive (fair rosters around festivals, prayer and childcare), handling harassment reports under India's POSH Act, end-of-shift debriefs, using TableMate's data fairly, floor and kitchen working together, moving tables between servers (for the guests or the load, never as a verdict on someone).
+  - **For everyone (inclusion)**: the same welcome for every guest, service without assumptions, religious and cultural food needs and fasting, neurodivergent and sensory-sensitive guests, assistance animals, older guests, getting names right, respect in the team, harassment.
+- **It knows tonight**: servers' answers use their own tables; managers' use the whole floor (load by section, never rankings).
+- **Diet and allergy lists from the menu**: "What dishes are Jain?" or "what can someone with a nut allergy eat?" is answered from the ingredient tags (suitable as listed, and not, with the reason), never guessed.
+- **Starter questions** and **follow-up suggestions**; **dictation** (speak instead of type); **read aloud**; answers **stream** as they're written.
+- **Simple words**: a switch for short sentences and everyday words, for anyone still learning the language or who prefers plain wording.
+- Replies in the language the person writes in.
+
+**Practice tough moments**
+- **Servers' situations**: cold food, long wait, dish sold out, allergy question, "how spicy is it?" (a parent asking for a child: check with the chef and say when you'll be back), rude guest, wrong bill; and inclusive service: speaking to a wheelchair user directly, a guest fasting for Navratri, getting a guest's form of address wrong, guests with little English (bring a colleague who speaks their language).
+- **Managers' situations**: a guest demanding the manager, a feedback conversation, a server being harassed, team conflict, a struggling new hire, an allergic reaction, a server upset that you handed their table to a teammate. TableMate plays the guest or the team member.
+- **Every reply is rated out of 5 stars** against what a great reply does in that situation (for example: apologise, say what you'll do, give a time). Scoring is deliberately kind: a sincere reply that gets part of it right earns 3–4 stars, and the note always starts with what went well, then one gentle “next time, try…”. A face shows how the guest feels (upset → won over). XP starts at 2.5 stars (the restaurant can change this in Setup). Blaming the kitchen, guessing about allergens, or judging someone's faith or diet still scores low.
+- **A strict, fair judge**: with an AI connected, each reply is judged on what it actually says, not keywords. Excuses, made-up reasons ("the chef died, sorry"), blame, jokes or ignoring the complaint score under 30 however polite. The AI returns its verdict in fixed fields (coach, score, ideal reply, the other side's next line), and is given worked examples for each situation (what it needs, an ideal reply worth about 95, what a vague reply or an excuse scores), so scores mean the same on every model.
+- **See an ideal reply** to compare with yours, read or listened to.
+- **A realistic other side**: a "How they feel" meter rises with strong replies and falls with weak ones. A good reply calms them but they raise a real follow-up; a vague one gets pushed for specifics; blame or judgement makes them more upset. Two strong replies win them over; two poor ones (or blame) lose them.
+- **The debrief** follows automatically: how it ended, average score, total XP, what worked, what to practise, and the ideal replies.
+- **Every line, ideal reply and coaching tip exists in all six languages**, and replies are scored fairly in any of them.
+
+**Practice XP**: up to 10 XP per scored reply; at the end 10 per star plus 10 for winning them over; capped at 150 practice XP a day so it rewards learning, not grinding. Badges *First rehearsal*, *Smooth talker* and *Well rehearsed*, and a *Practise one tough moment* quest. Managers earn training XP too.
+
+**Questions about a dish** ("How spicy is the galouti kebab?", "Can the tikka be made mild?", "Is the gnocchi vegan?", "Any nuts in the kulfi?") are answered from the menu notes: spice level, ingredient tags, what it is, what can be changed, and the kitchen's earlier answers, in the server's language with an AI connected. If the notes don't cover it, TableMate says so instead of guessing and shows **Ask the kitchen**: the question goes straight to the kitchen screen, the answer comes back as a card, and it's saved to the dish so the next server gets it instantly.
+
+### 5.7 Voice
+
+- **Read aloud** new top tasks and any card, in the chosen language, at an adjustable speed, with the most natural voice on the device.
+- **Dish pronunciation that code-switches like a person**: dish words are spoken by a voice from their own cuisine (Hindi for paneer tikka, Italian for gnocchi, French for crème brûlée), the rest in the server's language. Missing voices fall back to respellings.
+- **Speech-friendly text**: "T3" becomes "Table 3", "2×" becomes "2".
+- **Dictation** in the chat and practice room.
+
+### 5.8 Settings (each person sets them for themselves)
+
+Opened from **Settings** in the header (it also shows the current language). Saved on the device, per person.
+
+- **Six languages**: English, हिन्दी, नेपाली, বাংলা, தமிழ், Español. Task cards, actions, badges, quests, onboarding, the chat and practice all translate.
+- **Reading**: larger text, an easy-to-read font (Atkinson Hyperlegible), high contrast, simple words.
+- **Alerts**: when something new arrives (a new card in a server's top three; a new ticket, guest question or floor note at the kitchen; a visit request, unhappy table or handover idea for the manager) the screen can **chime**, **flash** (a thick edge, an inward glow and a light wash, pulsing three times, so it's seen from across the room; for Deaf and hard-of-hearing staff; with motion reduced it holds steady for a moment instead) and **vibrate** (Android; iPhones don't let web pages vibrate, and Settings says so). Turning one on plays it once as a preview, and **Test my alerts** plays all three. Browsers only allow sound after the first tap on the page, so the app unlocks it then.
+- **Look and feel**: light, dark or match the device, and an **Animations** switch. Motion across the app is subtle: pages settle in, lists arrive one after another, the menu highlight slides between sections, changed numbers settle into place, clickable cards lift a touch, the live dot breathes and the chef runs along the start page's brand line. Turning Animations off (or the device's own reduce-motion setting) stops all of it.
+- **Calm and focus**: one card at a time, quiet celebrations (XP still counts), and a left-handed layout.
+- **Respectful wording**: every AI prompt asks for gender-neutral, respectful language (no assumed "sir/madam"); optional pronouns on the profile.
+- **True dark theme** for dim dining rooms (Settings → Look and feel → Theme).
+
+### 5.9 Demo & setup
+
+**Run the demo** tab
+- **Control bar**: tables seated, speed, guests waiting, IST time; Start / Pause; Reset (with confirmation).
+- **Presenting** (for walking people through it yourself): pick the server you'll play and tap **Set up a presentation**. In under a second it:
+  - plays about 100 minutes of service so the reports, receipts, forecasts, XP, streaks and the team goal have real numbers, and has the longest-seated tables pay and leave to make room;
+  - stages the story: a nut-allergy guest at your table who has just ordered a dish with nuts (the safety card), birthday regulars, a guest's question waiting at the kitchen, guests who prefer another language (a handover suggestion for the manager), an unhappy table and a guest asking for the manager, the grill falling behind, a kudos from the kitchen, a manager's note to all servers, and a practice score on your profile;
+  - runs at 2× with everyone else on autopilot (the kitchen too), while other servers leave guest problems open for a few minutes and the kitchen holds questions for 8, so there's time to show them;
+  - **keeps the story alive**: every few minutes it restages whatever has been used up (the safety card, a waiting question, an unhappy table, a language guest, a late ticket), and makes room in your section when it's full.
+  The **running order** below it lists seven stops (your phone, the allergy check, the kitchen pass, the manager's screen, training, what happened, plugging into the restaurant), each with the line to say, what to point at, **Open** / **New tab**, and a live **Ready to show** light; if a stop has nothing on screen, **Stage it** puts it there.
+- **Showcase mode** (hands-free): the whole restaurant runs on autopilot at speed (servers act on their cards, the kitchen cooks, the manager answers visit requests) and a new moment is staged every few minutes. **Start a fresh demo** resets and starts it at 10×.
+- **Stage a moment**: allergy guest (seated and already ordering a clashing dish), kitchen falls behind (one station), birthday regulars, guests who prefer another language, a guest's question for the kitchen, unhappy table, access need, dish runs out, guest asks for the manager, bill request, new arrival, sudden rush. While presenting, arrivals go to your section first. Each says why if it can't happen yet.
+- **Pace**: speed 1× to 30×; how busy (quiet, normal, busy, rush).
+- **Who's on autopilot**: each server, the kitchen, the manager. Switch one off to play them live.
+- **Live feed**: every step in plain words, newest first.
+- **Open the screens**: each server's phone, the kitchen and the manager console in new tabs.
+
+**Setup** tab
+- **Menu**: every dish with its ingredient tags (for the allergy and diet check), **spice level** (none, mild, medium, hot), **what it is** (a sentence a server can say) and **what the kitchen can change** ("Can be made mild", "Sauce on the side"), plus the kitchen's saved answers. Add, edit or remove dishes; dishes missing a spice level or description are flagged.
+- **Service standards (SOPs)**: greet within, order nudge, kitchen-delay tolerance, pick-up time, check-back, course check, bill, goodbye, reset, max tables per server. Saving re-scores the whole service.
+- **AI assistance**: which AI is connected, with step-by-step instructions for Gemini (free tier, fast), Ollama (free, local) or Claude (paid). `npm run doctor` checks the setup in plain words.
+- **POS and other systems**: a pointer to the Integrations tab.
+
+**Integrations** tab (also linked from "Connected" on the Manager page)
+- **Try it: data coming in**: "Send a test booking" sends a booking through the open endpoint exactly as a POS or booking app would; it is seated straight away and shows on the server's phone and the manager screen, and the event count goes up.
+- **Alerts to WhatsApp, Slack or email**: paste a webhook from Zapier, n8n or Make, pick the alerts (a table asks for the manager, guests unhappy, a dish runs out, kitchen updates, team notes, kudos) and send a test. Each alert is one line in plain words, e.g. "Saffron House: T4 asked to see the manager".
+- **Data out**: "Download tonight as CSV" gives every finished visit step by step (time against standard, floor or kitchen, station, guest mood), with no names or per-person scores, for Excel, Google Sheets or Tally. The raw event log is at `GET /api/events/export`.
+- **Every system a restaurant uses, grouped**, each saying what TableMate does with it and whether it's ready, needs partner access, or planned:
+  - POS and billing: any POS or middleware (ready), Petpooja (partner access), Restroworks/Posist, DotPe, Toast, Square, Lightspeed.
+  - Bookings and waitlist: Swiggy Dineout, EazyDiner, Zomato reservations, OpenTable/SevenRooms (allergies and occasions reach the greeting card before the guest does).
+  - Online orders: UrbanPiper for Swiggy/Zomato delivery (keeps dine-in ETAs honest at peak).
+  - Staff rosters: 7shifts, Deputy, greytHR (sections and cover for the what-if planner).
+  - Stock: inventory systems (warn before a dish is 86'd).
+  - Alerts and messaging (ready), reviews (Google, Zomato → training), data out (ready).
+
+### 5.10 How it works (the explainer page)
+
+A page for the audience covering the problem, how a card is born, fairness, AI on the floor, inclusion, the theory behind the design, adoption, motivation without surveillance, the technology, AI where words matter, and how it will be tested.
+
+
+### 5.10a Design references (`docs/`)
+
+`docs/design-tokens.md` lists every colour token with its light and dark value and the computed contrast of the pairs that matter. `docs/personas-and-journeys.md` has the four proto-personas, a journey map for one table on a Saturday night, the hypotheses to test and a usability test script for the demo. Touch screens get 44 px controls through `pointer-coarse:` variants in the Button, Input and Select components. The link preview image is `public/og.png`.
+
+### 5.10b The landing page (`/`)
+
+The front door, in `src/pages/Landing.tsx`: it says what TableMate is before anyone opens a screen. A header with Settings and **Try the demo**; a hero with the promise and a phone you can use (tap the top card's button and the next move slides up; left alone it plays by itself, and it stays still when Animations are off); the problem in three plain points; a four-tab tour of the product (**On track**, **Fair**, **Balanced floor**, **Growing**), each with a picture of the real thing; a card for each role (server, kitchen, manager) that opens the real screen; the principles (suggestions never orders, safety is rules, never a ranking, works without the AI); languages and access; and a closing panel with **Open the demo**, **Watch the film** and **Read how it works**. The page copy is English; the app screens it links to are in all six languages. The running chef (`src/components/RunningChef.tsx`) runs along the rule under the hero. A second chef runs along the header's lower edge as the page is read (the line fills with the scroll; the legs stop when motion is reduced). The "One moment, three screens" section shows the same 8:42 grill delay as the server, the kitchen and the manager see it, each linking to the real screen.
+
+### 5.11 The introduction film (`/intro`)
+
+A short promo film (about 1 minute 15 seconds), opened from **Watch the intro** on the start page. It is always light and on brand (cream, chocolate and tomato, set in Outfit), with the running chef as the thread: it sprints in at the start, runs along a thin service line at the foot of the middle scenes as the film plays, and runs in again for the close. It shows the real product's screens rather than doodles:
+
+1. TableMate and its tagline; 2. *Saturday night. Six tables. One head.*; 3. when service slips the server takes the blame, though the delay began in the kitchen; 4. *Your next three moves*, on a phone, with the reason for each and a tap that brings the next card up; 5. *Safe before fast*, the allergy flag and the kitchen ticket; 6. *Delays go to whoever controlled the step*, a visit receipt with the kitchen/floor split; 7. *The floor, not a leaderboard*, a table handed to a colleague who speaks the guests' language; 8. practising privately, with a score; 9. six languages and access features; 10. *Quick. Correct. Together.*
+
+Every scene is drawn from a clock, so **Pause** freezes it, the progress bar jumps to any scene, and the keys work (space to pause, arrows for scenes, F for full screen). Each scene's text is available to screen readers. With **Animations** off in Settings (or the device set to reduce motion), each scene shows its finished frame. The motion follows the Motion Design guidance: slower, richer movement (700–1100 ms) because it is showcase content seen once, ease-out-expo for things arriving, ease-in-out-cubic for things moving across the stage, linear for time, no pop-in from nothing, transform and opacity only. The film keeps its light look even when the app is in dark mode (scoped light tokens on `.film` in `src/index.css`). It plays inside the shareable demo too.
+
+A recorded **MP4** (`TableMate-intro.mp4`) is rendered frame by frame from `/intro?bare=1` (a 1280×720 browser, one screenshot per 1/24 s using the `window.__tm.seek(scene, ms)` hook) rendered at 1920×1080 and encoded with ffmpeg (H.264, CRF 16), so it is smooth whatever the machine. The narration (about 75 seconds, one line per scene, timed to the pictures) is made offline with the open Kokoro voice and mixed in with ffmpeg; the in-app film itself is silent. `?scene=N&t=ms&play=0` opens any scene at any moment. The stage and helpers are in `src/pages/intro/kit.tsx`, the scenes in `src/pages/intro/scenes.tsx`, the player in `src/pages/Intro.tsx`.
+
+---
+
+## 6. Where AI is used, and where it deliberately isn't
+
+TableMate uses AI for language and coaching, and plain rules for anything safety-critical or that decides what someone should do next. That keeps it predictable, explainable and fair.
+
+| Area | Approach | Why |
+|---|---|---|
+| Which task is next, and its priority | Rules from the restaurant's SOPs | Predictable and explainable; the server can see why |
+| Allergy and diet safety | Rules on ingredient tags | Never trust a guess with someone's health |
+| Kitchen ready times | Statistics: tonight's prep times + station queues | Honest estimates that improve through the night |
+| Delay attribution (floor vs kitchen) | Rules on who controlled each step | Fairness must be auditable |
+| "What do I say?", briefings, shift summary, coach tip | Language model, fed only facts the engine built | Natural wording; the facts stay correct |
+| Why this first | Rules: the same factors the ranking uses, said in words | Explainable priorities |
+| Forecasts (stations, sections, busy patches) | Statistics: the queue model behind the ETAs, courses about to be ordered, tonight's station record | Early warnings that can be checked |
+| Why is this happening? / What happened | Rules on measured steps and owners; a language model only tells the story | Explanations that are auditable and fair |
+| Guest upset? Get help | Facts from the table's state; a language model writes the line and steps (built-in composer otherwise) | Help that fits the real situation |
+| What if…? | Simulation: the same evening run both ways with the same random seed | Compare options before deciding |
+| Learning journey | Rules on the person's own practice scores and shift | Private, specific practice suggestions |
+| Share the floor (handovers, nudges) | Rules on load, languages spoken and how long a question has waited | Suggestions anyone can check; never about performance |
+| Menu questions | Rules on the dish notes (spice, tags, description, changes, the kitchen's saved answers); otherwise the kitchen is asked | Answers that are true, or an honest "let me check" |
+| Ask TableMate | Language model with the standards, menu, training notes and live context; checked menu facts added | Expert answers in any language |
+| Practice role-plays | Language model plays the part and judges in fixed fields, calibrated with worked examples; a rubric caps scores that blame, guess or judge, and is blended in for small local models | Realistic, multilingual and hard to game |
+| Built-in trainer (no AI connected) | Rules and written content in six languages | Every button always works |
+
+**AI providers, in order of preference**
+
+1. **Claude** (Anthropic API, paid): best quality in every language; the long standards-and-menu prompt is cached; answers stream.
+2. **Google Gemini** (free tier, fast on any laptop; set `GEMINI_API_KEY` from aistudio.google.com): uses the newest Gemini Flash model the key allows, with thinking turned off for quick answers, and switches by itself when Google retires a model. Each Gemini model has its own free limit and its own busy spells, so when one answers “high demand” or “free limit used up” (or won't take the request), the app tries the next Flash model the key can use (newest first, lite last), remembers the one that worked, and rests a failed one for a minute; it only drops to the built-in answer when every model has failed (a rejected key is reported straight away). Practice turns come back as fixed JSON fields. No training needed, because the standards, menu notes and training lessons go with every question (see `docs/gemini-setup.md`; `npm run doctor` tests the key).
+3. **Ollama** (free, runs on the computer, nothing leaves it): picked up automatically; tuned for laptops with a compact prompt of only the relevant notes, a fixed context size and a warm-up load.
+4. **Dify**: for managing prompts in a Dify app.
+5. **Built-in**: always available; questions in English, role-plays in all six languages.
+
+The shareable demo link uses Claude through the viewer's own claude.ai account.
+
+**Guardrails**
+- The safety check and menu facts are computed from data and given to the model to answer from; local models also show the menu's own facts under their answer.
+- Practice scores from small local models are blended with the rule-based rubric; placeholders or echoed lines fall back to written content.
+- Any AI failure falls back to the built-in answer with a short notice; staff never see a crash.
+
+---
+
+## 7. Why it is employee-centric
+
+TableMate is designed around the person doing the work, not around watching them. Each choice maps to organisational-behaviour research.
+
+| Principle | What TableMate does | Theory |
+|---|---|---|
+| **Reduce load, don't add it** | At most three cards; the app holds the state of every table; zero data entry; cards close themselves | Cognitive Load Theory (Sweller) |
+| **Autonomy** | Cards are suggestions, never orders; "Later" on every card; you choose your order of work | Self-Determination Theory (Deci & Ryan) |
+| **Competence** | Personal XP, streaks, badges and bests against yourself; a private coach; practice with instant feedback | Self-Determination Theory |
+| **Relatedness** | Team goal, kudos between teammates, a two-way kitchen thread | Self-Determination Theory |
+| **Fairness** | Delay receipts split every visit into floor- and kitchen-owned steps; kitchen delays are never counted against servers | Attribution theory (Kelley), Equity theory (Adams), organisational justice (Colquitt) |
+| **Feedback about the task, not the person** | "T4 is waiting on the bill", never "you're slow" | Feedback Intervention Theory (Kluger & DeNisi) |
+| **No surveillance** | No individual rankings; personal stats physically never reach the manager's screen; managers see steps, stations and load | Electronic performance monitoring research |
+| **Cooperative, not competitive** | No leaderboards (they lowered motivation in Hanus & Fox, 2015); late steps still earn a little XP; streak shields absorb a slip | Gamification research |
+| **Inclusion** | Six languages, read-aloud, accessibility settings, simple words, pronouns, inclusive training, respectful AI wording | Universal design, diversity and inclusion |
+| **Wellbeing and safety** | Training on self-care, harassment (POSH Act), support after hard guests; the manager coach puts staff safety before a guest's spend | Psychological safety (Edmondson) |
+| **Learning without risk** | Rehearse tough moments privately before facing them for real | Deliberate practice, experiential learning |
+| **Easy to adopt** | Sits on the existing POS, uses the restaurant's own SOPs, no new hardware, one section or one shift at a time | Diffusion of Innovations (Rogers) |
+
+In short: it **helps** people do the job well, **protects** them from unfair blame, **rewards** them privately, **trains** them in their own language, and **never ranks or watches** them.
+
+---
+
+## 8. How each person uses it
+
+### Servers
+
+1. **Before service**: open your app (Servers → tap your name). Set your language and comfort settings once. Tap **Brief me** for your section.
+2. **During service**: look at **Next up**. Do the top card; it closes itself or swipe it done. Swipe left for "Later". Use **What do I say?** for a delay or a dish that has run out. Tap a table on the floor plan for its full picture. Read kitchen notes in the **Kitchen** tab.
+3. **When something's wrong**: a safety card means a dish clashes with a guest's allergy or diet; tell the kitchen in one tap. A "not happy" check-in opens recovery; you can call the manager. A guest asks something about a dish: ask TableMate; if the notes don't say, tap **Ask the kitchen**.
+4. **When a table is handed to you**: a note says why; the first server introduces you, and the table appears under your floor plan for this visit.
+5. **Between tables**: ask TableMate anything ("How do I explain this dish to a first-timer?").
+6. **After service**: **Wrap up my shift** for your private debrief and coach tip; send kudos to a teammate.
+7. **To get better**: practise a tough moment in **Practice**, compare with the ideal reply, earn XP.
+
+### Kitchen
+
+1. Keep the pass screen open. Filter by station if you like.
+2. Tap **Ready** when a dish is up; servers are told.
+3. Use **Tell the floor** for timings ("mains in 5 min", "grill is backed up").
+4. Switch dishes off on the **86 board** when they run out; servers with that dish on order get a card straight away.
+5. Watch **notes from the floor**: allergy notes are highlighted.
+6. Answer **guest questions** when they appear; leave "save to the dish's notes" on, so it's only asked once.
+
+### Managers
+
+1. **Pre-shift**: ask TableMate "Plan my pre-shift briefing" for a briefing built from tonight's floor. Check standards in **Demo & setup → Setup**.
+2. **During service**: watch **Needs you now** (visit requests, safety clashes, late food, bills waiting, unhappy tables). Check **Share the floor**: hand a table to a server who speaks the guests' language, or take one off a full section, in one tap (both servers get a note). Open any table on **Live floor** to **Hand to…** someone by hand. Tap **Visited** after seeing a table.
+3. **After service**: **Summarise** for the shift summary; **Where time goes** and **Kitchen stations** show bottlenecks by step and station; **delay receipts** show what happened in each visit. Fix the system, not the person.
+4. **Coaching and leadership**: ask TableMate about feedback, conflict, harassment reports, fair rosters; practise hard conversations in **Practice**.
+
+### Trainers and new starters
+
+- Use **Practice** as a safe rehearsal room, in the trainee's own language, with **Simple words** on if helpful.
+- Run the simulator with one server's autopilot off, so the trainee plays them on a phone through a full service without real guests.
+
+---
+
+## 9. Presenting the project
+
+**Set-up (one minute)**
+1. Run `npm run dev` (or open the shareable demo link) and go to **Demo & setup**.
+2. Under **Presenting**, choose the server you'll play (Aisha by default) and tap **Set up a presentation**. Every stop in the running order should show **Ready to show**.
+3. Optional: open the stops in **New tab**s, or on other devices (phone, tablet, laptop), and keep the Demo page open to restage anything.
+
+**The running order (about eight minutes)**
+1. **The problem** (How it works page, or a sentence): one person, a dozen tables, the pass, and blame for delays they didn't cause.
+2. **Aisha's phone**: three cards, "Why this first", tap the main button and watch the next slide up. Ask the sparkle button "Is the burrata vegetarian?".
+3. **The allergy check**: the red safety card on Aisha's phone (a nut allergy and a dish with nuts); the same flag on the kitchen ticket. Rule-based, never a guess.
+4. **The kitchen pass**: timers, a late grill ticket, and a guest's question waiting: answer it with "save to the menu" on, and show it reach Aisha.
+5. **The manager's screen**: Needs you now (an unhappy table, a guest asking for the manager); **Share the floor**: hand a table to a server who speaks the guests' language and point out both servers got a note; "Why is this happening?" splits lost time between kitchen and floor; **What if…** an extra grill cook.
+6. **Training, privately**: Aisha's Profile → Practice. Reply "the chef died, sorry" (a low score and why), then a good reply (meter, score, ideal reply, XP). Scores stay on her phone.
+7. **What happened**: open a delay receipt on the manager screen: each step against its standard, coloured by who controlled it.
+8. **Plugging in**: Integrations → send a test booking and watch it seat a table; alerts out; CSV export.
+
+If a stop has been used up, its light turns amber: tap **Stage it** (or wait a few minutes; the story restages itself). For a hands-free loop during questions, switch on **Showcase mode** instead.
+
+---
+
+## 10. How to evaluate it (the study)
+
+Run the same simulated rush in three conditions:
+
+1. **No app** (paper / memory).
+2. **A monitoring-style app**: rankings, everything visible to the manager.
+3. **TableMate**.
+
+Measure:
+
+| Construct | Instrument |
+|---|---|
+| Cognitive load | NASA-TLX |
+| Perceived electronic monitoring | Perceived EPM scale |
+| Need satisfaction (autonomy, competence, relatedness) | BPNS-W |
+| Justice perceptions | Colquitt's organisational justice scale |
+| Service performance | SOP lapses per shift, exported from `GET /api/events/export` |
+| Learning | Practice scores across sessions; self-rated confidence |
+
+The simulator makes the rush identical across conditions, and the event log gives exact timings for every step.
+
+---
+
+## 11. Current limitations
+
+Being honest about what is not done yet:
+
+- **Single restaurant, no login.** Anyone on the same network can open any screen, including the manager console. Needs staff accounts, roles and per-restaurant data.
+- **Guests' language has to come from the booking or POS.** Handover suggestions only work when it's recorded; there's no in-app way for a server to set it yet.
+- **Simulated data.** The POS adapters are built, but Petpooja's dine-in (table, KOT, bill) events need partner access; other POS systems are planned stubs.
+- **Rules-based task engine.** Priorities and standards are hand-designed; they don't yet learn from each restaurant.
+- **Built-in trainer answers questions in English.** Without an AI connected, Ask answers from English notes (role-plays are in all six languages).
+- **Rule-based practice scoring is approximate.** It matches key phrases and word stems; an AI model scores better, and the two are blended for local models.
+- **Local AI quality depends on the computer.** Small models are slower and weaker in some languages.
+- **Preferences live on the device.** Comfort settings don't follow a person between devices.
+- **No offline mode yet.**
+- **Not yet tested with real staff.** The study in section 10 is planned, not run.
+- **Data protection.** Guest names, allergies and staff data would need consent, retention rules and compliance with India's Digital Personal Data Protection Act, 2023 in a real deployment.
+
+---
+
+## 12. Roadmap: more AI that could help
+
+Ideas for taking TableMate further. Each keeps the same rules: AI for language, coaching and suggestions; rules for safety and fairness; nothing that ranks or watches people.
+
+Already built from this list: next best action with reasons, busy-patch and station forecasts, section rebalancing, live handovers by language and load, menu questions answered from the dish notes or the kitchen, incident reconstruction, "why is this happening", complaint help, the private learning journey and what-if planning (see section 3, *Assist, Predict, Explain, Learn, Share*).
+
+### For servers
+
+| Idea | How it would work | Value | Effort |
+|---|---|---|---|
+| **Hands-free voice commands** | Speech-to-text on the phone: "Table 4 greeted", "T6 not happy"; intent matched to card actions | Hands stay on plates; faster in a rush | Medium |
+| **Live guest translation** | Server speaks their language, the phone speaks the guest's (and back), with dish names kept | Serve tourists and guests with other languages | Medium |
+| **Spoken practice** | Practice by voice: speech-to-text for replies, TTS for the guest; feedback on pace and clarity | Closer to the real moment | Medium |
+| **Personalised micro-learning** | Track which rubric checks a person misses most; suggest a 2-minute practice and a training note; spaced repetition | Targets each person's real gaps | Low–medium |
+| **Adaptive practice difficulty** | Patience starts lower and follow-ups get harder as scores rise | Keeps practice challenging | Low |
+| **Generated scenarios** | AI writes new role-plays from real (anonymised) incidents and reviews, checked by a trainer | Fresh, relevant practice | Medium |
+| **Menu knowledge quiz** | Flashcards and quizzes from the menu data (ingredients, allergens, pairings, pronunciation) | Faster onboarding | Low |
+| **Regulars' preferences (with consent)** | Remember a regular's usual drink or seating; suggest on the greeting card | Warmer, personal service | Medium |
+| **Ethical recommendations** | Suggest two dishes that fit the table's diet, allergies and pace, never pushing | Better guest experience | Low |
+| **Smartwatch / haptic nudge** | Top card as a gentle buzz pattern on a watch | Less phone-checking | Medium |
+| **Personalised ranking** | Learn each server's preferred sequencing from their "Later" choices | The app adapts to the person | Medium |
+
+### For the kitchen
+
+| Idea | How it would work | Value | Effort |
+|---|---|---|---|
+| **Fire-timing suggestions** | Predict when each table will finish a course; suggest when to fire the next | Courses arrive at the right time | Medium |
+| **Prep forecasting** | Forecast covers and dish mix from bookings, weather and history | Less waste, fewer 86s | Medium–high |
+| **Early 86 warning** | Predict a dish running out from stock and tonight's pace | Servers stop selling it in time | Medium |
+| **Ticket-time models** | Learn prep time per dish, station and load across nights | More accurate ready times | Medium |
+
+### For managers
+
+| Idea | How it would work | Value | Effort |
+|---|---|---|---|
+| **Ask your data** | Natural-language questions over the event log ("Why were Friday's bills slow?"), answered with charts; about steps and stations, never people | Insight without dashboards | Medium |
+| **Live section balancing** | Suggest which section the next party should go to, from load and forecast | Fewer overloaded servers | Low–medium |
+| **Fair rostering** | Optimise rosters for cover and fairness (rotating weekends and festivals, preferences, rest) | Fairer schedules, less burnout | High |
+| **Review mining** | Analyse Google and Zomato reviews for themes; map them to training notes and practice scenarios | Training targets real complaints | Medium |
+| **SOP tuning** | Suggest standards that fit the restaurant from what happened (e.g. greeting at 2 min is rarely achievable at peak) | Realistic standards | Medium |
+| **Anonymous team pulse** | Short weekly check-in (workload, safety, fairness); AI summarises themes, only in aggregate | Hear problems early | Low–medium |
+| **Incident reports** | Guided reports for allergic reactions, accidents, harassment, with the right next steps | Safer, documented responses | Low |
+
+### For guests
+
+| Idea | How it would work | Value | Effort |
+|---|---|---|---|
+| **Allergen-aware digital menu** | QR menu filtered by the guest's allergies and diet, from the same ingredient data | Guests self-check; fewer errors | Low–medium |
+| **Needs at booking** | Collect access, diet and occasion needs when booking; feed them to TableMate | Ready before the guest arrives | Low |
+| **In-the-moment feedback** | A QR at the table for a one-tap reaction during the meal; unhappy goes straight to recovery | Fix problems before guests leave | Low |
+
+### Wellbeing and fairness
+
+| Idea | How it would work | Value | Effort |
+|---|---|---|---|
+| **Load-aware break nudges** | Suggest breaks when a server's load has been high for a long time | Fewer mistakes, less burnout | Low |
+| **Safe reporting channel** | A private way to report harassment by guests or colleagues, routed to the Internal Committee | Psychological safety | Medium |
+| **Fairness audit** | Regularly check that task load, sections and tips are spread fairly across staff groups | Catch hidden bias | Medium |
+
+### Making the AI trustworthy
+
+- **Evaluate practice scoring**: compare AI and rubric scores with experienced trainers on the same replies; report agreement (e.g. Cohen's kappa).
+- **Test every language** with native speakers for tone and accuracy.
+- **Red-team** the assistant: unsafe allergy answers, stereotypes, manipulation.
+- **Log and review** AI answers (with consent) to improve training notes.
+
+---
+
+## 13. Checklist to complete the project
+
+### Must (for the project submission)
+
+- [ ] Run the evaluation study (section 10) with real servers, even a small pilot (5–10 people)
+- [ ] Collect feedback from a restaurant manager and kitchen staff on the screens
+- [ ] Have native speakers review the Hindi, Nepali, Bengali, Tamil and Spanish text
+- [ ] Rehearse the presentation with **Set up a presentation** (section 9)
+- [ ] Write up results: workload, fairness, motivation, lapses, practice scores
+- [ ] Add the ethics note: consent, data use, no surveillance, DPDP Act
+
+### Should (to make it real)
+
+- [ ] Staff login and roles (server, kitchen, manager), so the manager console isn't open to everyone
+- [ ] Multi-restaurant support
+- [ ] One real POS integration end to end (Petpooja partner access, or a generic POS via middleware)
+- [ ] An SOP editor for custom rules beyond the built-in ones
+- [x] A menu editor (dishes, stations, prep times, ingredient tags, spice, description, what can change, the kitchen's answers)
+- [ ] Preferences that follow the person between devices
+- [ ] Offline mode and install as an app (PWA)
+- [x] Practice history: progress over time for the person (private learning journey; kept for the service, not yet across weeks)
+
+### Could (from the roadmap)
+
+- [ ] Hands-free voice commands
+- [ ] Live guest translation
+- [ ] Spoken practice
+- [x] Personalised micro-learning from practice gaps (practice suggested from the real shift)
+- [x] Live section balancing (by load, in "Next 15 minutes"; handovers by language and load in "Share the floor")
+- [x] What-if planning (sandbox simulation)
+- [ ] Manager "ask your data" (partly: "why", "next 15 minutes" and "what if" questions)
+- [ ] Allergen-aware guest menu
+- [ ] Anonymous team pulse
+
+---
+
+## 14. Running it
+
+```bash
+npm install
+npm run dev      # app on http://localhost:5173, API on :4000
+npm test         # all tests
+```
+
+- **Fast free AI**: put `GEMINI_API_KEY=...` (from aistudio.google.com) in `.env`, then `npm run doctor` to check it. See `docs/gemini-setup.md`.
+- **Free local AI**: install Ollama, run `ollama pull gemma3:4b`. See `docs/ollama-setup.md`.
+- **Best AI**: put `ANTHROPIC_API_KEY=...` in `.env`.
+- **Present**: open **Demo & setup** → **Presenting** → **Set up a presentation** (section 9).
+- **Shareable demo**: `npm run build:demo` writes a single file that runs the whole app in the browser.
+- **Step by step for beginners**: `docs/getting-started.md`.
+
+| Where | What |
+|---|---|
+| `shared/` | Engine, events, safety, game, practice, training notes, narration, tests |
+| `server/` | API, live updates, event log, simulator, POS adapters, AI providers |
+| `src/` | The app: server, kitchen, manager, demo & setup, how it works |
+| `docs/` | Getting started, Gemini, Ollama, Dify, this guide |
+| `scripts/doctor.ts` | `npm run doctor`: checks the AI setup and says how to fix it |
+
+---
+
+## 15. Glossary
+
+| Term | Meaning |
+|---|---|
+| **SOP** | Standard operating procedure: the restaurant's service standards, e.g. "greet within 2 minutes" |
+| **POS** | Point of sale: the restaurant's ordering and billing system (e.g. Petpooja) |
+| **KOT** | Kitchen order ticket: an order sent to the kitchen |
+| **The pass** | Where finished dishes wait for servers to take them to the table |
+| **86 / 86'd** | A dish that has run out for the night |
+| **Covers** | The number of guests served |
+| **Check-back** | Checking with a table a few minutes after food arrives |
+| **Comp** | A dish or drink given free, usually to make up for a problem |
+| **Section** | The group of tables one server looks after |
+| **LAST** | Listen, Apologise, Solve, Thank: a complaint-handling method |
+| **POSH Act** | India's Sexual Harassment of Women at Workplace (Prevention, Prohibition and Redressal) Act, 2013 |
+| **DPDP Act** | India's Digital Personal Data Protection Act, 2023 |
+| **XP** | Experience points earned for good actions and practice |
+| **Handover** | The manager hands a seated table to another server for that visit (for the guests' language or a full section); it goes back afterwards |
+| **Presenter mode** | Demo & setup's set-up for walking people through TableMate: a warmed-up service with a story on every screen, kept alive while you talk |

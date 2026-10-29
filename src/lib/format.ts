@@ -1,11 +1,32 @@
+import { useEffect, useState } from 'react'
+import { istClock } from '../../shared/time.ts'
+
+/** The real time now, ticking every 10 seconds. Clocks show this, not the (possibly sped-up) demo service time. */
+export function useWallClock(): number {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10_000)
+    return () => clearInterval(id)
+  }, [])
+  return now
+}
+
+/** Wall-clock time in IST (the restaurant's time), e.g. "8:24 pm". */
 export function clock(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return istClock(ms)
 }
 
 /** "1:05" style duration. */
 export function mmss(ms: number): string {
   const s = Math.max(0, Math.round(Math.abs(ms) / 1000))
+  // Past an hour, minutes and seconds stop being readable: "2 h 15 min".
+  if (s >= 3600) return `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/** Minutes since an event, by service time: stays right even when the demo runs sped up. */
+export function minutesAgo(at: number, now: number): number {
+  return Math.max(0, Math.round((now - at) / 60_000))
 }
 
 export function mins(ms: number): string {

@@ -11,6 +11,39 @@ export interface MenuItem {
   prepMin: number
   /** Item id in the restaurant's POS (e.g. Petpooja itemid), used by adapters. */
   posItemId?: string
+  /**
+   * What the dish contains, for the safety check: allergens (nuts, shellfish, gluten, dairy,
+   * fish, egg, soy, sesame) and diet tags (meat, root, alcohol, pork, nonhalal).
+   */
+  contains?: string[]
+  /** How hot: 0 not spicy, 1 mild, 2 medium, 3 hot. Unset = not recorded yet. */
+  spice?: 0 | 1 | 2 | 3
+  /** What the dish is and how it's made, in a sentence or two (what a server would say). */
+  description?: string
+  /** What the kitchen can change on request (less spicy, without onion and garlic…). */
+  adjust?: string
+  /** Answers the kitchen gave to servers' questions, kept so the next one is answered at once. */
+  facts?: DishFact[]
+}
+
+export interface DishFact {
+  q: string
+  a: string
+  at: number
+}
+
+/** A guest's question about a dish that the menu couldn't answer, sent to the kitchen. */
+export interface DishQuestion {
+  id: string
+  at: number
+  from: string
+  text: string
+  menuItemId?: string
+  tableId?: string
+  answer?: string
+  answeredAt?: number
+  by?: string
+  seenAt?: number
 }
 
 export interface Staff {
@@ -18,6 +51,12 @@ export interface Staff {
   name: string
   role: 'server' | 'kitchen' | 'manager'
   color: string
+  /** Optional, chosen by the person (e.g. "they/them"). Shown next to their name to teammates. */
+  pronouns?: string
+  /** Chosen by the person: a small photo (data URL), "icon:<id>" for an illustration, or unset for their initial. */
+  avatar?: string
+  /** Languages they're happy to speak with guests and teammates (see shared/profile.ts). */
+  languages?: string[]
 }
 
 export interface TableDef {
@@ -27,6 +66,8 @@ export interface TableDef {
   section: string
   /** Table identifier in the POS (e.g. Petpooja table_no). */
   posTableId?: string
+  /** Where the table sits in its section, in % of the floor plan (x left→right, y pass→entrance). */
+  pos?: { x: number; y: number }
 }
 
 /** Service standards, in minutes. Every task the copilot raises comes from one of these. */
@@ -50,7 +91,17 @@ export interface RestaurantConfig {
   tables: TableDef[]
   menu: MenuItem[]
   sop: Sop
+  /** What the kitchen should do first, as the restaurant set it (see priority.ts). Missing values use the defaults. */
+  priority?: Partial<import('./priority.ts').PriorityConfig>
+  /** The restaurant's game rules: the practice score that earns XP, and the names and XP steps of the levels. */
+  game?: { practiceMinScore?: number; levels?: { xp: number; title: string }[] }
+  /** First-time guests: 'suggest' shows the manager the best-fitting server (default), 'auto' seats them with that server, 'off' leaves it. */
+  firstVisit?: 'off' | 'suggest' | 'auto'
+  /** Alerts sent out to a webhook (Zapier, n8n…) for WhatsApp, Slack, email or Sheets. */
+  alerts?: { url: string; kinds: AlertKind[] }
 }
+
+export type AlertKind = 'manager' | 'unhappy' | 'sold_out' | 'kitchen' | 'note' | 'kudos'
 
 export type TableStatus =
   | 'available'
@@ -79,14 +130,25 @@ export interface OrderLine {
   delayInformedAt?: number
   unavailableAt?: number
   unavailableInformedAt?: number
+  /** Safety check on this line was handled: kitchen told, or the guest confirmed it is fine. */
+  safetyResolvedAt?: number
+  safetyResolution?: 'kitchen' | 'guest_ok'
+  /** Forecast ready time (station load and tonight's real prep times), filled in snapshots. */
+  etaAt?: number
 }
 
 export interface Party {
   size: number
   guestName?: string
   allergies: string[]
+  /** Accessibility needs and dietary practices, e.g. wheelchair, hearing, vision, highchair, jain, halal, vegan. */
+  needs?: string[]
   occasion?: string
   vip?: boolean
+  /** The language the guests are most at ease in (an id from shared/profile.ts SPOKEN), if they said. */
+  language?: string
+  /** Their first time here (from the booking or POS guest record). TableMate suggests the best-fitting server for the welcome. */
+  firstVisit?: boolean
 }
 
 export interface TableState {
@@ -109,6 +171,13 @@ export interface TableState {
   settledAt?: number
   farewelledAt?: number
   allergyConfirmedAt?: number
+  /** Latest mood the server noted at a check-in, and whether an unhappy table was won back. */
+  mood?: { value: Mood; at: number }
+  recoveredAt?: number
+  managerRequestedAt?: number
+  managerVisitedAt?: number
+  /** The manager handed this visit to another server (by language or load); it goes back after the visit. */
+  handover?: { from: string; at: number; reason?: string }
   lines: OrderLine[]
 }
 
@@ -135,7 +204,10 @@ export interface VisitRecord {
   seatedAt: number
   endedAt: number
   segments: Segment[]
+  firstVisit?: boolean
   smooth: boolean
+  mood?: Mood
+  recovered?: boolean
 }
 
 export type TaskKind =
@@ -151,6 +223,10 @@ export type TaskKind =
   | 'farewell'
   | 'reset'
   | 'kitchen_message'
+  | 'instruction'
+  | 'kitchen_answer'
+  | 'safety_check'
+  | 'recovery'
 
 export interface TaskAction {
   label: string
@@ -158,7 +234,32 @@ export interface TaskAction {
   event: string
   payload: Record<string, unknown>
   primary?: boolean
+  /** Translation key for the label when a card has more than one action. */
+  k?: string
 }
+
+/** Another open task that can be done on the same trip: same table, next door, or also at the pass. */
+export interface RelatedTask {
+  id: string
+  kind: TaskKind
+  tableName: string
+  where: 'same' | 'near' | 'pass'
+  title: string
+  text?: TaskText
+  action: TaskAction
+}
+
+/** Something the copilot expects soon, shown quietly so the server can get ahead of it. */
+export interface Upcoming {
+  id: string
+  kind: 'food_ready' | 'course_end' | 'bill_soon' | 'crunch'
+  tableId: string
+  tableName: string
+  at: number
+  text: TaskText
+}
+
+export type Mood = 'happy' | 'ok' | 'unhappy'
 
 export interface Task {
   id: string
@@ -169,11 +270,31 @@ export interface Task {
   title: string
   hint: string
   checklist?: string[]
+  /** The same text as translation keys, so each device renders it in its own language. */
+  text?: { title: TaskText; hint: TaskText; checklist?: string[] }
   impact: number
   dueAt: number
   createdAt: number
   score: number
+  /** Set when the server put this card off and it has come back: when, and how many times it has been put off. */
+  resurfaced?: { at: number; times: number }
   actions: TaskAction[]
+  /** Who sent it, for notes from a teammate (manager or kitchen). */
+  from?: string
+  /** Filled for the top cards: tasks worth doing on the same trip. */
+  related?: RelatedTask[]
+}
+
+/** A note from the manager to one or more servers; each server acknowledges it on their own card. */
+export interface Instruction {
+  id: string
+  at: number
+  from: string
+  to: string[]
+  text: string
+  tableId?: string
+  /** staffId -> when they tapped "Got it". */
+  acks: Record<string, number>
 }
 
 export interface Note {
@@ -195,3 +316,10 @@ export interface StaffStats {
   bestStreak: number
   avgGreetSec: number | null
 }
+
+/**
+ * Language-neutral task text. `k` is a translation key with params; a param value that
+ * starts with "@" is itself a key (e.g. "@course.main"). `parts` are joined in order;
+ * `raw` is shown as-is (dish names, guest names, kitchen messages).
+ */
+export type TaskText = { k: string; p?: Record<string, string | number> } | { parts: TaskText[]; sep?: string } | { raw: string }

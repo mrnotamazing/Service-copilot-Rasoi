@@ -1,5 +1,10 @@
+import type { FloorInsight } from './floorInsights.ts'
+import type { FeedItem } from './narrate.ts'
+import type { Forecast, LearningPlan, ShiftIntel } from './intel.ts'
 import type { Analytics } from './engine.ts'
-import type { Note, RestaurantConfig, StaffStats, TableState, Task, VisitRecord } from './types.ts'
+import type { CrewView } from './crew.ts'
+import type { PlayerView, teamView } from './game.ts'
+import type { DishQuestion, Instruction, Note, RestaurantConfig, StaffStats, TableState, Task, TaskText, Upcoming, VisitRecord } from './types.ts'
 
 export type Role = 'server' | 'kitchen' | 'manager'
 
@@ -9,15 +14,24 @@ export interface SimStatus {
   intensity: number
   autopilot: string[]
   autoKitchen: boolean
+  autoManager: boolean
+  showcase: boolean
+  /** Presenter mode: the server the presenter plays (their phone keeps its cards), or null. */
+  presenter: string | null
   waiting: number
   startedAt: number | null
 }
 
+export type IntegrationCategory = 'pos' | 'bookings' | 'orders' | 'staff' | 'stock' | 'messaging' | 'reviews' | 'data'
+
 export interface IntegrationStatus {
   id: string
   name: string
+  category: IntegrationCategory
   mode: 'live' | 'needs-partner-access' | 'planned'
   note: string
+  /** What TableMate does with it, in one line. */
+  uses: string
   endpoints: { method: string; path: string; purpose: string }[]
   lastEventAt: number | null
   eventCount: number
@@ -35,11 +49,28 @@ export interface Snapshot {
   unavailable: string[]
   notes: Note[]
   sim: SimStatus
+  /** Where AI answers come from: a connected Dify app, or the built-in writer. */
+  ai: { provider: 'claude' | 'gemini' | 'cloud' | 'ollama' | 'dify' | 'built-in'; model?: string }
+  /** kitchen and manager: this screen's own team game (a streak and support moments, never rankings). */
+  crew?: CrewView
+  /** Shared with everyone: the team goal and kudos. Never individual scores. */
+  team: ReturnType<typeof teamView>
   /** server role: own top tasks and private stats */
-  me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[] }
+  me?: { staffId: string; top: Task[]; queued: number; stats: StaffStats | null; myVisits: VisitRecord[]; game: PlayerView | null; upcoming: Upcoming[]; tasks: Task[]; why?: TaskText[]; learning?: LearningPlan }
   /** manager role: process analytics, no per-person stats */
   analytics?: Analytics
+  /** manager role: why tonight is going the way it is, and what the next 15 minutes look like. */
+  intel?: ShiftIntel
+  forecast?: Forecast
+  /** Manager only: suggested moves and nudges to share the load (load and language, never rankings). */
+  insights?: FloorInsight[]
   integrations?: IntegrationStatus[]
   /** manager/kitchen: how many open cards each server has (load, not performance) */
   openTasks?: Record<string, number>
+  /** kitchen and manager: guests' dish questions sent to the kitchen, newest first. */
+  questions?: DishQuestion[]
+  /** manager and kitchen: team notes, newest first, with who has seen each. */
+  instructions?: Instruction[]
+  /** Manager / demo control: what's been happening, in plain words (newest last). */
+  feed?: FeedItem[]
 }

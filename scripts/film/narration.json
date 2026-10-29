@@ -1,0 +1,116 @@
+{
+  "voice": "JBFqnCBsd6RMkjVDRZzb",
+  "model": "eleven_multilingual_v2",
+  "scenes": [
+    {
+      "id": "open",
+      "ms": 5300,
+      "say": "Introducing TableMate, your calm partner for the busiest nights.",
+      "sfx": {
+        "text": "soft warm restaurant ambience, distant murmur of diners, one gentle cutlery chime",
+        "at": 0,
+        "seconds": 4,
+        "gain": 0.5
+      }
+    },
+    {
+      "id": "pressure",
+      "ms": 12900,
+      "say": "Imagine a Saturday night. The restaurant is full, and service has to be just right. Six tables, six different types of needs, and one server is expected to remember it all.",
+      "sfx": {
+        "text": "busy restaurant kitchen clatter, pans and plates, quick and rhythmic, short",
+        "at": 0,
+        "seconds": 5,
+        "gain": 0.45
+      }
+    },
+    {
+      "id": "slip",
+      "ms": 6400,
+      "say": "When service slips, the server often takes the blame, even when the delay was never theirs.",
+      "sfx": {
+        "text": "a single wine glass clink followed by a soft comedic oops slide-down tone",
+        "at": 2200,
+        "seconds": 2,
+        "gain": 0.6
+      }
+    },
+    {
+      "id": "next3",
+      "ms": 9900,
+      "say": "Meet TableMate, an AI copilot that turns the chaos into clarity. It gives every server their next three moves right when they need them.",
+      "sfx": {
+        "text": "three soft gentle notification chimes ascending, clean and friendly",
+        "at": 1400,
+        "seconds": 3,
+        "gain": 0.55
+      }
+    },
+    {
+      "id": "safety",
+      "ms": 7650,
+      "say": "An allergy flagged, TableMate gets the right information to the kitchen, fast, because some steps can never be missed.",
+      "sfx": {
+        "text": "soft alert ping then a reassuring success chime",
+        "at": 1800,
+        "seconds": 2.5,
+        "gain": 0.55
+      }
+    },
+    {
+      "id": "fair",
+      "ms": 8800,
+      "say": "And when delays happen, it follows the timeline. Was it the kitchen, the handoff, or the floor? Better evidence means better decisions.",
+      "sfx": {
+        "text": "soft airy whoosh transition, gentle",
+        "at": 400,
+        "seconds": 1.5,
+        "gain": 0.5
+      }
+    },
+    {
+      "id": "manager",
+      "ms": 8650,
+      "say": "Managers see where help is needed, not who to blame. No individual leaderboard, just a team working better together.",
+      "sfx": {
+        "text": "soft digital ding with a gentle shimmer",
+        "at": 1200,
+        "seconds": 2,
+        "gain": 0.5
+      }
+    },
+    {
+      "id": "practice",
+      "ms": 9200,
+      "say": "Difficult guest, tough conversation, servers can practise privately, learn from feedback, and build confidence before the next real shift,",
+      "sfx": {
+        "text": "two soft chat message pops, one sent one received",
+        "at": 1500,
+        "seconds": 2,
+        "gain": 0.55
+      }
+    },
+    {
+      "id": "everyone",
+      "ms": 8000,
+      "say": "in their language, at their pace, with tools designed to support different needs, not another layer of stress.",
+      "sfx": {
+        "text": "warm friendly chime, bright and short",
+        "at": 600,
+        "seconds": 1.5,
+        "gain": 0.5
+      }
+    },
+    {
+      "id": "close",
+      "ms": 9800,
+      "say": "TableMate: quick, correct, and together. Better service for guests, better support for the people who make it happen.",
+      "sfx": {
+        "text": "gentle bell sparkle resolving on a warm major chord",
+        "at": 1200,
+        "seconds": 3.5,
+        "gain": 0.6
+      }
+    }
+  ]
+}

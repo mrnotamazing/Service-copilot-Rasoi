@@ -6,8 +6,12 @@
 // and lets the server rebuild state by replaying the event log.
 
 import type { CopilotEvent } from './events.ts'
-import type {
+import { isNear, minutesUntil, predictReady, type Running } from './predict.ts'
+import { safetyIssues } from './safety.ts'
+import { languageName, SPOKEN } from './profile.ts'
+import type { DishQuestion, Instruction,
   Course,
+  TaskText,
   MenuItem,
   Note,
   OrderLine,
@@ -31,15 +35,22 @@ export interface EngineState {
   tables: Record<string, TableState>
   unavailable: Record<string, number> // menuItemId -> since
   notes: Note[]
+  instructions: Instruction[]
+  questions: DishQuestion[]
   snoozes: Record<string, number> // taskId -> snoozed until
+  /** How many times each task has been put off, so one that keeps coming back climbs the list. */
+  snoozeCount: Record<string, number>
   visits: VisitRecord[]
   eventCount: number
+  /** Tonight's real prep minutes per dish and eating minutes per course, for forecasts. */
+  prepStats: Record<string, Running>
+  eatStats: Record<string, Running>
 }
 
 export function initialState(config: RestaurantConfig): EngineState {
   const tables: Record<string, TableState> = {}
   for (const t of config.tables) tables[t.id] = emptyTable(t.id, config)
-  return { tables, unavailable: {}, notes: [], snoozes: {}, visits: [], eventCount: 0 }
+  return { tables, unavailable: {}, notes: [], instructions: [], questions: [], snoozes: {}, snoozeCount: {}, visits: [], eventCount: 0, prepStats: {}, eatStats: {} }
 }
 
 function emptyTable(id: string, config: RestaurantConfig, keepServer?: string): TableState {
@@ -72,6 +83,13 @@ function touch(t: TableState, at: number) {
   t.lastAttentionAt = at
 }
 
+function addRun(stats: Record<string, Running>, key: string, minutes: number) {
+  if (!(minutes > 0) || minutes > 120) return
+  const r = (stats[key] ??= { n: 0, sumMin: 0 })
+  r.n++
+  r.sumMin += minutes
+}
+
 /** Applies one event to the state (mutates and returns it). Unknown tables/lines are ignored. */
 export function applyEvent(state: EngineState, ev: CopilotEvent, config: RestaurantConfig): EngineState {
   state.eventCount++
@@ -89,12 +107,31 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       t.visitId = `${t.id}@${at}`
       t.seatedAt = at
       t.lastAttentionAt = at
-      t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], occasion: p.occasion, vip: p.vip }
+      t.party = { size: p.partySize, guestName: p.guestName, allergies: p.allergies ?? [], needs: p.needs ?? [], occasion: p.occasion, vip: p.vip, language: p.language, firstVisit: p.firstVisit }
+      break
+    }
+    case 'party.updated': {
+      const t = table(ev.payload.tableId)
+      if (!t?.party) break
+      const clean = (xs: unknown) => (Array.isArray(xs) ? [...new Set(xs.filter((x): x is string => typeof x === 'string' && x.length > 0 && x.length < 30).map((x) => x.toLowerCase()))] : undefined)
+      const allergies = clean(ev.payload.allergies)
+      const needs = clean(ev.payload.needs)
+      if (allergies) t.party.allergies = allergies
+      if (needs) t.party.needs = needs
+      // A new allergy means the kitchen must hear about it again.
+      if (allergies?.length) t.allergyConfirmedAt = undefined
+      touch(t, at)
       break
     }
     case 'table.assigned': {
       const t = table(ev.payload.tableId)
-      if (t) t.serverId = ev.payload.serverId
+      if (!t || !ev.payload.serverId || t.serverId === ev.payload.serverId) break
+      // During a visit it's a handover for this party only; on a free table it's a lasting change.
+      if (t.visitId) {
+        const home = t.handover?.from ?? t.serverId
+        t.handover = home === ev.payload.serverId ? undefined : { from: home, at, reason: ev.payload.reason }
+      }
+      t.serverId = ev.payload.serverId
       break
     }
     case 'server.greeted': {
@@ -141,6 +178,7 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
           if (l.status === 'fired' && (ids.has(l.id) || (ev.payload.ticketId && l.ticketId === ev.payload.ticketId))) {
             l.status = 'ready'
             l.readyAt = at
+            addRun(state.prepStats, l.menuItemId, (at - l.firedAt) / MIN)
           }
       break
     }
@@ -187,6 +225,11 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       const t = table(ev.payload.tableId)
       if (t) {
         t.checkbacks[ev.payload.course] = at
+        if (ev.payload.mood) {
+          t.mood = { value: ev.payload.mood, at }
+          // A new unhappy check-in reopens recovery even if an earlier issue was sorted.
+          if (ev.payload.mood === 'unhappy') t.recoveredAt = undefined
+        }
         touch(t, at)
       }
       break
@@ -194,9 +237,46 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
     case 'course.cleared': {
       const t = table(ev.payload.tableId)
       if (t) {
+        const served = t.lines.filter((l) => l.course === ev.payload.course && l.servedAt).map((l) => l.servedAt!)
+        if (served.length && !t.courseClearedAt[ev.payload.course]) addRun(state.eatStats, ev.payload.course, (at - Math.max(...served)) / MIN)
         t.courseClearedAt[ev.payload.course] = at
         touch(t, at)
       }
+      break
+    }
+    case 'safety.resolved': {
+      const t = table(ev.payload.tableId)
+      if (!t) break
+      const fixed = t.lines.filter((l) => ev.payload.lineIds.includes(l.id) && !l.safetyResolvedAt)
+      for (const l of fixed) {
+        l.safetyResolvedAt = at
+        l.safetyResolution = ev.payload.resolution
+      }
+      touch(t, at)
+      if (ev.payload.resolution === 'kitchen' && fixed.length)
+        state.notes.push({
+          id: `safety_${fixed[0].id}`,
+          at,
+          direction: 'to_kitchen',
+          tableId: t.id,
+          text: `SAFETY ${t.name}: ${fixed
+            .map((l) => `${l.name} (${safetyIssues(menuById(config, l.menuItemId), t.party).map((i) => `${i.tag}, ${i.because}`).join('; ')})`)
+            .join(', ')}. Please adapt or tell me.`,
+          from: t.serverId,
+        })
+      break
+    }
+    case 'guest.recovered': {
+      const t = table(ev.payload.tableId)
+      if (!t) break
+      t.recoveredAt = at
+      if (ev.payload.how === 'manager') t.managerRequestedAt = at
+      touch(t, at)
+      break
+    }
+    case 'manager.visited': {
+      const t = table(ev.payload.tableId)
+      if (t) t.managerVisitedAt = at
       break
     }
     case 'allergy.confirmed': {
@@ -205,7 +285,7 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
       t.allergyConfirmedAt = at
       touch(t, at)
       state.notes.push({
-        id: `allergy_${t.visitId}`,
+        id: `allergy_${t.visitId}_${at}`,
         at,
         direction: 'to_kitchen',
         tableId: t.id,
@@ -258,12 +338,40 @@ export function applyEvent(state: EngineState, ev: CopilotEvent, config: Restaur
     }
     case 'task.snoozed': {
       state.snoozes[ev.payload.taskId] = at + ev.payload.minutes * MIN
+      state.snoozeCount[ev.payload.taskId] = (state.snoozeCount[ev.payload.taskId] ?? 0) + 1
       break
     }
     case 'note.sent': {
       const p = ev.payload
       state.notes.push({ id: p.noteId, at, direction: p.direction, tableId: p.tableId, text: p.text, from: p.from })
       if (state.notes.length > 200) state.notes.splice(0, state.notes.length - 200)
+      break
+    }
+    case 'dish.question': {
+      const p = ev.payload
+      state.questions.push({ id: p.questionId, at, from: p.from, text: p.text, menuItemId: p.menuItemId, tableId: p.tableId })
+      if (state.questions.length > 100) state.questions.splice(0, state.questions.length - 100)
+      break
+    }
+    case 'dish.answered': {
+      const q = state.questions.find((x) => x.id === ev.payload.questionId)
+      if (q && !q.answer) Object.assign(q, { answer: ev.payload.answer, answeredAt: at, by: ev.payload.by })
+      break
+    }
+    case 'dish.answer_seen': {
+      const q = state.questions.find((x) => x.id === ev.payload.questionId)
+      if (q) q.seenAt ??= at
+      break
+    }
+    case 'manager.instruction': {
+      const p = ev.payload
+      state.instructions.push({ id: p.instructionId, at, from: p.from, to: p.to, text: p.text, tableId: p.tableId, acks: {} })
+      if (state.instructions.length > 100) state.instructions.splice(0, state.instructions.length - 100)
+      break
+    }
+    case 'instruction.acked': {
+      const i = state.instructions.find((x) => x.id === ev.payload.instructionId)
+      if (i && i.to.includes(ev.payload.staffId)) i.acks[ev.payload.staffId] ??= at
       break
     }
     case 'note.acked': {
@@ -283,13 +391,16 @@ function closeVisit(state: EngineState, t: TableState, config: RestaurantConfig,
     tableName: t.name,
     serverId: t.serverId,
     partySize: t.party?.size ?? 0,
+    firstVisit: t.party?.firstVisit,
     seatedAt: t.seatedAt ?? at,
     endedAt: at,
     segments,
     smooth: segments.every((s) => s.owner !== 'floor' || !s.lapse),
+    mood: t.mood?.value,
+    recovered: t.mood?.value === 'unhappy' ? !!t.recoveredAt : undefined,
   })
   if (state.visits.length > 500) state.visits.splice(0, state.visits.length - 500)
-  state.tables[t.id] = emptyTable(t.id, config, t.serverId)
+  state.tables[t.id] = emptyTable(t.id, config, t.handover?.from ?? t.serverId)
 }
 
 // ---------------------------------------------------------------------------
@@ -351,6 +462,39 @@ function alternativesFor(state: EngineState, config: RestaurantConfig, line: Ord
     .map((m) => m.name)
 }
 
+const NEED_WORDS: Record<string, string> = {
+  wheelchair: 'wheelchair user',
+  hearing: 'hard of hearing',
+  vision: 'low vision',
+  highchair: 'high chair needed',
+  jain: 'Jain',
+  halal: 'halal',
+  vegan: 'vegan',
+  quiet: 'prefers a quiet table',
+  service_animal: 'assistance animal',
+  no_beef: 'no beef',
+  no_pork: 'no pork',
+  fasting: 'fasting',
+}
+
+/** The party as translatable parts: size, name, regular, occasion, allergies, needs. */
+function partyText(t: TableState): TaskText[] {
+  const p = t.party
+  if (!p) return []
+  const out: TaskText[] = []
+  if (p.size) out.push({ k: 'party.of', p: { n: p.size } })
+  if (p.guestName) out.push({ raw: p.guestName })
+  if (p.vip) out.push({ k: 'party.regular' })
+  if (p.occasion) out.push({ k: `occ.${p.occasion}` })
+  if (p.allergies.length) out.push({ k: 'party.allergy', p: { list: p.allergies.join(', ') } })
+  for (const n of p.needs ?? []) out.push({ k: `need.${n}` })
+  if (p.language && p.language !== 'en') out.push({ k: 'party.speaks', p: { lang: SPOKEN.find((l) => l.id === p.language)?.native ?? p.language } })
+  return out
+}
+
+const raw = (s: string): TaskText => ({ raw: s })
+const k = (key: string, p?: Record<string, string | number>): TaskText => ({ k: key, p })
+
 function describeParty(t: TableState): string {
   const p = t.party
   if (!p) return ''
@@ -359,6 +503,8 @@ function describeParty(t: TableState): string {
   if (p.vip) bits.push('regular guest')
   if (p.occasion) bits.push(p.occasion)
   if (p.allergies.length) bits.push(`allergy: ${p.allergies.join(', ')}`)
+  for (const n of p.needs ?? []) bits.push(NEED_WORDS[n] ?? n)
+  if (p.language && p.language !== 'en') bits.push(`prefers ${languageName(p.language)}`)
   return bits.filter(Boolean).join(' · ')
 }
 
@@ -377,7 +523,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
     const add = (
       kind: TaskKind,
       suffix: string,
-      o: { title: string; hint: string; impact: number; dueAt: number; createdAt: number; actions: TaskAction[]; checklist?: string[]; staffId?: string },
+      o: { title: string; hint: string; impact: number; dueAt: number; createdAt: number; actions: TaskAction[]; checklist?: string[]; staffId?: string; text?: Task['text'] },
     ) => {
       const staffId = o.staffId ?? t.serverId
       tasks.push({
@@ -389,6 +535,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         title: o.title,
         hint: o.hint,
         checklist: o.checklist,
+        text: o.text,
         impact: o.impact,
         dueAt: o.dueAt,
         createdAt: o.createdAt,
@@ -403,6 +550,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('greet', '', {
         title: `Welcome ${t.name}`,
         hint: [describeParty(t), 'Water, menus, today’s specials'].filter(Boolean).join(' · '),
+        text: { title: k('t.greet', { table: t.name }), hint: { parts: [...partyText(t), k('h.greet')] } },
         impact: t.party?.vip ? 4 : 3,
         createdAt: t.seatedAt,
         dueAt: t.seatedAt + sop.greetWithinMin * MIN,
@@ -416,6 +564,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         add('take_order', '', {
           title: `${t.name} may be ready to order`,
           hint: 'Menus have been down a while. Offer recommendations if they’re undecided.',
+          text: { title: k('t.take_order', { table: t.name }), hint: k('h.take_order') },
           impact: 2,
           createdAt: due - 2 * MIN,
           dueAt: due,
@@ -428,10 +577,55 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('allergy', '', {
         title: `Flag ${t.name}’s allergy to the kitchen`,
         hint: `${t.party.allergies.join(', ')}: one tap sends it to the pass and confirms it on the ticket.`,
+        text: { title: k('t.allergy', { table: t.name }), hint: k('h.allergy', { list: t.party.allergies.join(', ') }) },
         impact: 5,
         createdAt: t.firstOrderAt,
         dueAt: t.firstOrderAt + 1 * MIN,
         actions: [{ label: 'Send to kitchen', event: 'allergy.confirmed', payload: { tableId: t.id }, primary: true }],
+      })
+
+    // Safety: a dish on the order clashes with a declared allergy or diet. Highest priority.
+    const unsafe = lines
+      .filter((l) => l.status !== 'served' && l.status !== 'unavailable' && !l.safetyResolvedAt)
+      .map((l) => ({ l, issues: safetyIssues(menuById(config, l.menuItemId), t.party) }))
+      .filter((x) => x.issues.length)
+    if (unsafe.length) {
+      const since = Math.min(...unsafe.map((x) => x.l.firedAt))
+      const say = (x: (typeof unsafe)[number]) => `${x.l.name} has ${x.issues.map((i) => `${i.tag} (${i.because === 'allergy' ? 'allergy' : i.because})`).join(', ')}`
+      const lineIds = unsafe.map((x) => x.l.id)
+      add('safety_check', lineIds.join(','), {
+        title: `Check ${t.name}’s order before it’s cooked`,
+        hint: unsafe.map(say).join('; '),
+        text: {
+          title: k('t.safety', { table: t.name }),
+          hint: {
+            sep: '; ',
+            parts: unsafe.flatMap((x) => x.issues.map((i) => k('h.safety_line', { dish: x.l.name, tag: `@tag.${i.tag}`, who: `@diet.${i.because}` }))),
+          },
+        },
+        impact: 6,
+        createdAt: since,
+        dueAt: since + 1 * MIN,
+        actions: [
+          { label: 'Tell the kitchen', k: 'action.safety_kitchen', event: 'safety.resolved', payload: { tableId: t.id, lineIds, resolution: 'kitchen' }, primary: true },
+          { label: 'Guest says it’s fine', k: 'action.safety_ok', event: 'safety.resolved', payload: { tableId: t.id, lineIds, resolution: 'guest_ok' } },
+        ],
+      })
+    }
+
+    // An unhappy table: help the server win them back, fast.
+    if (t.mood?.value === 'unhappy' && !t.recoveredAt)
+      add('recovery', String(t.mood.at), {
+        title: `${t.name} isn’t happy: make it right`,
+        hint: 'Listen, say sorry, fix it fast. A replacement dish, something on the house or a manager visit often wins guests back.',
+        text: { title: k('t.recovery', { table: t.name }), hint: k('h.recovery') },
+        impact: 5,
+        createdAt: t.mood.at,
+        dueAt: t.mood.at + 2 * MIN,
+        actions: [
+          { label: 'Sorted', k: 'action.recovery_fixed', event: 'guest.recovered', payload: { tableId: t.id, how: 'fixed' }, primary: true },
+          { label: 'Ask the manager', k: 'action.recovery_manager', event: 'guest.recovered', payload: { tableId: t.id, how: 'manager' } },
+        ],
       })
 
     // Unavailable items the guest still expects.
@@ -442,6 +636,10 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('unavailable', off.map((l) => l.id).join(','), {
         title: `${off.map((l) => l.name).join(', ')} is off: tell ${t.name}`,
         hint: alts.length ? `Suggest instead: ${alts.join(' or ')}` : 'Offer the guest a choice from the menu.',
+        text: {
+          title: k('t.unavailable', { dishes: off.map((l) => l.name).join(', '), table: t.name }),
+          hint: alts.length ? k('h.unavailable', { alts: alts.join(' / ') }) : k('h.unavailable_none'),
+        },
         impact: 5,
         createdAt: since,
         dueAt: since + 1 * MIN,
@@ -453,13 +651,25 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
     const tickets = new Map<string, OrderLine[]>()
     for (const l of lines) tickets.set(l.ticketId, [...(tickets.get(l.ticketId) ?? []), l])
     for (const [ticketId, tl] of tickets) {
-      const late = tl.filter((l) => l.status === 'fired' && !l.delayInformedAt && now > l.expectedReadyAt + sop.kitchenDelayToleranceMin * MIN)
+      const tol = sop.kitchenDelayToleranceMin * MIN
+      // Late now, or forecast to be late given how busy the station is: warn early, with a real number.
+      const forecast = new Map(tl.filter((l) => l.status === 'fired').map((l) => [l.id, predictReady(state, config, l, now)]))
+      const late = tl.filter(
+        (l) => l.status === 'fired' && !l.delayInformedAt && (now > l.expectedReadyAt + tol || (forecast.get(l.id)! > l.expectedReadyAt + tol && now >= l.firedAt + (l.expectedReadyAt - l.firedAt) * 0.4)),
+      )
       if (!late.length) continue
-      const over = Math.max(...late.map((l) => now - l.expectedReadyAt))
-      const appear = Math.min(...late.map((l) => l.expectedReadyAt)) + sop.kitchenDelayToleranceMin * MIN
+      const eta = Math.max(...late.map((l) => forecast.get(l.id)!))
+      const overdue = late.some((l) => now > l.expectedReadyAt + tol)
+      const over = overdue ? Math.max(...late.map((l) => now - l.expectedReadyAt)) : Math.max(...late.map((l) => eta - l.expectedReadyAt))
+      const appear = Math.min(...late.map((l) => (now > l.expectedReadyAt + tol ? l.expectedReadyAt + tol : l.firedAt + (l.expectedReadyAt - l.firedAt) * 0.4)))
+      const etaMin = minutesUntil(eta, now)
       add('kitchen_delay', ticketId, {
-        title: `${t.name} ${late[0].course}s running ${minutes(over)} late`,
-        hint: `Kitchen is behind on ${late.map((l) => l.name).join(', ')}. A heads-up now beats an apology later.`,
+        title: overdue ? `${t.name} ${late[0].course}s running ${minutes(over)} late` : `${t.name} ${late[0].course}s likely ${minutes(over)} late`,
+        hint: `Kitchen is behind on ${late.map((l) => l.name).join(', ')}. Ready in about ${etaMin} min. A heads-up now beats an apology later.`,
+        text: {
+          title: k(overdue ? 't.kitchen_delay' : 't.kitchen_delay_soon', { table: t.name, course: `@course.${late[0].course}`, min: Math.max(1, Math.round(over / MIN)) }),
+          hint: k('h.kitchen_delay_eta', { dishes: late.map((l) => l.name).join(', '), eta: etaMin }),
+        },
         impact: 4,
         createdAt: appear,
         dueAt: appear + 1 * MIN,
@@ -474,6 +684,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('pickup', ready.map((l) => l.id).join(','), {
         title: `Pick up ${t.name} ${ready[0].course}s from the pass`,
         hint: ready.map((l) => `${l.qty}× ${l.name}`).join(', '),
+        text: { title: k('t.pickup', { table: t.name, course: `@course.${ready[0].course}` }), hint: raw(ready.map((l) => `${l.qty}× ${l.name}`).join(', ')) },
         impact: 4,
         createdAt: readyAt,
         dueAt: readyAt + sop.pickupWithinMin * MIN,
@@ -491,10 +702,16 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         add('checkback', course, {
           title: `Check in on ${t.name}’s ${course}s`,
           hint: 'A quick “how is everything?”. Catch issues while they can still be fixed.',
+          text: { title: k('t.checkback', { table: t.name, course: `@course.${course}` }), hint: k('h.checkback') },
           impact: 2,
           createdAt: checkAt,
           dueAt: checkAt + 2 * MIN,
-          actions: [{ label: 'Checked in', event: 'server.checkback', payload: { tableId: t.id, course }, primary: true }],
+          // The check-in doubles as a quick mood read: one tap records how the table is feeling.
+          actions: [
+            { label: 'Happy', k: 'action.mood_happy', event: 'server.checkback', payload: { tableId: t.id, course, mood: 'happy' }, primary: true },
+            { label: 'Okay', k: 'action.mood_ok', event: 'server.checkback', payload: { tableId: t.id, course, mood: 'ok' } },
+            { label: 'Not happy', k: 'action.mood_unhappy', event: 'server.checkback', payload: { tableId: t.id, course, mood: 'unhappy' } },
+          ],
         })
       const clearAt = servedAt + sop.courseCheckAfterMin * MIN
       if (now >= clearAt - 1 * MIN && !t.billRequestedAt) {
@@ -502,6 +719,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         add('clear_course', course, {
           title: `${t.name} done with ${course}s? Clear & ${next}`,
           hint: 'Clear once the whole table has finished.',
+          text: { title: k('t.clear_course', { table: t.name, course: `@course.${course}`, next: `@next.${course}` }), hint: k('h.clear_course') },
           impact: 2,
           createdAt: clearAt - 1 * MIN,
           dueAt: clearAt + 2 * MIN,
@@ -515,6 +733,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       add('present_bill', '', {
         title: `${t.name} asked for the bill`,
         hint: 'Bill is printed. Present it and check how the evening went.',
+        text: { title: k('t.present_bill', { table: t.name }), hint: k('h.present_bill') },
         impact: 4,
         createdAt: t.billRequestedAt,
         dueAt: t.billRequestedAt + sop.billPresentWithinMin * MIN,
@@ -527,6 +746,10 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         title: `Say goodbye to ${t.name}`,
         hint: [t.party?.guestName ? `Thank ${t.party.guestName}` : 'Thank them', t.party?.occasion ? `wish them a happy ${t.party.occasion}` : 'invite them back']
           .join(', '),
+        text: {
+          title: k('t.farewell', { table: t.name }),
+          hint: { sep: ', ', parts: [t.party?.guestName ? k('h.farewell_thank', { name: t.party.guestName }) : k('h.farewell_thank_them'), t.party?.occasion ? k('h.farewell_occasion', { occasion: `@occ.${t.party.occasion}` }) : k('h.farewell_back')] },
+        },
         impact: 3,
         createdAt: t.settledAt,
         dueAt: t.settledAt + sop.farewellWithinMin * MIN,
@@ -543,6 +766,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         createdAt: start,
         dueAt: t.settledAt + sop.resetWithinMin * MIN,
         checklist: RESET_CHECKLIST,
+        text: { title: k('t.reset', { table: t.name }), hint: k(available <= 1 ? 'h.reset_waiting' : 'h.reset'), checklist: ['reset.c1', 'reset.c2', 'reset.c3', 'reset.c4', 'reset.c5'] },
         actions: [{ label: 'Table ready', event: 'table.reset', payload: { tableId: t.id }, primary: true }],
       })
     }
@@ -563,6 +787,7 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
         staffId,
         title: `Kitchen: ${n.text}`,
         hint: t ? `About ${t.name}` : 'For the whole floor',
+        text: { title: { parts: [k('t.kitchen_message'), raw(n.text)], sep: ' ' }, hint: t ? k('h.kitchen_about', { table: t.name }) : k('h.kitchen_all') },
         impact: 4,
         createdAt: n.at,
         dueAt: n.at + 1 * MIN,
@@ -571,8 +796,57 @@ export function deriveTasks(state: EngineState, config: RestaurantConfig, now: n
       })
   }
 
+  // The kitchen's answer to a guest's dish question, back to the server who asked.
+  for (const q of state.questions) {
+    if (!q.answer || q.seenAt || !servers.some((s) => s.id === q.from)) continue
+    const t = q.tableId ? state.tables[q.tableId] : undefined
+    tasks.push({
+      id: `kitchen_answer:${q.id}`,
+      kind: 'kitchen_answer',
+      tableId: t?.id ?? '',
+      tableName: t?.name ?? 'All',
+      staffId: q.from,
+      title: `Kitchen answered: ${q.answer}`,
+      hint: `You asked: ${q.text}`,
+      text: { title: { parts: [k('t.kitchen_answer'), raw(q.answer)], sep: ' ' }, hint: k('h.kitchen_answer', { q: q.text }) },
+      impact: 4,
+      createdAt: q.answeredAt!,
+      dueAt: q.answeredAt! + 1 * MIN,
+      score: 0,
+      actions: [{ label: 'Got it', event: 'dish.answer_seen', payload: { questionId: q.id }, primary: true }],
+    })
+  }
+
+  // Team notes (from the manager or the kitchen): one card per server it was sent to, until they've seen it.
+  for (const i of state.instructions) {
+    const t = i.tableId ? state.tables[i.tableId] : undefined
+    const who = config.staff.find((s) => s.id === i.from)?.name ?? 'The manager'
+    for (const staffId of i.to) {
+      // Servers get a card; the manager and the kitchen see their notes on their own screens.
+      if (i.acks[staffId] || !servers.some((s) => s.id === staffId)) continue
+      tasks.push({
+        id: `instruction:${i.id}:${staffId}`,
+        kind: 'instruction',
+        from: i.from,
+        tableId: t?.id ?? '',
+        tableName: t?.name ?? 'All',
+        staffId,
+        title: `${who}: ${i.text}`,
+        hint: t ? `About ${t.name}` : 'Tap “Got it” so they know you’ve seen it',
+        text: { title: { parts: [k('t.instruction', { name: who }), raw(i.text)], sep: ' ' }, hint: t ? k('h.kitchen_about', { table: t.name }) : k('h.instruction') },
+        impact: 3.5,
+        createdAt: i.at,
+        dueAt: i.at + 2 * MIN,
+        score: 0,
+        actions: [{ label: 'Got it', event: 'instruction.acked', payload: { instructionId: i.id, staffId }, primary: true }],
+      })
+    }
+  }
+
   return tasks
     .filter((k) => !(state.snoozes[k.id] > now))
+    // A task put off earlier is back: it says so, and its priority is lifted so it doesn't sink below newer jobs.
+    .map((k) => (state.snoozes[k.id] && state.snoozeCount[k.id] ? { ...k, resurfaced: { at: state.snoozes[k.id], times: state.snoozeCount[k.id] } } : k))
     .map((k) => ({ ...k, score: scoreTask(k, state.tables[k.tableId], now) }))
     .sort((a, b) => b.score - a.score)
 }
@@ -588,12 +862,50 @@ export function scoreTask(task: Task, table: TableState | undefined, now: number
   const since = table?.lastAttentionAt ?? table?.seatedAt ?? now
   const neglect = Math.min(0.6, ((now - since) / MIN) * 0.04)
   const vip = table?.party?.vip ? 0.5 : 0
-  return Math.round((task.impact * (0.6 + urgency) + neglect + vip) * 100) / 100
+  // Put off before? Each time it comes back it counts for more, up to a limit.
+  const back = task.resurfaced ? Math.min(1.5, 0.6 * task.resurfaced.times) : 0
+  return Math.round((task.impact * (0.6 + urgency) + neglect + vip + back) * 100) / 100
 }
 
-export function tasksFor(tasks: Task[], staffId: string, limit = 3): { top: Task[]; queued: number } {
+/**
+ * The server's top cards. Tasks that fit the same trip ride along on one card instead of taking
+ * their own slot: more food at the pass, another job at the same table, or the table next door.
+ * Only one-tap tasks are folded in; anything needing a choice (a mood, a safety call) keeps its card.
+ */
+export function tasksFor(tasks: Task[], staffId: string, limit = 3, tables?: Record<string, TableState>): { top: Task[]; queued: number } {
   const mine = tasks.filter((t) => t.staffId === staffId)
-  return { top: mine.slice(0, limit), queued: Math.max(0, mine.length - limit) }
+  const foldable = (r: Task) => r.actions.length === 1 && r.actions[0].event !== 'task.snoozed' && r.kind !== 'safety_check' && r.kind !== 'recovery'
+  const top: Task[] = []
+  let folded = 0
+  for (const task of mine) {
+    const host = foldable(task)
+      ? top.find((h) => (h.related?.length ?? 0) < 2 && ((h.kind === 'pickup' && task.kind === 'pickup') || (h.tableId && h.tableId === task.tableId)))
+      : undefined
+    if (host) {
+      host.related = [...(host.related ?? []), related(task, host.kind === 'pickup' && task.kind === 'pickup' ? 'pass' : 'same')]
+      folded++
+      continue
+    }
+    if (top.length < limit) top.push({ ...task })
+  }
+  // Next door: a waiting task at the neighbouring table, offered on the card for that trip.
+  if (tables) {
+    const shown = new Set([...top.map((t) => t.id), ...top.flatMap((t) => t.related?.map((r) => r.id) ?? [])])
+    for (const r of mine) {
+      if (shown.has(r.id) || !foldable(r)) continue
+      const host = top.find((h) => (h.related?.length ?? 0) < 2 && isNear(tables[h.tableId], tables[r.tableId]))
+      if (host) {
+        host.related = [...(host.related ?? []), related(r, 'near')]
+        shown.add(r.id)
+        folded++
+      }
+    }
+  }
+  return { top, queued: Math.max(0, mine.length - top.length - folded) }
+}
+
+function related(r: Task, where: 'same' | 'near' | 'pass'): NonNullable<Task['related']>[number] {
+  return { id: r.id, kind: r.kind, tableName: r.tableName, where, title: r.title, text: r.text?.title, action: r.actions[0] }
 }
 
 // ---------------------------------------------------------------------------
@@ -647,6 +959,12 @@ export interface Analytics {
   load: { staffId: string; activeTables: number; overloaded: boolean }[]
   suggestions: string[]
   recentVisits: VisitRecord[]
+  /** How guests felt at check-ins tonight, counted per table (never per server). */
+  moods: { happy: number; ok: number; unhappy: number; recovered: number }
+  /** Tables where a server asked the manager to visit, not yet visited. */
+  managerRequests: { tableId: string; tableName: string; at: number }[]
+  /** Dishes caught by the safety check tonight. */
+  safetyCatches: number
 }
 
 const STAGE_LABELS: Record<Segment['stage'], string> = {
@@ -722,7 +1040,23 @@ export function analytics(state: EngineState, config: RestaurantConfig): Analyti
     load,
     suggestions,
     recentVisits: state.visits.slice(-15).reverse(),
+    moods: moodCounts(state),
+    managerRequests: Object.values(state.tables)
+      .filter((t) => t.managerRequestedAt && !(t.managerVisitedAt && t.managerVisitedAt >= t.managerRequestedAt))
+      .map((t) => ({ tableId: t.id, tableName: t.name, at: t.managerRequestedAt! })),
+    safetyCatches: Object.values(state.tables).reduce((n, t) => n + t.lines.filter((l) => l.safetyResolvedAt).length, 0),
   }
+}
+
+function moodCounts(state: EngineState) {
+  const out = { happy: 0, ok: 0, unhappy: 0, recovered: 0 }
+  const seen = [...state.visits.map((v) => ({ mood: v.mood, recovered: v.recovered })), ...Object.values(state.tables).filter((t) => t.visitId).map((t) => ({ mood: t.mood?.value, recovered: !!t.recoveredAt }))]
+  for (const v of seen) {
+    if (!v.mood) continue
+    out[v.mood]++
+    if (v.mood === 'unhappy' && v.recovered) out.recovered++
+  }
+  return out
 }
 
 const round1 = (n: number) => Math.round(n * 10) / 10
