@@ -4,6 +4,7 @@
 
 > **New here?** Start with [docs/getting-started.md](docs/getting-started.md): install, run and use it, step by step.
 > **The full picture** (problem, objective, every feature, why it's employee-centric, how to use and present it, limitations, roadmap): [docs/TableMate-project-guide.md](docs/TableMate-project-guide.md).
+> **OB project report** (issue and diagnosis, solution and OB theory, AI integration and rollout, implications): [docs/report/OB_ProjectReport_WGB3.pdf](docs/report/OB_ProjectReport_WGB3.pdf) ([Word](docs/report/OB_ProjectReport_WGB3.docx)). Rebuild with `node docs/report/build-report.js docs/report/OB_ProjectReport_WGB3.docx` (needs the `docx` npm package).
 > **Free, fast AI chat:** get a free key at [aistudio.google.com](https://aistudio.google.com), put `GEMINI_API_KEY=...` in `.env`, then `npm run dev`. Step by step: [docs/gemini-setup.md](docs/gemini-setup.md). Offline alternative: [Ollama](docs/ollama-setup.md). For the best answers, put `ANTHROPIC_API_KEY=...` in `.env` instead (see `.env.example`). Dify is still supported: [docs/dify-setup.md](docs/dify-setup.md).
 
 An AI service copilot for fine-dining floor staff. It reads what the restaurant's
