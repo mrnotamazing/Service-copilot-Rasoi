@@ -83,7 +83,7 @@ export default function ManagerView() {
         </div>
       }
     >
-      <AssistantDrawer open={assist} onOpenChange={setAssist} staffId={managerId} provider={snap.ai.provider} role="manager" wide />
+      <AssistantDrawer open={assist} onOpenChange={setAssist} staffId={managerId} provider={snap.ai.provider} model={snap.ai.model} role="manager" wide />
       <div className="space-y-5">
         <NeedsYou snap={snap} />
         <FloorMoves snap={snap} managerId={managerId} />

@@ -95,7 +95,7 @@ export default function ServerView() {
   const overlays = (
     <>
       {game && <Celebrations awards={game.awards} muted={snap.sim.autopilot.includes(staffId)} />}
-      <AssistantDrawer open={assist} onOpenChange={setAssist} staffId={staffId} provider={snap.ai.provider} wide={tablet} />
+      <AssistantDrawer open={assist} onOpenChange={setAssist} staffId={staffId} provider={snap.ai.provider} model={snap.ai.model} wide={tablet} />
       <MenuSheet snap={snap} staffId={staffId} />
       <Onboarding staffId={staffId} name={me.name} />
       <NewTaskAlerts top={snap.me.top} />

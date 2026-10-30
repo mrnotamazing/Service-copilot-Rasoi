@@ -69,7 +69,7 @@ export default function Home() {
           </Button>
         ) : (
           <span className="inline-flex items-center gap-1 rounded-full border border-white/20 px-2.5 py-1 text-xs opacity-80">
-            <Sparkles className="size-3" /> {aiName(t, snap.ai.provider, 'home.aiBuiltIn')}
+            <Sparkles className="size-3" /> {aiName(t, snap.ai.provider, 'home.aiBuiltIn', snap.ai.model)}
           </span>
         )}
       </section>

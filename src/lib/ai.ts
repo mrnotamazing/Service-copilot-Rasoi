@@ -1,12 +1,16 @@
 import { useRef, useState } from 'react'
 import type { AiAnswer, AiKind } from '../../server/ai.ts'
+import { serviceOf } from '../../shared/aiService.ts'
 import { postStream } from './live.ts'
 import { getPrefs } from './prefs.ts'
 
 export type { AiAnswer }
 /** An answer still being written: shown as it arrives, without its source badge yet. */
 /** Which AI wrote an answer, in the device's language. */
-export function aiName(t: (k: 'chat.byClaude' | 'chat.byGemini' | 'chat.byCloud' | 'chat.byOllama' | 'assist.dify' | 'assist.builtIn' | 'home.aiBuiltIn') => string, provider: AiAnswer['source'], builtIn: 'assist.builtIn' | 'home.aiBuiltIn' = 'assist.builtIn'): string {
+export function aiName(t: (k: 'chat.byClaude' | 'chat.byGemini' | 'chat.byCloud' | 'chat.byOllama' | 'assist.dify' | 'assist.builtIn' | 'home.aiBuiltIn') => string, provider: AiAnswer['source'], builtIn: 'assist.builtIn' | 'home.aiBuiltIn' = 'assist.builtIn', via?: string): string {
+  // The free cloud AI is several services; name the one that answered.
+  const service = via && (serviceOf(via) ?? via)
+  if (provider === 'cloud' && service) return service
   return provider === 'claude' ? t('chat.byClaude') : provider === 'gemini' ? t('chat.byGemini') : provider === 'cloud' ? t('chat.byCloud') : provider === 'ollama' ? t('chat.byOllama') : provider === 'dify' ? t('assist.dify') : t(builtIn)
 }
 

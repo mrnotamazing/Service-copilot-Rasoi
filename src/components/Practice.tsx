@@ -30,6 +30,7 @@ export function AssistantDrawer({
   onOpenChange,
   staffId,
   provider,
+  model,
   initialMode = 'ask',
   wide,
   role = 'server',
@@ -39,6 +40,8 @@ export function AssistantDrawer({
   onOpenChange: (o: boolean) => void
   staffId: string
   provider: AiAnswer['source']
+  /** Which model answers first, e.g. "groq: openai/gpt-oss-120b", so the badge can name the service. */
+  model?: string
   initialMode?: 'ask' | 'practice'
   wide?: boolean
   role?: AssistantRole
@@ -55,7 +58,7 @@ export function AssistantDrawer({
         </DrawerHeader>
         {open && (
           <div className="min-h-0 flex-1">
-            <Assistant staffId={staffId} provider={provider} initialMode={initialMode} role={role} initialScenario={initialScenario} />
+            <Assistant staffId={staffId} provider={provider} model={model} initialMode={initialMode} role={role} initialScenario={initialScenario} />
           </div>
         )}
       </DrawerContent>
