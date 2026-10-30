@@ -139,7 +139,6 @@ export function MenuSheet({ snap, staffId }: { snap: Snapshot; staffId: string }
               </Chip>
             ))}
           </div>
-          {table && <GuestPanel table={table} staffId={staffId} />}
 
           {/* Course */}
           <div className="flex gap-1.5 overflow-x-auto" role="radiogroup" aria-label={L('Course')}>
@@ -154,7 +153,13 @@ export function MenuSheet({ snap, staffId }: { snap: Snapshot; staffId: string }
           </div>
         </div>
 
-        <ul className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)]">
+        {/* The guest panel scrolls with the dishes: open for editing, it would otherwise squeeze the list to nothing. */}
+        <ul className="min-h-0 flex-1 space-y-2.5 overflow-y-auto overscroll-contain px-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)]">
+          {table && (
+            <li className="list-none">
+              <GuestPanel table={table} staffId={staffId} />
+            </li>
+          )}
           <li className="list-none">
             <SuggestChat chat={chat} table={table} />
           </li>
