@@ -16,7 +16,7 @@ export interface Preset {
 export const PRESETS: Record<string, Preset> = {
   groq: { id: 'groq', url: 'https://api.groq.com/openai/v1', models: ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'] },
   cerebras: { id: 'cerebras', url: 'https://api.cerebras.ai/v1', models: ['llama-3.3-70b', 'llama3.1-8b'] },
-  openrouter: { id: 'openrouter', url: 'https://openrouter.ai/api/v1', models: ['nvidia/nemotron-3.5-lightning:free', 'meta-llama/llama-3.3-70b-instruct:free', 'google/gemma-3-27b-it:free'], discover: false },
+  openrouter: { id: 'openrouter', url: 'https://openrouter.ai/api/v1', models: ['nvidia/nemotron-3.5-lightning:free', 'google/gemma-4-31b-it:free', 'nvidia/nemotron-3.5-super-vl:free'], discover: false },
 }
 
 /**

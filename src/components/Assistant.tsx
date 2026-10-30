@@ -52,7 +52,7 @@ const STARTERS: Record<AssistantRole, Key[]> = {
  * coaches each reply (Practice). Servers and managers each get their own training and situations.
  * Answers come in the person's language when an AI model is connected.
  */
-export function Assistant({ staffId, provider, initialMode = 'ask', role = 'server', initialScenario }: { staffId: string; provider: AiAnswer['source']; initialMode?: Mode; role?: AssistantRole; initialScenario?: string }) {
+export function Assistant({ staffId, provider, model, initialMode = 'ask', role = 'server', initialScenario }: { staffId: string; provider: AiAnswer['source']; model?: string; initialMode?: Mode; role?: AssistantRole; initialScenario?: string }) {
   const t = useT()
   const [mode, setMode] = useState<Mode>(initialMode)
   return (
@@ -74,7 +74,7 @@ export function Assistant({ staffId, provider, initialMode = 'ask', role = 'serv
           ))}
         </div>
         <Badge variant="outline" className="shrink-0 gap-1 text-[10px] font-normal text-muted-foreground">
-          <Sparkles className="size-3" /> {aiName(t, provider)}
+          <Sparkles className="size-3" /> {aiName(t, provider, undefined, model)}
         </Badge>
       </div>
       {/* Each mode keeps its own conversation while you switch back and forth. */}

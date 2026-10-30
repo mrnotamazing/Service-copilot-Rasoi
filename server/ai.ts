@@ -2,6 +2,7 @@
 // Dify app (DIFY_API_URL + DIFY_API_KEY), or a built-in writer and trainer so the copilot always
 // works. The copilot builds the facts; the model only phrases them and holds the conversation.
 
+import { serviceOf } from '../shared/aiService.ts'
 import { guestWith, readWishes, suggestFallback } from '../shared/suggest.ts'
 import type { MenuItem } from '../shared/types.ts'
 import type { RestaurantConfig, Segment, TableState, Task, VisitRecord } from '../shared/types.ts'
@@ -98,6 +99,8 @@ export const INCLUSIVE_STYLE =
 export interface AiAnswer {
   text: string
   source: AiProvider
+  /** The service that answered when several share a source (e.g. "Groq" or "OpenRouter" for the free cloud AI). */
+  via?: string
   /** Set when Dify was configured but the call failed and the built-in answer was used instead. */
   notice?: string
   /** Practice only: coaching on the server's last reply, 1–3 stars, and whether the role-play is over. */
@@ -608,7 +611,7 @@ export function createAi(hub: Hub, opts: DifyOptions = {}) {
       const line = candidates(profile.tier)
       let partial: { model: ChatModel; answer: string } | undefined
       const done = (model: ChatModel, answer: string) => {
-        const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name }
+        const out = { ...built.extra, ...(built.parse ? built.parse(answer, { local: model.compact }) : { text: answer }), source: model.name, via: serviceOf(model.label?.()) }
         if (model.checkFacts && built.facts?.length) out.text = `${out.text}\n\nFrom the menu: ${built.facts.join('\n')}`
         return out
       }

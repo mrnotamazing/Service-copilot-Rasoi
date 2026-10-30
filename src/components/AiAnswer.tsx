@@ -23,7 +23,7 @@ export function AiAnswerBox({ answer, error, quote, className }: { answer: LiveA
       ) : (
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <Badge variant="outline" className="gap-1 text-[10px] font-normal text-muted-foreground">
-          <Sparkles className="size-3" /> {aiName(t, answer.source)}
+          <Sparkles className="size-3" /> {aiName(t, answer.source, undefined, answer.via)}
         </Badge>
         {answer.notice && <span className="text-[11px] text-warn">{answer.notice}</span>}
         {answer.source === 'built-in' && t.lang !== 'en' && <span className="text-[11px] text-muted-foreground">{t('assist.englishNote')}</span>}
